@@ -42,23 +42,35 @@ int uct_move(Board& B, int s, bool useMiai) {
   for (int j =0; j<ROLLOUTS; j++) {
     Board L = B;
     root.uct_playout(L,s,useMiai);
+    // Check the root for immediate wins
+    for (int i = 0; i < root.numChildren; i++) {
+      if(root.children[i].node.proofStatus == PROVEN_LOSS) {
+	printf("Found win: "); prtLcn(root.children[i].lcn); printf("\n");
+	printf("Found in %d iterations.\n", j);
+	return root.children[i].lcn;
+      }
+    }
   }
   int childWins[TotalGBCells];
   int childVisits[TotalGBCells];
   int uctEval[TotalGBCells];
+  int proofStatus[TotalGBCells];
   memset(childWins,0,sizeof(childWins));
   memset(childVisits,0,sizeof(childVisits));
   memset(uctEval,0,sizeof(uctEval));
+  memset(proofStatus, 0, sizeof(proofStatus));
   for (int j=0; j < root.numChildren; j++) {
     Child& c = root.children[j];
     childWins[c.lcn] = c.node.stat.w;
     childVisits[c.lcn] = c.node.stat.n;
     uctEval[c.lcn] = 1000*root.ucb_eval(c.node);
+    proofStatus[c.lcn] = c.node.proofStatus;
   }
-  printf("childWins  childVisits uctEval\n");
+  printf("childWins  childVisits uctEval proofStatus\n");
   showYcore(childWins);
   showYcore(childVisits);
   showYcore(uctEval);
+  showYcore(proofStatus);
   return root.bestMove();
 }
 

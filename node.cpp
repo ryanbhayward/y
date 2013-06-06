@@ -5,10 +5,17 @@
 #include <cstdio>
 
 int Node::uct_playout(Board& B, int plyr, bool useMiai) { 
+  int winner;
+  // If we're at a proven loss, return
+  if(this->proofStatus == PROVEN_LOSS) {
+    //printf("That's a loss for %d!\n", plyr); B.show();
+    winner = oppnt(plyr);
+    this->stat.n++;
+    return winner;
+  }
   if (isLeaf()) 
     if (stat.n >= EXPAND_THRESHOLD) 
        expand(B,plyr);
-  int winner;
   if (isLeaf()) {
     Playout pl(B);
     winner = plyr; 
@@ -17,6 +24,19 @@ int Node::uct_playout(Board& B, int plyr, bool useMiai) {
     winner = oppnt(winner);
   }
   else {
+    // If every child of the node is a proven win, the node is a proven loss
+    int i = 0;
+    while(children[i].node.proofStatus == PROVEN_WIN) {
+      //prtLcn(children[i].lcn); printf( " == PROVEN_WIN!\n");
+      i++;
+      if(i == (this->numChildren)) {
+	this->proofStatus = PROVEN_LOSS;
+	//printf("That's a new loss for %d!", plyr); B.show();
+	winner = oppnt(plyr);
+	this->stat.n++;
+	return winner;
+      }
+    } /* while */
     Child& c  = children[bestChildNdx()];
     int bdset = BRDR_NIL;
     int miReply = B.move(Move(plyr, c.lcn), useMiai, bdset);
@@ -86,7 +106,7 @@ int Node::bestChildNdx() {
   float score = -1; // assume less than any ucb score
   int ndx = 0;
   for (int j=0; j<numChildren; j++) {
-    float score0 = ucb_eval(children[j].node);
+    float score0 = (children[j].node.proofStatus == PROVEN_WIN) ? -INFINITY : ucb_eval(children[j].node);
     if (score0 > score) {
       score = score0;
       ndx = j;

@@ -69,6 +69,7 @@ void Playout::single_playout(int& turn, int& k, bool useMiai) {
   Board L(B);
   k = -1; // k+1 is num stones placed before winner found
   int bd_set = BRDR_NIL; 
+  shuffle_interval(Avail, 0, numAvail-1);
   do { 
     k++;
     if (L.board[Avail[k]]!=EMP) {
