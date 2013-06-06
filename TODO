@@ -1,0 +1,64 @@
+- mustplay: start with bridge carriers
+- playouts: random order, not linear
+- playouts: turn off auto-miai-reply
+- playouts: use rave (collect "winning move" data for cell criticality)
+
+* test efficacy of accelerated playouts
+
+* when playing game with miai
+  if miai-win found
+    then from that point on use miai to play!!!
+     record the win value
+    if when you play you had a win before,
+    and opponent has played at most one intermediate move,
+    then search for miai where opponent has played, play the reply and clear the miai
+    if opponent played no miai, then play in any miai and clear the miai
+* release miai when opponent plays there...
+  if not autoresponding then degrade connectivity
+  how? 
+    * keep miai-adjacency list 
+    * remove from list
+    * recompute connectivity from stones and mia list
+
+* consistent naming convention: best_move or bestMove ?
+* extract playout from monte carlo/genmove
+
+**** rollout connectivity ...
+ for each group, store
+   - stones
+   - miai
+   - nbrs  ... = union(over stones) nbr(stone) \ 
+                 union(over miai cells)
+  newgroup <- new stone
+  while 
+  |nbrs(newgroup) intersect nbrs(some group x)| >= 2
+    - newgroup <- newgroup combined with x
+         newgroup.stones union= x.stones
+         newgroup.miai union= x.miai union {2 cells from inters}
+         newgroup.nbrs = ...
+  when opponent plays a stone into a miai
+    -- play the response
+    -- remove the miai from the group, and add the stone
+    -- update the new groups nbrs
+*****
+*****
+* arbitrary size board using vector (inst const arrays)
+* stl bitsets
+* stl shuffle
+* uct
+
+* other member functions ?  (like init_board)
+* arbitrary game
+* y gui
+* tournament shell script
+* improve on current winners/non-winners ordering in rollouts
+    ?move-to-front?  
+    ?probabilistic sampling based on wins
+       with prior 1-1-1-...-1 initialization
+    ?? less random: don't shuffle sublist after recently found winner...
+* win lookahead in rollouts
+* better move gen:
+     certain number of pure MC
+     then for every cell with some winner
+         make move and report opponent win %
+     pick move min opponent win %
