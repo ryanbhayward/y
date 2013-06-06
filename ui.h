@@ -1,17 +1,16 @@
 #ifndef UI_H
 #define UI_H
-#include "board.h"
+#include "board.y.h"
 
-//static const char HELP_CH = '?';
-static const char GENMOVE_CH = '?';
-static const char PLAYHEX_CH = 'h';
-static const char UNDO_CH = 'u';
-static const char QUIT_CH = '\n';
-static const char UNUSED_CH = '!';
+//#define HELP_CH '?'
+#define GENMOVE_CH '?'
+#define PLAY_CH 'p'
+#define UNDO_CH 'u'
+#define QUIT_CH '\n'
 
-void displayHelp() ;
-void welcome() ;
-void help() ;
-void interact() ;
-void getCommand(char& cmd, int& s, int& lcn);
+extern void displayHelp() ;
+extern void welcome() ;
+extern void help() ;
+extern void interact() ;
+extern void getCommand(int *stone, int *lcn, char* cmd);
 #endif

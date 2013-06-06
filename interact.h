@@ -1,6 +1,6 @@
 #ifndef INTERACT_H
 #define INTERACT_H
-#include "board.h"
+#include "board.y.h"
 
-void interact(Board&) ;
+extern void interact(struct myboard*) ;
 #endif

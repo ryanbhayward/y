@@ -1,10 +1,9 @@
 #ifndef GENMOVE_H
 #define GENMOVE_H
-#include "board.h"
+#include "board.y.h"
 
-static const int ROLLOUTS = 100000;
+#define ROLLOUTS 3
 
-int rand_move  (Board&) ;
-int monte_carlo(Board&, int s, bool useMiai, bool accelerate) ;
-int uct_move   (Board&, int s, bool useMiai) ;
+extern int rand_move(int G[]) ;
+extern int monte_carlo(int who, struct myboard*, Bool_t) ;
 #endif

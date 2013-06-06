@@ -1,17 +1,11 @@
 #ifndef MOVE_H
 #define MOVE_H
-#include "board.h"
+#include "board.y.h"
 
-static const int NumNbrs = 6;              // num nbrs of each cell
-extern const int Nbr_offsets[NumNbrs+1] ;  // last = 1st to avoid using %mod
-extern const int Bridge_offsets[NumNbrs] ;
-
-struct Move {
-  int s;
-  int lcn;
-  Move(int x, int y) : s(x), lcn(y) {}
-  Move() {}
-} ;
-
-bool has_win(int bd_set) ;
+extern int make_move(int stone, int lcn, struct myboard*, Bool_t) ;
+extern Bool_t has_win(int bd_set, int stn) ;
+void set_miai(struct myboard *M, int s, int x, int y) ;
+void release_miai(struct myboard *M, int s, int x) ;
+void put_stone(int stone, int lcn, int A[]) ;
+void remove_stone(int lcn, int A[]) ;
 #endif
