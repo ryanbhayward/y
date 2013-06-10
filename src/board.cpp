@@ -269,11 +269,10 @@ int Board::FromString(const string& name) const
 {
     if (name == "swap")
     	return Y_SWAP;
-    int x = name[0] - 'a';
+    int x = name[0] - 'a' + 1;
     std::istringstream sin(name.substr(1));
     int y;
     sin >> y;
-    y -= 1;  // Row '1' is really row 0
     return board_format(x, y);
 }
 
