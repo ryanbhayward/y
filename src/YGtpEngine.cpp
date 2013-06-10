@@ -252,7 +252,7 @@ void YGtpEngine::CmdVersion(GtpCommand& cmd)
 
 void YGtpEngine::CmdBoardSize(GtpCommand& cmd)
 {
-    cmd.CheckNuArg(1);
+    cmd.CheckNuArg(2);  // ignore second argument (so we work in hexgui)
     int size = cmd.IntArg(0, 1, Y_MAX_SIZE);
     m_brd = Board(size);
 }
