@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <algorithm>
 #include "shuff.h"
 
 //shuffle vector interval indexed a..b
@@ -10,7 +11,7 @@ void shuffle_interval(int X[], int a, int b) {
   //}
   for (k = a+1; k <= b; k++) {
     j = myrand(a,k);  
-    swap(X[j],X[k]);
+    std::swap(X[j],X[k]);
   }
 }
 

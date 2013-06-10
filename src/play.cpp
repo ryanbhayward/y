@@ -5,9 +5,12 @@
 #include "connect.h"
 #include "interact.h"
 
+#if 0
 int main(void) {Board myB; 
   shapeAs(TRI,myB.brdr);
   display_nearedges();
   interact(myB);
   return 0;
 }
+
+#endif

@@ -28,10 +28,6 @@ bool parse_int(char& ch, int& y) {
   return (y>0);
 }
 
-int board_format(int x, int y) {
-  return (y+GUARDS-1)*(Np2G)+x+GUARDS-1;
-}
-
 void nextEOL(char& ch) {
   while (ch != '\n') ch = getchar();
 }

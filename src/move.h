@@ -1,5 +1,6 @@
 #ifndef MOVE_H
 #define MOVE_H
+
 #include "board.h"
 
 static const int NumNbrs = 6;              // num nbrs of each cell
@@ -14,4 +15,5 @@ struct Move {
 } ;
 
 bool has_win(int bd_set) ;
+
 #endif

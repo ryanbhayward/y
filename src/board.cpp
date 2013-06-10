@@ -2,31 +2,44 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
+#include <string>
+
 #include "board.h"
 #include "move.h"
 #include "shuff.h"
 
-void prtLcn(int psn) {
-  printf(" %c%1d",alphaCol(psn),numerRow(psn)); }
+using namespace std;
 
-char emit(int value) {
+void prtLcn(int psn) {
+  printf(" %c%1d",alphaCol(psn),numerRow(psn)); 
+}
+
+char ColorToChar(int value) 
+{
   switch(value) {
     case EMP: return EMP_CH;
     case BLK: return BLK_CH;
     case WHT: return WHT_CH;
-    default: return '?'; } }
-void emitString(int value) {
+    default: return '?'; 
+  }
+}
+void ColorToString(int value) 
+{
   switch(value) {
     case EMP: printf("empty"); break;
     case BLK: printf("black"); break;
     case WHT: printf("white"); break;
-    default: printf(" ? "); } }
+    default: printf(" ? "); } 
+}
 
-int b2(int shape, int j) { // inner loop bound in shapeAs
-  switch(shape) {
+int b2(int shape, int j) 
+{ // inner loop bound in shapeAs
+    switch(shape) {
     case RHOMBUS: return Np2G;  // will display as Np2G*Np2G rhombus
     case TRI:     return N-j;   // will display as N*N*N triangle
-    default:      assert(0==1); return 0; } }
+    default:      assert(0==1); return 0; } 
+}
 
 void shapeAs(int shape, int X[]) { // display as given shape
   int psn = 0; int b = (shape==RHOMBUS)? Np2G : N;
@@ -122,7 +135,7 @@ int Board::num(int kind) { int count = 0;
           count ++;
   return count; }
   
-void Board::showMi(int s) { emitString(s), printf(" miai\n");
+void Board::showMi(int s) { ColorToString(s), printf(" miai\n");
   for (int j = 0; j < N; j++) {
     int psn = (j+GUARDS)*Np2G + GUARDS; //printf("psn %2d ",psn);
     for (int k = 0; k < j; k++) 
@@ -170,19 +183,35 @@ void Board::showBr() { printf("border values\n");
   }
   printf("\n"); }
 
-void Board::show() {
-  printf("\n   ");
-  for (char ch='a'; ch < 'a'+N; ch++) 
-    printf(" %c ",ch); printf("\n\n");
-  for (int j = 0; j < N; j++) {
-    for (int k = 0; k < j; k++) 
-      printf(" ");
-    printf("%2d   ",j+1);
-    for (int k = 0; k < N-j; k++) 
-      printf("%c  ", emit(board[fatten(j,k)]));
-    printf("\n");
-  }
-  printf("\n"); }
+std::string Board::ToString(int cell) const
+{
+    char str[16];
+    sprintf(str, "%c%1d",alphaCol(cell),numerRow(cell)); 
+    return str;
+}
+
+std::string Board::ToString() const
+{
+    ostringstream os;
+    os << "\n   ";
+    for (char ch='a'; ch < 'a'+m_size; ch++) 
+        os << ' ' << ch << ' '; 
+    os << "\n\n";
+    for (int j = 0; j < m_size; j++) {
+        for (int k = 0; k < j; k++) 
+            os << ' ';
+        os << j+1 << "   ";
+        for (int k = 0; k < m_size-j; k++) 
+            os << ColorToChar(board[fatten(j,k)]) << "  ";
+        os << '\n';
+    }
+    return os.str();
+}
+
+void Board::show() 
+{
+    printf("%s\n", ToString().c_str());
+}
 
 void Board::showAll() {
   showMi(BLK);
@@ -224,4 +253,54 @@ void Board::init() { int j,k;
     brdr[fatten(0,0)+j*(Np2G-1)+N] = BRDR_R;
 }
 
-Board::Board() { init(); }
+Board::Board()
+    : m_size(10)
+{
+    init();
+}
+
+Board::Board(int size) 
+    : m_size(size)
+{ 
+    init(); 
+}
+
+int Board::FromString(const string& name) const
+{
+    if (name == "swap")
+    	return Y_SWAP;
+    int x = name[0] - 'a';
+    std::istringstream sin(name.substr(1));
+    int y;
+    sin >> y;
+    y -= 1;  // Row '1' is really row 0
+    return board_format(x, y);
+}
+
+bool Board::CanSwap() const { return false; }
+
+void Board::Swap()
+{
+    // swap black stones with white stones
+}
+
+bool Board::IsOccupied(int cell) const
+{
+    return board[cell] != EMP;
+}
+
+bool Board::IsWinner(int player) const
+{
+    if (m_winner != Y_NO_WINNER) {
+        if (player == BLK)
+            return m_winner == Y_BLACK_WINS;
+        if (player == WHT)
+            return m_winner == Y_WHITE_WINS;
+    }
+    return false;
+}
+
+void Board::FlipToPlay()
+{
+    m_toPlay = (m_toPlay == BLK) ? WHT : BLK;
+}

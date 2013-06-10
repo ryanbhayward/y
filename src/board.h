@@ -1,8 +1,15 @@
 #ifndef BOARDY_H
 #define BOARDY_H
+
+#include <string>
+
+#include "SgSystem.h"
+#include "SgHash.h"
 #include "move.h"
 
-static const int INFINITY = 9999;
+
+
+static const int Y_INFINITY = 9999;
 
 //  Y-board       N cells per side    N(N+1)/2  total cells
 //  fat board, aka. guarded board with GUARDS extra rows/cols,
@@ -24,6 +31,9 @@ static const int Np2G = N+2*GUARDS;
 static const int TotalCells = N*(N+1)/2;
 static const int TotalGBCells = Np2G*Np2G;
 
+static const int Y_MAX_CELL = 255;
+static const int Y_MAX_SIZE = 19;   // such that TotalCells < Y_MAX_CELL
+
 static const int BRDR_NIL  = 0; // 000   border values, used bitwise
 static const int BRDR_TOP   = 1; // 001
 static const int BRDR_L     = 2; // 010
@@ -40,12 +50,20 @@ static const char BLK_CH = 'b';
 static const char WHT_CH = 'w';
 static const char EMP_CH = '.';
 
+static const int Y_SWAP = -1;
+static const int Y_NULL_MOVE = -2;
+
+inline int board_format(int x, int y) {
+  return (y+GUARDS-1)*(Np2G)+x+GUARDS-1;
+}
+
+void prtLcn(int psn);        // a5, b13, ...
+char ColorToChar(int value) ;       // EMP, BLK, WHT
+void ColorToString(int value) ; // empty, black, white
+ 
 static inline int oppnt(int x) {return 3^x;} // black,white are 1,2
 static inline int ndx(int x) {return x-1;}  // assume black,white are 1,2
 
-char emit(int value) ;       // EMP, BLK, WHT
-void emitString(int value) ; // empty, black, white
-void prtLcn(int psn);        // a5, b13, ...
 static inline int fatten(int r,int c) {return Np2G*(r+GUARDS)+(c+GUARDS);}
 static inline int board_row(int lcn) {return (lcn/Np2G)-GUARDS;}
 static inline int board_col(int lcn) {return (lcn%Np2G)-GUARDS;}
@@ -61,30 +79,68 @@ static inline bool near_edge(int lcn) {
   return ((0==r)||(0==c)||(N==r+c+1));
 }
 
+typedef enum 
+{
+    Y_BLACK_WINS,
+    Y_WHITE_WINS,
+    Y_NO_WINNER
+} YGameOverType;
 
 struct Board {
-  int board[TotalGBCells];
-  int p    [TotalGBCells];
-  int brdr [TotalGBCells];
-  int reply[2][TotalGBCells];  // miai reply
-  void init();
-  void zero_connectivity(int s, bool removeStone = true);
-  void set_miai    (int s, int m1, int m2);
-  void release_miai(Move mv);
-  bool not_in_miai (Move mv);
-  void put_stone   (Move mv);
-  void remove_stone(int lcn);
-  int  move(Move mv, bool useMiai, int& brdset); // ret: miaiMove
-  int  moveMiaiPart(Move mv, bool useMiai, int& brdset, int cpt); // miai part of move
-  void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
-  int num(int cellKind);
-  void show();
-  void showMi(int s);
-  void showP();
-  void showBr(); //showBorder connectivity values
-  void showAll();
-  Board(); // constructor
-} ;
+    int board[TotalGBCells];
+    int p    [TotalGBCells];
+    int brdr [TotalGBCells];
+    int reply[2][TotalGBCells];  // miai reply
+    
+    int m_size;
+    int m_toPlay;
+    YGameOverType m_winner;  
+    
+    void init();
+    void zero_connectivity(int s, bool removeStone = true);
+    void set_miai    (int s, int m1, int m2);
+    void release_miai(Move mv);
+    bool not_in_miai (Move mv);
+    void put_stone   (Move mv);
+    void remove_stone(int lcn);
+    int  move(Move mv, bool useMiai, int& brdset); // ret: miaiMove
+    int  moveMiaiPart(Move mv, bool useMiai, int& brdset, int cpt); // miai part of move
+    void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
+    int num(int cellKind);
+    void show();
+    void showMi(int s);
+    void showP();
+    void showBr(); //showBorder connectivity values
+    void showAll();
+    
+    bool IsGameOver() const { return m_winner != Y_NO_WINNER; }
+    YGameOverType GetWinner() const { return m_winner; }
+    bool IsWinner(int player) const;
+
+    SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };
+
+    Board();
+    Board(int size); // constructor
+
+    bool CanSwap() const;
+    void Swap();
+
+    std::string ToString() const;
+    std::string ToString(int cell) const;
+    int FromString(const std::string& name) const;
+
+    bool IsOccupied(int cell) const;
+    
+    bool IsEmpty(int cell) const
+    { return board[cell] == EMP; };
+
+    int ToPlay() const
+    { return m_toPlay; }
+
+private:
+    void FlipToPlay();
+
+};
 
 struct Playout {
   int Avail [TotalCells]; // locations of available cells
@@ -107,4 +163,5 @@ static const int TRI   = 1;
 void shapeAs(int shape, int X[]);
 void showYcore(int X[]) ;  // simple version of Board.show
 void display_nearedges();
+
 #endif

@@ -12,13 +12,13 @@ void init_to_zero(int A[], int n) { int j;
 }
 
 float ratio(int n, int d) {
-  return (d==0) ? INFINITY: (float)n/(float)d;
+  return (d==0) ? Y_INFINITY: (float)n/(float)d;
 }
 
 float score(int wins, int opt_wins, int sum_lengths, int opt_sum_lengths) {
 // score is zero-sum
-  if (wins==0) return -INFINITY;
-  if (opt_wins==0) return INFINITY;
+  if (wins==0) return -Y_INFINITY;
+  if (opt_wins==0) return Y_INFINITY;
   return -.5 + (float)wins/(float)ROLLOUTS+ //monte carlo win prob
          (float)opt_sum_lengths/(float)opt_wins- 
 	 (float)sum_lengths/(float)wins;
@@ -87,7 +87,7 @@ int monte_carlo(Board& B, int s, bool useMiai, bool accelerate) {
     }
     else { // if accelerate
       if (just_won > end_winners) { // add to winners; shuffle remainders
-        swap(pl.Avail[++end_winners], pl.Avail[just_won]);
+        std::swap(pl.Avail[++end_winners], pl.Avail[just_won]);
         shuffle_interval(pl.Avail,end_winners+1,pl.numAvail-1);
       }
       shuffle_interval(pl.Avail,0,end_winners); //shuffle winners
@@ -109,7 +109,7 @@ int monte_carlo(Board& B, int s, bool useMiai, bool accelerate) {
   int owins  = pl.colorScore[ndx(oppnt(s))];
   int mysum = pl.win_length[ndx(s)];
   int osum = pl.win_length[ndx(oppnt(s))];
-  printf("%c wins %.2f   ", emit(s),(float)mywins/(float)ROLLOUTS);
+  printf("%c wins %.2f   ", ColorToChar(s),(float)mywins/(float)ROLLOUTS);
   printf("length %2.2f (oppt %2.2f)   score %2.2f \n\n",
     ratio(mysum,mywins), ratio(osum,owins), score(mywins,owins,mysum,osum));
   //showYcore(pl.wins); 

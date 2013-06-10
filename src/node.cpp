@@ -92,7 +92,8 @@ int Node::bestMove() {
   int score = -1; // assume less than any ucb score
   int lcn = 0;
   for (int j=0; j<numChildren; j++) {
-    int score0 = (children[j].node.proofStatus == PROVEN_LOSS) ? INFINITY : children[j].node.stat.n;
+    int score0 = (children[j].node.proofStatus == PROVEN_LOSS) 
+        ? Y_INFINITY : children[j].node.stat.n;
     if (score0 > score) {
       score = score0;
       lcn = children[j].lcn;
@@ -106,7 +107,8 @@ int Node::bestChildNdx() {
   float score = -1; // assume less than any ucb score
   int ndx = 0;
   for (int j=0; j<numChildren; j++) {
-    float score0 = (children[j].node.proofStatus == PROVEN_WIN) ? -INFINITY : ucb_eval(children[j].node);
+    float score0 = (children[j].node.proofStatus == PROVEN_WIN) 
+        ? -Y_INFINITY : ucb_eval(children[j].node);
     if (score0 > score) {
       score = score0;
       ndx = j;
@@ -118,6 +120,6 @@ int Node::bestChildNdx() {
 float Node::ucb_eval(Node& child) { 
   // child.stat.w/child.s.n gives prob of opponent win at child state
   Stats cs = child.stat;
-  if (cs.n==0) return INFINITY;
+  if (cs.n==0) return Y_INFINITY;
   return (1.0 - float(cs.w)/cs.n) + UCB_EXPLORE*sqrt(sqrt(stat.n)/cs.n);
 }

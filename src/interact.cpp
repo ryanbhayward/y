@@ -9,10 +9,10 @@
 void printBye()             { printf("\n\n ... adios ... \n\n"); }
 void printGameAlreadyOver() { printf("game over\n"); }
 void printIllegal()         { printf("illegal... occupied or off-board"); }
-void printHasWon(int s)     { printf(" %c wins\n\n", emit(s)); }
-void printCanWin(int s)     { printf("  %c happy ...\n",emit(s)); }
+void printHasWon(int s)     { printf(" %c wins\n\n", ColorToChar(s)); }
+void printCanWin(int s)     { printf("  %c happy ...\n",ColorToChar(s)); }
 void printMoveMade(Move m) {
-  printf("play %c %c%1d\n", emit(m.s),alphaCol(m.lcn),numerRow(m.lcn)); }
+  printf("play %c %c%1d\n", ColorToChar(m.s),alphaCol(m.lcn),numerRow(m.lcn)); }
 
 int movePlus(Board& B, Move mv, bool miai, int&bdst, Move& h) { 
   // move, update history ... bdst computed from scratch

@@ -9,7 +9,11 @@ move.cpp \
 node.cpp \
 play.cpp \
 shuff.cpp \
-ui.cpp
+ui.cpp \
+YMain.cpp \
+YGtpEngine.cpp \
+YSearch.cpp \
+YUctSearch.cpp
 
 noinst_HEADERS = \
 board.h \
@@ -19,7 +23,10 @@ interact.h \
 move.h \
 node.h \
 shuff.h \
-ui.h
+ui.h \
+YGtpEngine.h \
+YSearch.h \
+YUctSearch.h
 
 y_LDADD = \
 $(FUEGO_BUILD)/smartgame/libfuego_smartgame.a \

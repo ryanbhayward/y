@@ -105,6 +105,7 @@ int Board::move(Move mv, bool useMiai, int& bdset) { //bdset comp. from scratch
   //}
   //assert(brdr[lcn]==BRDR_NIL);
   put_stone(mv);
+  FlipToPlay();
   cpt = lcn; // cpt of s group containing lcn
   for (int t=0; t<NumNbrs; t++) {
     nbr = lcn + Nbr_offsets[t];
@@ -119,5 +120,10 @@ int Board::move(Move mv, bool useMiai, int& bdset) { //bdset comp. from scratch
     bdset = brdr[cpt];
     return lcn;       // no miai, so return lcn
   } // else 
-  return moveMiaiPart(mv, useMiai, bdset,cpt);
+  int response = moveMiaiPart(mv, useMiai, bdset,cpt);
+
+  if (has_win(bdset)) {
+      m_winner = (mv.s == BLK) ? Y_BLACK_WINS : Y_WHITE_WINS;
+  }
+  return response;
 }
