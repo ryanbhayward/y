@@ -35,6 +35,8 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("showboard", &YGtpEngine::CmdShowBoard);
     RegisterCmd("clear_board", &YGtpEngine::CmdClearBoard);
     RegisterCmd("genmove", &YGtpEngine::CmdGenMove);
+    RegisterCmd("hexgui-analyze_commands", 
+                &YGtpEngine::CmdAnalyzeCommands);
     RegisterCmd("set_player", &YGtpEngine::CmdSetPlayer);
     RegisterCmd("time_left", &YGtpEngine::CmdTimeLeft);
     RegisterCmd("time_settings", &YGtpEngine::CmdTimeSettings);
@@ -60,6 +62,17 @@ void YGtpEngine::RegisterCmd(const std::string& name,
                                 GtpCallback<YGtpEngine>::Method method)
 {
     Register(name, new GtpCallback<YGtpEngine>(this, method));
+}
+
+void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
+{
+    cmd.CheckArgNone();
+    cmd <<
+        "param/Game Param/param_game\n"
+        "plist/All Legal Moves/all_legal_moves %c\n"
+        "string/ShowBoard/showboard\n"
+        "string/Final Score/final_score\n"
+        "varc/Reg GenMove/reg_genmove %c\n";
 }
 
 int YGtpEngine::ColorArg(const GtpCommand& cmd, 

@@ -35,6 +35,7 @@ public:
     void CmdSolve(GtpCommand& cmd);
     void CmdUndo(GtpCommand& cmd);
     void CmdGenMove(GtpCommand& cmd);
+    void CmdAnalyzeCommands(GtpCommand& cmd);
     void CmdSetPlayer(GtpCommand& cmd);
     void CmdTimeLeft(GtpCommand& cmd);
     void CmdTimeSettings(GtpCommand& cmd);
