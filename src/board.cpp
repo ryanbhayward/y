@@ -90,9 +90,9 @@ void Playout::single_playout(int& turn, int& k, bool useMiai) {
       L.show();
     }
     assert(L.board[Avail[k]]==EMP);
-    int miReply = -1;
+
     Move mv(turn, Avail[k]);
-    miReply = L.move(mv, useMiai, bd_set);
+    int miReply = L.move(mv, useMiai, bd_set);
     // played into oppt miai ?
     int resp = L.reply[ndx(oppnt(turn))][Avail[k]];
     if (resp!=Avail[k]) {//prep for autorespond on next move
@@ -193,15 +193,16 @@ std::string Board::ToString(int cell) const
 std::string Board::ToString() const
 {
     ostringstream os;
+    const int N = Size();
     os << "\n   ";
-    for (char ch='a'; ch < 'a'+m_size; ch++) 
+    for (char ch='a'; ch < 'a'+N; ch++) 
         os << ' ' << ch << ' '; 
     os << "\n\n";
-    for (int j = 0; j < m_size; j++) {
+    for (int j = 0; j < N; j++) {
         for (int k = 0; k < j; k++) 
             os << ' ';
         os << j+1 << "   ";
-        for (int k = 0; k < m_size-j; k++) 
+        for (int k = 0; k < N-j; k++) 
             os << ColorToChar(board[fatten(j,k)]) << "  ";
         os << '\n';
     }
@@ -242,9 +243,8 @@ void Board::init() { int j,k;
     for (k=0; k<2; k++) 
       reply[k][j] = j;
   }
-  for (j=0; j<N; j++) 
-    for (k=0; k<N-j; k++)
-      board[fatten(j,k)] = EMP;
+  for (BoardIterator it(Const()); it; ++it)
+      board[*it] = EMP;
   for (j=0; j<N+1; j++) 
     brdr[fatten(0,0)+j-Np2G] = BRDR_TOP;
   for (j=0; j<N+1; j++) 
@@ -254,13 +254,13 @@ void Board::init() { int j,k;
 }
 
 Board::Board()
-    : m_size(10)
+    : m_constBrd(10)
 {
     init();
 }
 
 Board::Board(int size) 
-    : m_size(size)
+    : m_constBrd(size)
 { 
     init(); 
 }
@@ -303,3 +303,15 @@ void Board::FlipToPlay()
 {
     m_toPlay = (m_toPlay == BLK) ? WHT : BLK;
 }
+
+//////////////////////////////////////////////////////////////////////
+
+ConstBoard::ConstBoard(int size)
+    : m_size(size)
+{
+    m_cells.clear();
+    for (int r=0; r<Size(); r++)
+        for (int c=0; c<Size()-r; c++)
+            m_cells.push_back(fatten(r,c));
+}
+

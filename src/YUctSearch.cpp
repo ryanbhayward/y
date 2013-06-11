@@ -84,19 +84,17 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
         return false;
     }
     SG_UNUSED(count);
-    for (int r=0; r<N; r++)
-        for (int c=0; c<N-r; c++) {
-            int psn = fatten(r,c);
-            if (EMP==m_brd.board[psn])
-                moves.push_back(psn);
-        }
-#if 0
-    for (HvBoardIterator it(m_brd); it; ++it)
+    // for (int r=0; r<N; r++)
+    //     for (int c=0; c<N-r; c++) {
+    //         int psn = fatten(r,c);
+    //         if (EMP==m_brd.board[psn])
+    //             moves.push_back(psn);
+    //     }
+    for (BoardIterator it(m_brd); it; ++it)
     {
         if (m_brd.IsEmpty(*it))
             moves.push_back(*it);
     }
-#endif
     provenType = SG_NOT_PROVEN;
     return false;
 }

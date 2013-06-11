@@ -2,12 +2,12 @@
 #define BOARDY_H
 
 #include <string>
+#include <vector>
 
 #include "SgSystem.h"
 #include "SgHash.h"
 #include "move.h"
-
-
+#include "VectorIterator.h"
 
 static const int Y_INFINITY = 9999;
 
@@ -86,13 +86,37 @@ typedef enum
     Y_NO_WINNER
 } YGameOverType;
 
-struct Board {
+class ConstBoard 
+{
+public:
+
+    ConstBoard(int size);
+
+    int Size() const { return m_size; }
+    
+    bool IsOnBoard(int cell) const
+    {
+        return std::find(m_cells.begin(), m_cells.end(), cell) != m_cells.end();
+    }
+
+private:
+    int m_size;
+    std::vector<int> m_cells;
+
+    friend class BoardIterator;
+
+    friend class Board;
+};
+
+struct Board 
+{
+    ConstBoard m_constBrd;
+
     int board[TotalGBCells];
     int p    [TotalGBCells];
     int brdr [TotalGBCells];
     int reply[2][TotalGBCells];  // miai reply
     
-    int m_size;
     int m_toPlay;
     YGameOverType m_winner;  
     
@@ -122,6 +146,10 @@ struct Board {
     Board();
     Board(int size); // constructor
 
+    const ConstBoard& Const() const { return m_constBrd; }
+
+    int Size() const { return Const().Size(); }
+
     bool CanSwap() const;
     void Swap();
 
@@ -141,6 +169,28 @@ private:
     void FlipToPlay();
 
 };
+
+//----------------------------------------------------------------------
+
+class BoardIterator : public VectorIterator<int>
+{
+public:
+    BoardIterator(const Board& brd);
+
+    BoardIterator(const ConstBoard& brd);
+};
+
+inline BoardIterator::BoardIterator(const Board& brd)
+    : VectorIterator<int>(brd.Const().m_cells)
+{
+}
+
+inline BoardIterator::BoardIterator(const ConstBoard& brd)
+    : VectorIterator<int>(brd.m_cells)
+{
+}
+
+//----------------------------------------------------------------------
 
 struct Playout {
   int Avail [TotalCells]; // locations of available cells

@@ -142,8 +142,8 @@ void YGtpEngine::Play(int color, int cell)
     	m_brd.Swap();
     else if (cell != Y_NULL_MOVE)
     {
-        // if (! m_brd.Const().IsOnBoard(cell))
-        //     throw GtpFailure("Cell not on board!");
+        if (! m_brd.Const().IsOnBoard(cell))
+            throw GtpFailure("Cell not on board!");
         if (m_brd.IsOccupied(cell))
             throw GtpFailure("Cell is occupied!");
 

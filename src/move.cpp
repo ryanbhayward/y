@@ -93,37 +93,41 @@ int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
   return miReply;
 }
 
-int Board::move(Move mv, bool useMiai, int& bdset) { //bdset comp. from scratch
-// put mv.s on board, update connectivity for mv.s
-// WARNING  oppnt(mv.s) connectivity will be broken if mv.s hits oppnt miai
-//   useMiai ? miai adjacency : stone adjacency
-// return opponent miai reply of mv, will be mv.lcn if no miai
-  int nbr,nbrRoot,cpt; int lcn = mv.lcn; int s = mv.s;
-  //if (brdr[lcn]!=BRDR_NIL) {
+int Board::move(Move mv, bool useMiai, int& bdset) 
+{  //bdset comp. from scratch
+    // put mv.s on board, update connectivity for mv.s
+    // WARNING  oppnt(mv.s) connectivity will be broken if mv.s hits oppnt miai
+    //   useMiai ? miai adjacency : stone adjacency
+    // return opponent miai reply of mv, will be mv.lcn if no miai
+    int nbr,nbrRoot,cpt; int lcn = mv.lcn; int s = mv.s;
+    //if (brdr[lcn]!=BRDR_NIL) {
     //showAll();
     //prtLcn(lcn); printf("\n");
-  //}
-  //assert(brdr[lcn]==BRDR_NIL);
-  put_stone(mv);
-  FlipToPlay();
-  cpt = lcn; // cpt of s group containing lcn
-  for (int t=0; t<NumNbrs; t++) {
-    nbr = lcn + Nbr_offsets[t];
-    if (board[nbr] == s) {
-      nbrRoot = Find(p,nbr);
-      brdr[nbrRoot] |= brdr[cpt];
-      cpt = Union(p,cpt,nbrRoot); } 
-    else if (board[nbr] == GRD) {
-      brdr[cpt] |= brdr[nbr]; }
-  }
-  if (!useMiai) {
-    bdset = brdr[cpt];
-    return lcn;       // no miai, so return lcn
-  } // else 
-  int response = moveMiaiPart(mv, useMiai, bdset,cpt);
-
-  if (has_win(bdset)) {
-      m_winner = (mv.s == BLK) ? Y_BLACK_WINS : Y_WHITE_WINS;
-  }
-  return response;
+    //}
+    //assert(brdr[lcn]==BRDR_NIL);
+    
+    m_toPlay = mv.s;
+    put_stone(mv);
+    FlipToPlay();
+    
+    cpt = lcn; // cpt of s group containing lcn
+    for (int t=0; t<NumNbrs; t++) {
+        nbr = lcn + Nbr_offsets[t];
+        if (board[nbr] == s) {
+            nbrRoot = Find(p,nbr);
+            brdr[nbrRoot] |= brdr[cpt];
+            cpt = Union(p,cpt,nbrRoot); } 
+        else if (board[nbr] == GRD) {
+            brdr[cpt] |= brdr[nbr]; }
+    }
+    if (!useMiai) {
+        bdset = brdr[cpt];
+        return lcn;       // no miai, so return lcn
+    } // else 
+    int response = moveMiaiPart(mv, useMiai, bdset,cpt);
+    
+    if (has_win(bdset)) {
+        m_winner = (mv.s == BLK) ? Y_BLACK_WINS : Y_WHITE_WINS;
+    }
+    return response;
 }

@@ -80,12 +80,9 @@ void YSearch::Generate(SgVector<SgMove>* moves, int depth)
 {
     SG_UNUSED(depth);
     moves->Clear();
-    // FIXME: implement BoardIterator
-#if 0
     for (BoardIterator it(m_brd); it; ++it)
         if (m_brd.IsEmpty(*it))
             moves->PushBack(*it);
-#endif
 }
 
 int YSearch::Evaluate(bool* isExact, int depth)
