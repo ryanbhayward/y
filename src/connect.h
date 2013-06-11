@@ -5,6 +5,6 @@
 //   win iff some stone-group touches all 3 borders so ...
 //   ... for each stone-group, maintain set of touched borders
 
-int Find(int Parents[TotalGBCells], int x) ;
-int Union(int Parents[TotalGBCells], int x, int y) ;
+int Find(std::vector<int>& Parents, int x) ;
+int Union(std::vector<int>& Parents, int x, int y) ;
 #endif

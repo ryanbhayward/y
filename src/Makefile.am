@@ -3,13 +3,7 @@ bin_PROGRAMS = y
 y_SOURCES = \
 board.cpp \
 connect.cpp \
-genmove.cpp \
-interact.cpp \
 move.cpp \
-node.cpp \
-play.cpp \
-shuff.cpp \
-ui.cpp \
 YMain.cpp \
 YGtpEngine.cpp \
 YSearch.cpp \
@@ -18,12 +12,7 @@ YUctSearch.cpp
 noinst_HEADERS = \
 board.h \
 connect.h \
-genmove.h \
-interact.h \
 move.h \
-node.h \
-shuff.h \
-ui.h \
 YGtpEngine.h \
 YSearch.h \
 YUctSearch.h

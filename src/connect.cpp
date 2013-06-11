@@ -1,6 +1,6 @@
 #include "connect.h"
 
-int Find(int Parents[], int x) {
+int Find(std::vector<int>& Parents, int x) {
   int px = Parents[x];
   if (x==px) return x;
   int gx = Parents[px];
@@ -9,7 +9,7 @@ int Find(int Parents[], int x) {
   return Find(Parents, gx);
 }
 
-int Union(int Parents[], int x, int y) {
+int Union(std::vector<int>& Parents, int x, int y) {
   //printf("Union %d %d\n",x,y);
   //int xRoot = Find(Parents, x);
   //int yRoot = Find(Parents, y);

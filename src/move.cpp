@@ -3,13 +3,6 @@
 #include "board.h"
 #include "connect.h"
 #include "move.h"
-#include "shuff.h"
-
-const int Nbr_offsets[NumNbrs+1]
-  = {-Np2G, 1-Np2G, 1, Np2G, Np2G-1, -1,-Np2G};
-const int Bridge_offsets[NumNbrs]
-  = {-2*Np2G+1, 2-Np2G,   Np2G+1,
-      2*Np2G-1, Np2G-2, -(Np2G+1)};
 
 bool has_win(int bd_set) { return bd_set==BRDR_ALL ; }
 bool Board::not_in_miai(Move mv) { return reply[ndx(mv.s)][mv.lcn]==mv.lcn ; }
@@ -37,9 +30,9 @@ void Board::YborderRealign(Move mv, int& cpt, int c1, int c2, int c3) {
   release_miai(Move(mv.s,c1));
   set_miai(mv.s,c1,c3); assert(not_in_miai(Move(mv.s,c2)));
   //printf(" new miai"); prtLcn(c1); prtLcn(c3); show();
-  int xRoot = Find(p,mv.lcn);
+  int xRoot = Find(parent,mv.lcn);
   brdr[xRoot] |= brdr[cpt];
-  cpt = Union(p,cpt,xRoot);
+  cpt = Union(parent,cpt,xRoot);
 }
 
 int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
@@ -53,12 +46,12 @@ int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
   }
   // avoid directional bridge bias: search in random order
   int x, perm[NumNbrs] = {0, 1, 2, 3, 4, 5}; 
-  shuffle_interval(perm,0,NumNbrs-1); 
+  //shuffle_interval(perm,0,NumNbrs-1); 
   for (int t=0; t<NumNbrs; t++) {
     x = perm[t]; assert((x>=0)&&(x<NumNbrs));
-    nbr = lcn + Bridge_offsets[x]; // nbr via bridge
-    int c1 = lcn+Nbr_offsets[x];     // carrier 
-    int c2 = lcn+Nbr_offsets[x+1];   // other carrier
+    nbr = lcn + Const().Bridge_offsets[x]; // nbr via bridge
+    int c1 = lcn+Const().Nbr_offsets[x];     // carrier 
+    int c2 = lcn+Const().Nbr_offsets[x+1];   // other carrier
     Move mv1(s,c1); 
     Move mv2(s,c2); 
     if (board[nbr] == s &&
@@ -66,17 +59,17 @@ int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
         board[c2] == EMP &&
         (not_in_miai(mv1)||not_in_miai(mv2))) {
           if (!not_in_miai(mv1)) {
-            if (near_edge(lcn) && near_edge(c1)) 
+              if (Const().near_edge(lcn) && Const().near_edge(c1)) 
               YborderRealign(Move(s,nbr),cpt,c1,reply[ndx(s)][c1],c2);
           }
           else if (!not_in_miai(mv2)) {
-            if (near_edge(lcn) && near_edge(c2)) 
+              if (Const().near_edge(lcn) && Const().near_edge(c2)) 
               YborderRealign(Move(s,nbr),cpt,c2,reply[ndx(s)][c2],c1);
          }
-         else if (Find(p,nbr)!=Find(p,cpt)) {  // new miai
-           nbrRoot = Find(p,nbr);
+         else if (Find(parent,nbr)!=Find(parent,cpt)) {  // new miai
+           nbrRoot = Find(parent,nbr);
            brdr[nbrRoot] |= brdr[cpt];
-           cpt = Union(p,cpt,nbrRoot); 
+           cpt = Union(parent,cpt,nbrRoot); 
            set_miai(s,c1,c2);
            } 
          }
@@ -112,11 +105,11 @@ int Board::move(Move mv, bool useMiai, int& bdset)
     
     cpt = lcn; // cpt of s group containing lcn
     for (int t=0; t<NumNbrs; t++) {
-        nbr = lcn + Nbr_offsets[t];
+        nbr = lcn + Const().Nbr_offsets[t];
         if (board[nbr] == s) {
-            nbrRoot = Find(p,nbr);
+            nbrRoot = Find(parent,nbr);
             brdr[nbrRoot] |= brdr[cpt];
-            cpt = Union(p,cpt,nbrRoot); } 
+            cpt = Union(parent,cpt,nbrRoot); } 
         else if (board[nbr] == GRD) {
             brdr[cpt] |= brdr[nbr]; }
     }

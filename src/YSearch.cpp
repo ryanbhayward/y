@@ -56,7 +56,7 @@ bool YSearch::CheckDepthLimitReached() const
 
 std::string YSearch::MoveString(SgMove move) const
 {
-    return m_brd.ToString(static_cast<int>(move));
+    return m_brd.Const().ToString(static_cast<int>(move));
 }
 
 void YSearch::CreateTracer()

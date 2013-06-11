@@ -25,11 +25,6 @@ static const int Y_INFINITY = 9999;
 //                 g g g g . . . . . 
 //                  g g g . . . . . . 
 
-static const int N = 10;
-static const int GUARDS = 2; // must be at least one
-static const int Np2G = N+2*GUARDS;
-static const int TotalCells = N*(N+1)/2;
-static const int TotalGBCells = Np2G*Np2G;
 
 static const int Y_MAX_CELL = 255;
 static const int Y_MAX_SIZE = 19;   // such that TotalCells < Y_MAX_CELL
@@ -52,32 +47,22 @@ static const char EMP_CH = '.';
 
 static const int Y_SWAP = -1;
 static const int Y_NULL_MOVE = -2;
-
-inline int board_format(int x, int y) {
-  return (y+GUARDS-1)*(Np2G)+x+GUARDS-1;
-}
-
-void prtLcn(int psn);        // a5, b13, ...
-char ColorToChar(int value) ;       // EMP, BLK, WHT
-void ColorToString(int value) ; // empty, black, white
  
 static inline int oppnt(int x) {return 3^x;} // black,white are 1,2
+
 static inline int ndx(int x) {return x-1;}  // assume black,white are 1,2
 
-static inline int fatten(int r,int c) {return Np2G*(r+GUARDS)+(c+GUARDS);}
-static inline int board_row(int lcn) {return (lcn/Np2G)-GUARDS;}
-static inline int board_col(int lcn) {return (lcn%Np2G)-GUARDS;}
-static inline int  numerRow(int psn) {return psn/Np2G - (GUARDS-1);}
-static inline char alphaCol(int psn) {return 'a' + psn%Np2G - GUARDS;}
-static inline bool near_edge(int lcn) { 
-//static inline bool near_edge(int lcn,int d) { 
-// near_edge(lcn,0) true if lcn on edge
-// near_edge(lcn,1) true if lcn 1-away from edge
-  int r = board_row(lcn);
-  int c = board_col(lcn);
-  //return ((d==r)||(d==c)||(N==r+c+d+1));
-  return ((0==r)||(0==c)||(N==r+c+1));
-}
+static const int NumNbrs = 6;              // num nbrs of each cell
+
+struct Move {
+  int s;
+  int lcn;
+  Move(int x, int y) : s(x), lcn(y) {}
+  Move() {}
+} ;
+
+bool has_win(int bd_set) ;
+
 
 typedef enum 
 {
@@ -90,17 +75,48 @@ class ConstBoard
 {
 public:
 
+    static const int GUARDS = 2; // must be at least one
+
+    int m_size;
+    int Np2G;
+    int TotalCells;
+    int TotalGBCells;
+
+    int Nbr_offsets[NumNbrs+1];
+    int Bridge_offsets[NumNbrs];
+
     ConstBoard(int size);
 
+    static char ColorToChar(int value) ;       // EMP, BLK, WHT
+    static void ColorToString(int value) ; // empty, black, white
+
+    inline int fatten(int r,int c) const {return Np2G*(r+GUARDS)+(c+GUARDS);}
+    inline int  board_row(int lcn) const {return (lcn/Np2G)-GUARDS;}
+    inline int  board_col(int lcn) const {return (lcn%Np2G)-GUARDS;}
+    inline int   numerRow(int psn) const {return psn/Np2G - (GUARDS-1);}
+    inline char  alphaCol(int psn) const {return 'a' + psn%Np2G - GUARDS;}
+    inline bool near_edge(int lcn) const
+    { 
+        //static inline bool near_edge(int lcn,int d) { 
+        // near_edge(lcn,0) true if lcn on edge
+        // near_edge(lcn,1) true if lcn 1-away from edge
+        int r = board_row(lcn);
+        int c = board_col(lcn);
+        //return ((d==r)||(d==c)||(N==r+c+d+1));
+        return ((0==r)||(0==c)||(m_size==r+c+1));
+    }
+
     int Size() const { return m_size; }
-    
+
     bool IsOnBoard(int cell) const
     {
         return std::find(m_cells.begin(), m_cells.end(), cell) != m_cells.end();
     }
 
+    std::string ToString(int cell) const;
+    int FromString(const std::string& name) const;
+
 private:
-    int m_size;
     std::vector<int> m_cells;
 
     friend class BoardIterator;
@@ -112,10 +128,10 @@ struct Board
 {
     ConstBoard m_constBrd;
 
-    int board[TotalGBCells];
-    int p    [TotalGBCells];
-    int brdr [TotalGBCells];
-    int reply[2][TotalGBCells];  // miai reply
+    std::vector<int> board;
+    std::vector<int> parent;   
+    std::vector<int> brdr;
+    std::vector<int> reply[2];  // miai reply
     
     int m_toPlay;
     YGameOverType m_winner;  
@@ -130,13 +146,14 @@ struct Board
     int  move(Move mv, bool useMiai, int& brdset); // ret: miaiMove
     int  moveMiaiPart(Move mv, bool useMiai, int& brdset, int cpt); // miai part of move
     void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
-    int num(int cellKind);
     void show();
+
+#if 0
     void showMi(int s);
     void showP();
     void showBr(); //showBorder connectivity values
-    void showAll();
-    
+#endif
+
     bool IsGameOver() const { return m_winner != Y_NO_WINNER; }
     YGameOverType GetWinner() const { return m_winner; }
     bool IsWinner(int player) const;
@@ -154,8 +171,6 @@ struct Board
     void Swap();
 
     std::string ToString() const;
-    std::string ToString(int cell) const;
-    int FromString(const std::string& name) const;
 
     bool IsOccupied(int cell) const;
     
@@ -192,24 +207,12 @@ inline BoardIterator::BoardIterator(const ConstBoard& brd)
 
 //----------------------------------------------------------------------
 
-struct Playout {
-  int Avail [TotalCells]; // locations of available cells
-  int numAvail;           // number of available cells
-  int numWinners;         // number diff't cells that have won playouts
-  int wins[TotalGBCells];
-  int winsBW[2][TotalGBCells];
-  int colorScore[2]; // black, white
-  int win_length[2]; // sum (over wins) of stones in win
-  Playout(Board& B); // constructor
-  void single_playout(int& turn, int& moves_to_winner, bool useMiai); //
-  Board& B;
-} ;
-
 extern const int Nbr_offsets[NumNbrs+1] ;  // last = 1st to avoid using %mod
 extern const int Bridge_offsets[NumNbrs] ;
 
 static const int RHOMBUS = 0;
 static const int TRI   = 1;
+
 void shapeAs(int shape, int X[]);
 void showYcore(int X[]) ;  // simple version of Board.show
 void display_nearedges();

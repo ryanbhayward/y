@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([y], [0.1])
 AC_PREREQ([2.59])
-AC_CONFIG_SRCDIR([src/play.cpp])
+AC_CONFIG_SRCDIR([src/board.cpp])
 AM_CONFIG_HEADER(src/config.h)
 AM_INIT_AUTOMAKE
 AM_MAINTAINER_MODE

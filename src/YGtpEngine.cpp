@@ -111,7 +111,7 @@ SgBlackWhite YGtpEngine::YColorToSgColor(int color) const
 int YGtpEngine::CellArg(const GtpCommand& cmd, 
                         std::size_t number) const
 {
-    return m_brd.FromString(cmd.ArgToLower(number));
+    return m_brd.Const().FromString(cmd.ArgToLower(number));
 }
 
 void YGtpEngine::BeforeHandleCommand()
@@ -204,7 +204,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite color)
         m_uctSearch.WriteStatistics(std::cerr);
         std::cerr << "Score          " << std::setprecision(2) << score << '\n';
         for (std::size_t i = 0; i < sequence.size(); i++) 
-            std::cerr << ' ' << m_brd.ToString(sequence[i]);
+            std::cerr << ' ' << m_brd.Const().ToString(sequence[i]);
         std::cerr << '\n';
 
         if (m_brd.CanSwap() && score < 0.5)
@@ -318,7 +318,7 @@ void YGtpEngine::CmdGenMove(GtpCommand& cmd)
         if (m_timeSettingsSpecified && !m_ignoreClock)
             m_timeLeft[color] -= timer.GetTime();
         Play(color, move);
-        cmd << m_brd.ToString(move);
+        cmd << m_brd.Const().ToString(move);
     }
 }
 
@@ -328,7 +328,7 @@ std::string PrintPV(const SgVector<SgMove>& pv, const Board& brd)
     for (int i = 0; i < pv.Length(); ++i)
     {
         if (i) os << ' ';
-        os << brd.ToString(pv[i]);
+        os << brd.Const().ToString(pv[i]);
     }
     return os.str();
 }
@@ -353,7 +353,7 @@ void YGtpEngine::CmdSolve(GtpCommand& cmd)
         if (timelimit > 0.0)
             timeControl.reset(new SgTimeSearchControl(timelimit));
     }
-    int maxDepth = TotalCells; //m_brd.Const().NumCells();
+    int maxDepth = m_brd.Const().TotalCells; //m_brd.Const().NumCells();
     if (cmd.NuArg() >= 3)
         maxDepth = cmd.IntArg(1, 0);
     bool doTrace = false;
@@ -401,12 +401,13 @@ void YGtpEngine::CmdSolve(GtpCommand& cmd)
         cmd << "unknown none";
     else if (value == -1 || value == 1)
     {
-        cmd << "draw " << (pv.IsEmpty() ? "none" : m_brd.ToString(pv[0]));
+        cmd << "draw " << (pv.IsEmpty() ? "none" 
+                           : m_brd.Const().ToString(pv[0]));
     }
     else if (value == 10)
     {
         cmd << (toPlay == SG_BLACK ? "black" : "white") << ' ' 
-            << (pv.IsEmpty() ? "none" : m_brd.ToString(pv[0]));
+            << (pv.IsEmpty() ? "none" : m_brd.Const().ToString(pv[0]));
         std::cerr << "PV: " << PrintPV(pv, m_brd) << '\n';
     }
     else if (value == -10)
@@ -501,7 +502,7 @@ void YGtpEngine::CmdUctProvenNodes(GtpCommand& cmd)
             pt = "loss";
         else if (type == SG_PROVEN_LOSS)
             pt = "win";
-        cmd << ' ' << m_brd.ToString(p) << ' ' << pt;
+        cmd << ' ' << m_brd.Const().ToString(p) << ' ' << pt;
     }
 }
 
@@ -516,7 +517,7 @@ void YGtpEngine::CmdUctScores(GtpCommand& cmd)
         float mean = 0.0;
         if (count > 0)
             mean = child.Mean();
-        cmd << ' ' << m_brd.ToString(p)
+        cmd << ' ' << m_brd.Const().ToString(p)
             << ' ' << std::fixed << std::setprecision(3) << mean
             << '@' << count;
     }
@@ -531,7 +532,7 @@ void YGtpEngine::CmdRaveScores(GtpCommand& cmd)
         SgPoint p = child.Move();
         if (p == SG_PASS || ! child.HasRaveValue())
             continue;
-        cmd << ' ' << m_brd.ToString(p)
+        cmd << ' ' << m_brd.Const().ToString(p)
             << ' ' << std::fixed << std::setprecision(3) << child.RaveValue()
             << '@' << child.RaveCount();
     }

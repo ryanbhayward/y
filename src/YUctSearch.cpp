@@ -138,20 +138,9 @@ void YUctThreadState::StartPlayouts()
 void YUctThreadState::StartPlayout()
 {
     m_emptyCells.clear();
-    for (int r=0; r<N; r++)
-        for (int c=0; c<N-r; c++) {
-            int psn = fatten(r,c);
-            if (EMP==m_brd.board[psn])
-                m_emptyCells.push_back(psn);
-        }
-
-#if 0
-    for (HvBoardIterator it(m_brd); it; ++it)
-    {
-        if (m_brd.IsEmpty(*it))
+    for (BoardIterator it(m_brd); it; ++it)
+        if (EMP==m_brd.board[*it])
             m_emptyCells.push_back(*it);
-    }
-#endif
     ShuffleVector(m_emptyCells, m_random);
 }
 
@@ -183,7 +172,7 @@ YUctSearch::~YUctSearch()
 
 std::string YUctSearch::MoveString(SgMove move) const
 {
-    return m_brd.ToString(move);
+    return m_brd.Const().ToString(move);
 }
 
 SgUctValue YUctSearch::UnknownEval() const
