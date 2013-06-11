@@ -90,11 +90,18 @@ public:
     static char ColorToChar(int value) ;       // EMP, BLK, WHT
     static void ColorToString(int value) ; // empty, black, white
 
-    inline int fatten(int r,int c) const {return Np2G*(r+GUARDS)+(c+GUARDS);}
-    inline int  board_row(int lcn) const {return (lcn/Np2G)-GUARDS;}
-    inline int  board_col(int lcn) const {return (lcn%Np2G)-GUARDS;}
-    inline int   numerRow(int psn) const {return psn/Np2G - (GUARDS-1);}
-    inline char  alphaCol(int psn) const {return 'a' + psn%Np2G - GUARDS;}
+    inline int fatten(int r,int c) const 
+    {  return Np2G*(r+GUARDS) + (GUARDS+m_size-r+c); }
+
+    inline int  board_row(int lcn) const 
+    {  return (lcn/Np2G)-GUARDS;}
+
+    inline int  board_col(int lcn) const 
+    {
+        int r = board_row(lcn);
+        return (lcn%Np2G)-GUARDS-m_size+r;
+    }
+
     inline bool near_edge(int lcn) const
     { 
         //static inline bool near_edge(int lcn,int d) { 

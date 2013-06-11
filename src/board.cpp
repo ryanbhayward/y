@@ -31,7 +31,7 @@ void ConstBoard::ColorToString(int value)
 std::string ConstBoard::ToString(int cell) const
 {
     char str[16];
-    sprintf(str, "%c%1d",alphaCol(cell),numerRow(cell)); 
+    sprintf(str, "%c%1d",board_col(cell)+'a',board_row(cell)+1); 
     return str;
 }
 
@@ -69,7 +69,7 @@ ConstBoard::ConstBoard(int size)
     m_cells.clear();
 
     for (int r=0; r<Size(); r++)
-        for (int c=0; c<Size()-r; c++)
+        for (int c=0; c<=r; c++)
             m_cells.push_back(fatten(r,c));
 }
 
@@ -186,18 +186,18 @@ std::string Board::ToString() const
 {
     ostringstream os;
     const int N = Size();
-    os << "\n   ";
+    os << "\n";
+    for (int j = 0; j < N; j++) {
+        for (int k = 0; k < N-j; k++) 
+            os << ' ';
+        os << (j+1<10?" ":"") << j+1 << "  "; 
+        for (int k = 0; k <= j ; k++) 
+            os << ConstBoard::ColorToChar(board[Const().fatten(j,k)]) << "  ";
+        os << "\n";
+    }
+    os << "   ";
     for (char ch='a'; ch < 'a'+N; ch++) 
         os << ' ' << ch << ' '; 
-    os << "\n\n";
-    for (int j = 0; j < N; j++) {
-        for (int k = 0; k < j; k++) 
-            os << ' ';
-        os << j+1 << "   ";
-        for (int k = 0; k < N-j; k++) 
-            os << ConstBoard::ColorToChar(board[Const().fatten(j,k)]) << "  ";
-        os << '\n';
-    }
     return os.str();
 }
 
