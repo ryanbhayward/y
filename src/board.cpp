@@ -39,13 +39,12 @@ int ConstBoard::FromString(const string& name) const
 {
     if (name == "swap")
     	return Y_SWAP;
-    int x = name[0] - 'a';
+    int x = name[0] - 'a' + 1;
     std::istringstream sin(name.substr(1));
     int y;
     sin >> y;
-    return fatten(x, y-1);
+    return fatten(y-1, x-1);
 }
-
 
 ConstBoard::ConstBoard(int size)
     : m_size(size)
