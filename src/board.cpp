@@ -228,7 +228,6 @@ std::string Board::ToString() const
 std::string Board::BorderToString() const
 {
   ostringstream os;
-  const int N = Size();
   const int Np2G = Const().Np2G;
   os << "\n" << "Border Values:\n";
   int psn = 0;
@@ -255,16 +254,28 @@ void Board::show()
 
 void Board::zero_connectivity(int stone, bool remS) 
 { 
-    for (int j=0; j<Const().TotalGBCells; j++) {
-        reply[ndx(stone)][j] = j;
-        if (board[j]==stone) {
-            parent[j] = j;
-            brdr[j]   = BRDR_NIL;
-            board[j]  = TMP;
+  for (BoardIterator it(Const()); it; ++it) {
+        reply[ndx(stone)][*it] = *it;
+        if (board[*it]==stone) {
+	    parent[*it] = *it;
+              brdr[*it] = BRDR_NIL;
+             board[*it] = TMP;
             if (remS)
-                board[j]= EMP;
+                board[*it]= EMP;
         }
     } 
+}
+
+void Board::RemoveStone(int lcn)
+{
+    int bdset;
+    int color = board[lcn];
+    this->zero_connectivity(color, false);
+    board[lcn] = EMP;
+    for (BoardIterator it(Const()); it; ++it) {
+        if (board[*it] == TMP)
+	     move(Move(color, *it), true, bdset);
+    }     
 }
 
 void Board::init() 
@@ -334,8 +345,11 @@ bool Board::CanSwap() const { return false; }
 
 void Board::Swap()
 {
-    // swap black stones with white stones
+    for (BoardIterator it(*this); it; ++it)
+	 board[*it] = (board[*it] == BLK) ? WHT : BLK;
 }
+
+void Board::UndoSwap() { return; }
 
 bool Board::IsOccupied(int cell) const
 {

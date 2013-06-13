@@ -157,8 +157,6 @@ void YGtpEngine::Play(int color, int cell)
 
 void YGtpEngine::Undo()
 {
-    // FIXME: implement!
-#if 0
     SG_ASSERT(! m_history.empty());
     int cell = m_history.back();
     if (cell == Y_SWAP)
@@ -166,7 +164,6 @@ void YGtpEngine::Undo()
     else if (cell != Y_NULL_MOVE)
     	m_brd.RemoveStone(cell);
     m_history.pop_back();
-#endif
 }
 
 int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
@@ -284,7 +281,7 @@ void YGtpEngine::CmdPlay(GtpCommand& cmd)
 void YGtpEngine::CmdUndo(GtpCommand& cmd)
 {
     cmd.CheckNuArg(0);
-    //Undo();
+    Undo();
 }
 
 void YGtpEngine::CmdShowBoard(GtpCommand& cmd)

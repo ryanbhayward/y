@@ -149,7 +149,7 @@ struct Board
     void release_miai(Move mv);
     bool not_in_miai (Move mv);
     void put_stone   (Move mv);
-    void remove_stone(int lcn);
+    void RemoveStone (int lcn);
     int  move(Move mv, bool useMiai, int& brdset); // ret: miaiMove
     int  moveMiaiPart(Move mv, bool useMiai, int& brdset, int cpt); // miai part of move
     void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
@@ -176,6 +176,7 @@ struct Board
 
     bool CanSwap() const;
     void Swap();
+    void UndoSwap();
 
     std::string ToString() const;
     std::string BorderToString() const;
