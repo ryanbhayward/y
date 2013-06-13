@@ -56,14 +56,6 @@ struct Move {
 
 bool has_win(int bd_set) ;
 
-
-typedef enum 
-{
-    Y_BLACK_WINS,
-    Y_WHITE_WINS,
-    Y_NO_WINNER
-} YGameOverType;
-
 class ConstBoard 
 {
 public:
