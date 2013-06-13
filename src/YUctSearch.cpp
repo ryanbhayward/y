@@ -53,6 +53,11 @@ YUctThreadState::~YUctThreadState()
 SgUctValue YUctThreadState::Evaluate()
 {
     SG_ASSERT(m_brd.IsGameOver());
+    // std::cerr << "GAME OVER" << m_brd.ToString() << '\n';
+    // if (m_brd.IsWinner(BLK))
+    //     std::cerr << "BLACK WINS!\n";
+    // if (m_brd.IsWinner(WHT))
+    //     std::cerr << "WHITE WINS!\n";
     return m_brd.IsWinner(m_brd.ToPlay()) ? 1.0 : 0.0;
 }
 
@@ -60,14 +65,16 @@ void YUctThreadState::Execute(SgMove move)
 {
     //m_brd.PlayStone(m_brd.ToPlay(), move);
     int bdset;
-    m_brd.move(Move(m_brd.ToPlay(), move), true, bdset);
+    m_brd.move(Move(m_brd.ToPlay(), move), false, bdset);
 }
 
 void YUctThreadState::ExecutePlayout(SgMove move)
 {
     //m_brd.PlayStone(m_brd.ToPlay(), move);
     int bdset;
-    m_brd.move(Move(m_brd.ToPlay(), move), true, bdset);
+    m_brd.move(Move(m_brd.ToPlay(), move), false, bdset);
+    //std::cerr << m_brd.ToString() << '\n';
+    //std::cerr << "played " << m_brd.Const().ToString(move) << '\n';
 }
 
 bool YUctThreadState::GenerateAllMoves(SgUctValue count, 
@@ -84,12 +91,6 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
         return false;
     }
     SG_UNUSED(count);
-    // for (int r=0; r<N; r++)
-    //     for (int c=0; c<N-r; c++) {
-    //         int psn = fatten(r,c);
-    //         if (EMP==m_brd.board[psn])
-    //             moves.push_back(psn);
-    //     }
     for (BoardIterator it(m_brd); it; ++it)
     {
         if (m_brd.IsEmpty(*it))
@@ -137,6 +138,8 @@ void YUctThreadState::StartPlayouts()
 
 void YUctThreadState::StartPlayout()
 {
+    //std::cerr << "START OF PLAYOUT:\n" << m_brd.ToString() << '\n';
+
     m_emptyCells.clear();
     for (BoardIterator it(m_brd); it; ++it)
         if (EMP==m_brd.board[*it])

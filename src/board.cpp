@@ -7,6 +7,7 @@
 
 #include "board.h"
 #include "move.h"
+#include "connect.h"
 
 using namespace std;
 
@@ -16,7 +17,7 @@ char ConstBoard::ColorToChar(int value)
     case EMP: return EMP_CH;
     case BLK: return BLK_CH;
     case WHT: return WHT_CH;
-    default: return '?'; 
+    default: return value; 
     }
 }
 void ConstBoard::ColorToString(int value) 
@@ -164,21 +165,24 @@ void Board::showP()
     }
     printf("\n"); }
 
-void Board::showBr() { printf("border values\n");
-  int psn = 0;
-  for (int j = 0; j < Np2G; j++) {
-    for (int k = 0; k < j; k++)
-      printf(" ");
-    for (int k = 0; k < Np2G; k++) {
-      int x = brdr[psn++];
-      if (x != BRDR_NIL)
-        printf(" %3d", x);
-      else
-        printf("  * ");
+void Board::showBr() 
+{ 
+    printf("border values\n");
+    int psn = 0;
+    for (int j = 0; j < Np2G; j++) {
+        for (int k = 0; k < j; k++)
+            printf(" ");
+        for (int k = 0; k < Np2G; k++) {
+            int x = brdr[psn++];
+            if (x != BRDR_NIL)
+                printf(" %3d", x);
+            else
+                printf("  * ");
+        }
+        printf("\n");
     }
-    printf("\n");
-  }
-  printf("\n"); }
+    printf("\n"); 
+}
 
 #endif
 
@@ -198,6 +202,26 @@ std::string Board::ToString() const
     os << "   ";
     for (char ch='a'; ch < 'a'+N; ch++) 
         os << ' ' << ch << ' '; 
+
+#if 0
+    const int Np2G = Const().Np2G;
+    printf("border values\n");
+    int psn = 0;
+    for (int j = 0; j < Np2G; j++) {
+        for (int k = 0; k < j; k++)
+            printf(" ");
+        for (int k = 0; k < Np2G; k++) {
+            int x = brdr[ConstFind(parent,psn++)];
+            if (x != BRDR_NIL)
+                printf(" %2d", x);
+            else
+                printf("  *");
+        }
+        printf("\n");
+    }
+    printf("\n"); 
+#endif
+
     return os.str();
 }
 
@@ -242,12 +266,33 @@ void Board::init()
     for (BoardIterator it(Const()); it; ++it)
         board[*it] = EMP;
 
-    for (int j=0; j<N+1; j++) 
-        brdr[Const().fatten(0,0)+j-Np2G] = BRDR_TOP;
-    for (int j=0; j<N+1; j++) 
-        brdr[Const().fatten(0,0)+j*Np2G-1] = BRDR_L;
-    for (int j=0; j<N+1; j++) 
-        brdr[Const().fatten(0,0)+j*(Np2G-1)+N] = BRDR_R;
+    for (int j=0; j<N; j++) { 
+        brdr[Const().fatten(j,0)-1] = BRDR_L;
+        brdr[Const().fatten(j,j)+1]   = BRDR_R;
+        brdr[Const().fatten(N,j)]   = BRDR_BOT;
+    }
+    brdr[Const().fatten(-1,0)-1] = BRDR_L;
+    brdr[Const().fatten(-1,-1)+1] = BRDR_R;
+    brdr[Const().fatten(N,N)] = BRDR_BOT;
+ 
+    m_winner = Y_NO_WINNER;
+#if 0
+    printf("border values\n");
+    int psn = 0;
+    for (int j = 0; j < Np2G; j++) {
+        for (int k = 0; k < j; k++)
+            printf(" ");
+        for (int k = 0; k < Np2G; k++) {
+            int x = brdr[psn++];
+            if (x != BRDR_NIL)
+                printf(" %2d", x);
+            else
+                printf("  *");
+        }
+        printf("\n");
+    }
+    printf("\n"); 
+#endif
 }
 
 Board::Board()

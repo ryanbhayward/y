@@ -168,7 +168,7 @@ void YGtpEngine::Undo()
 #endif
 }
 
-int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite color)
+int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
 {
 #if 0
     // Size 4: open with 'b2'
@@ -181,13 +181,14 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite color)
 
     if (m_playerName == "uct")
     {
+        m_brd.SetToPlay(toPlay);        
         m_uctSearch.SetBoard(m_brd);
         std::vector<SgMove> sequence;
         double maxTime = m_uctMaxTime;
         std::size_t maxGames = m_uctMaxGames;
         if (useGameClock)
         {
-            double timeLeft = m_timeLeft[color];
+            double timeLeft = m_timeLeft[toPlay];
             std::cerr << "timeLeft=" << timeLeft << ' ';
             if (timeLeft > 0)
             {
@@ -308,8 +309,10 @@ void YGtpEngine::CmdGenMove(GtpCommand& cmd)
     int color = ColorArg(cmd, 0);
     // if (color != m_brd.ToPlay())
     //     throw GtpFailure("It is the other player's turn!");
-    if (m_brd.IsGameOver())
+    if (m_brd.IsGameOver()) {
+        std::cerr << "GAME OVER!?!\n";
         cmd << "resign";
+    }
     else
     {
         SgTimer timer;

@@ -61,8 +61,7 @@ std::string YSearch::MoveString(SgMove move) const
 
 void YSearch::CreateTracer()
 {
-    //YSearchTracer* tracer = new YSearchTracer(0, m_brd.Const().Width());
-    YSearchTracer* tracer = new YSearchTracer(0, 10);
+    YSearchTracer* tracer = new YSearchTracer(0, m_brd.Size());
     SetTracer(tracer);
 }
 

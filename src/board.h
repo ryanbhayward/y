@@ -30,14 +30,14 @@ static const int Y_MAX_CELL = 255;
 static const int Y_MAX_SIZE = 19;   // such that TotalCells < Y_MAX_CELL
 
 static const int BRDR_NIL  = 0; // 000   border values, used bitwise
-static const int BRDR_TOP   = 1; // 001
+static const int BRDR_BOT   = 1; // 001
 static const int BRDR_L     = 2; // 010
 static const int BRDR_R     = 4; // 100
 static const int BRDR_ALL   = 7; // 111
 
-static const int EMP = 0; // empty cell
-static const int BLK = 1; // black "
-static const int WHT = 2; // white "
+static const int BLK = 0; // black "
+static const int WHT = 1; // white "
+static const int EMP = 2; // empty cell
 static const int GRD = 3; // guard "
 static const int TMP = 4;
 
@@ -48,9 +48,9 @@ static const char EMP_CH = '.';
 static const int Y_SWAP = -1;
 static const int Y_NULL_MOVE = -2;
  
-static inline int oppnt(int x) {return 3^x;} // black,white are 1,2
+static inline int oppnt(int x) {return 1-x; } // black,white are 0,1
 
-static inline int ndx(int x) {return x-1;}  // assume black,white are 1,2
+static inline int ndx(int x) {return x;}  // assume black,white are 0,1
 
 static const int NumNbrs = 6;              // num nbrs of each cell
 
@@ -91,7 +91,7 @@ public:
     static void ColorToString(int value) ; // empty, black, white
 
     inline int fatten(int r,int c) const 
-    {  return Np2G*(r+GUARDS) + (GUARDS+m_size-r+c); }
+    {  return Np2G*(r+GUARDS) + (GUARDS+m_size-r-1+c); }
 
     inline int  board_row(int lcn) const 
     {  return (lcn/Np2G)-GUARDS;}
@@ -99,7 +99,7 @@ public:
     inline int  board_col(int lcn) const 
     {
         int r = board_row(lcn);
-        return (lcn%Np2G)-GUARDS-m_size+r;
+        return (lcn%Np2G)-GUARDS-m_size+r+1;
     }
 
     inline bool near_edge(int lcn) const
@@ -184,8 +184,8 @@ struct Board
     bool IsEmpty(int cell) const
     { return board[cell] == EMP; };
 
-    int ToPlay() const
-    { return m_toPlay; }
+    int ToPlay() const         { return m_toPlay; }
+    void SetToPlay(int toPlay) { m_toPlay = toPlay; }
 
 private:
     void FlipToPlay();

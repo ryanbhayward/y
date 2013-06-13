@@ -92,12 +92,10 @@ int Board::move(Move mv, bool useMiai, int& bdset)
     // WARNING  oppnt(mv.s) connectivity will be broken if mv.s hits oppnt miai
     //   useMiai ? miai adjacency : stone adjacency
     // return opponent miai reply of mv, will be mv.lcn if no miai
-    int nbr,nbrRoot,cpt; int lcn = mv.lcn; int s = mv.s;
-    //if (brdr[lcn]!=BRDR_NIL) {
-    //showAll();
-    //prtLcn(lcn); printf("\n");
-    //}
-    //assert(brdr[lcn]==BRDR_NIL);
+
+    int nbr,nbrRoot,cpt; 
+
+    int lcn = mv.lcn; int s = mv.s;
     
     m_toPlay = mv.s;
     put_stone(mv);
@@ -113,14 +111,12 @@ int Board::move(Move mv, bool useMiai, int& bdset)
         else if (board[nbr] == GRD) {
             brdr[cpt] |= brdr[nbr]; }
     }
-    if (!useMiai) {
-        bdset = brdr[cpt];
-        return lcn;       // no miai, so return lcn
-    } // else 
-    int response = moveMiaiPart(mv, useMiai, bdset,cpt);
-    
+    bdset = brdr[cpt];
     if (has_win(bdset)) {
         m_winner = (mv.s == BLK) ? Y_BLACK_WINS : Y_WHITE_WINS;
     }
-    return response;
+    if (!useMiai) {
+        return lcn;       // no miai, so return lcn
+    } 
+    return moveMiaiPart(mv, useMiai, bdset,cpt);
 }

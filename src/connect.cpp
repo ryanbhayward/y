@@ -1,5 +1,13 @@
 #include "connect.h"
 
+int ConstFind(const std::vector<int>& Parents, int x) {
+  int px = Parents[x];
+  if (x==px) return x;
+  int gx = Parents[px];
+  if (px==gx) return px;
+  return ConstFind(Parents, gx);
+}
+
 int Find(std::vector<int>& Parents, int x) {
   int px = Parents[x];
   if (x==px) return x;
