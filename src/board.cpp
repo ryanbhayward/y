@@ -11,22 +11,24 @@
 
 using namespace std;
 
-char ConstBoard::ColorToChar(int value) 
+char ConstBoard::ColorToChar(SgBoardColor color) 
 {
-    switch(value) {
-    case EMP: return EMP_CH;
-    case BLK: return BLK_CH;
-    case WHT: return WHT_CH;
-    default: return value; 
+    switch(color) {
+    case SG_BLACK: return 'b';
+    case SG_WHITE: return 'w';
+    case SG_EMPTY: return '.';
+    default: return '?';
     }
 }
-void ConstBoard::ColorToString(int value) 
+
+std::string ConstBoard::ColorToString(SgBoardColor color) 
 {
-    switch(value) {
-    case EMP: printf("empty"); break;
-    case BLK: printf("black"); break;
-    case WHT: printf("white"); break;
-    default: printf(" ? "); } 
+    switch(color) {
+    case SG_BLACK: return "black";
+    case SG_WHITE: return "white";
+    case SG_EMPTY: return "empty";
+    default: return "?";
+    }
 }
 
 std::string ConstBoard::ToString(int cell) const
@@ -252,16 +254,16 @@ void Board::show()
     printf("%s\n", ToString().c_str());
 }
 
-void Board::zero_connectivity(int stone, bool remS) 
+void Board::zero_connectivity(SgBlackWhite color, bool remS) 
 { 
   for (BoardIterator it(Const()); it; ++it) {
-        reply[ndx(stone)][*it] = *it;
-        if (board[*it]==stone) {
+        reply[color][*it] = *it;
+        if (board[*it]==color) {
 	    parent[*it] = *it;
               brdr[*it] = BRDR_NIL;
              board[*it] = TMP;
             if (remS)
-                board[*it]= EMP;
+                board[*it]= SG_EMPTY;
         }
     } 
 }
@@ -271,7 +273,7 @@ void Board::RemoveStone(int lcn)
     int bdset;
     int color = board[lcn];
     this->zero_connectivity(color, false);
-    board[lcn] = EMP;
+    board[lcn] = SG_EMPTY;
     for (BoardIterator it(Const()); it; ++it) {
         if (board[*it] == TMP)
 	     move(Move(color, *it), true, bdset);
@@ -281,7 +283,6 @@ void Board::RemoveStone(int lcn)
 void Board::init() 
 { 
     const int N = Size();
-    const int Np2G = Const().Np2G;
     const int T = Const().TotalGBCells;
 
     board.resize(T);
@@ -291,14 +292,14 @@ void Board::init()
     reply[1].resize(T);
 
     for (int j=0; j<T; j++) {
-        board[j] = GRD; 
+        board[j] = SG_BORDER; 
         brdr[j]  = BRDR_NIL; 
         parent[j]  = j;
         for (int k=0; k<2; k++) 
             reply[k][j] = j;
     }
     for (BoardIterator it(Const()); it; ++it)
-        board[*it] = EMP;
+        board[*it] = SG_EMPTY;
 
     for (int j=0; j<N; j++) { 
         brdr[Const().fatten(j,0)-1] = BRDR_L;
@@ -309,8 +310,9 @@ void Board::init()
     brdr[Const().fatten(-1,-1)+1] = BRDR_R;
     brdr[Const().fatten(N,N)] = BRDR_BOT;
  
-    m_winner = Y_NO_WINNER;
+    m_winner = SG_EMPTY;
 #if 0
+    const int Np2G = Const().Np2G;
     printf("border values\n");
     int psn = 0;
     for (int j = 0; j < Np2G; j++) {
@@ -341,35 +343,11 @@ Board::Board(int size)
     init(); 
 }
 
-bool Board::CanSwap() const { return false; }
-
 void Board::Swap()
 {
     for (BoardIterator it(*this); it; ++it)
-	 board[*it] = (board[*it] == BLK) ? WHT : BLK;
+	 board[*it] = (board[*it] == SG_BLACK) ? SG_WHITE : SG_BLACK;
 }
 
 void Board::UndoSwap() { return; }
-
-bool Board::IsOccupied(int cell) const
-{
-    return board[cell] != EMP;
-}
-
-bool Board::IsWinner(int player) const
-{
-    if (m_winner != Y_NO_WINNER) {
-        if (player == BLK)
-            return m_winner == Y_BLACK_WINS;
-        if (player == WHT)
-            return m_winner == Y_WHITE_WINS;
-    }
-    return false;
-}
-
-void Board::FlipToPlay()
-{
-    m_toPlay = (m_toPlay == BLK) ? WHT : BLK;
-}
-
 //////////////////////////////////////////////////////////////////////

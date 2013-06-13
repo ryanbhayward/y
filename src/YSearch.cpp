@@ -87,17 +87,17 @@ void YSearch::Generate(SgVector<SgMove>* moves, int depth)
 int YSearch::Evaluate(bool* isExact, int depth)
 {
     SG_UNUSED(depth);
-    YGameOverType type = m_brd.GetWinner();
+    SgBoardColor type = m_brd.GetWinner();
     switch(type)
     {
-    case Y_NO_WINNER:
+    case SG_EMPTY:
         *isExact = false;
         return 0;
-    case Y_BLACK_WINS:
+    case SG_BLACK:
         *isExact = true;
         //std::cerr << "BLACK WINS\n" << m_brd.Write() << '\n';
         return m_toPlay == SG_BLACK ? 10 : -10;
-    case Y_WHITE_WINS:
+    case SG_WHITE:
         *isExact = true;
         //std::cerr << "WHITE WINS\n" << m_brd.Write() << '\n';
         return m_toPlay == SG_WHITE ? 10 : -10;

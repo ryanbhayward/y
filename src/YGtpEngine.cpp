@@ -76,37 +76,16 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "varc/Reg GenMove/reg_genmove %c\n";
 }
 
-int YGtpEngine::ColorArg(const GtpCommand& cmd, 
-                         std::size_t number) const
+SgBlackWhite YGtpEngine::ColorArg(const GtpCommand& cmd, 
+                                  std::size_t number) const
 {
     std::string value = cmd.ArgToLower(number);
     if (value == "b" || value == "black")
-        return BLK;
+        return SG_BLACK;
     if (value == "w" || value == "white")
-        return WHT;
-    if (value == "e" || value == "empty")
-        return EMP;
+        return SG_WHITE;
     throw GtpFailure() << "argument " << (number + 1)
                        << " must be black or white";
-}
-
-int YGtpEngine::SgColorToYColor(SgBlackWhite color) const
-{
-    if (color == SG_BLACK)
-        return BLK;
-    if (color == SG_WHITE)
-        return WHT;
-    return EMP;
-}
-
-SgBlackWhite YGtpEngine::YColorToSgColor(int color) const
-{
-    if (color == BLK)
-        return SG_BLACK;
-    if (color == WHT)
-        return SG_WHITE;
-    GtpFailure("Must be black or white");
-    return SG_BLACK;
 }
 
 int YGtpEngine::CellArg(const GtpCommand& cmd, 
@@ -298,10 +277,10 @@ void YGtpEngine::CmdShowBorders(GtpCommand& cmd)
 
 void YGtpEngine::CmdWinner(GtpCommand& cmd)
 {
-    YGameOverType state = m_brd.GetWinner();
-    if (state == Y_BLACK_WINS)
+    SgBoardColor winner = m_brd.GetWinner();
+    if (winner == SG_BLACK)
         cmd << "black";
-    else if (state == Y_WHITE_WINS)
+    else if (winner == SG_WHITE)
         cmd << "white";
     else
         cmd << "none";
@@ -352,7 +331,7 @@ void YGtpEngine::CmdSolve(GtpCommand& cmd)
     cmd.CheckNuArgLessEqual(4);
     if (cmd.NuArg() < 1)
         throw GtpFailure("Must give color to play");
-    int color = ColorArg(cmd, 0);
+    SgBlackWhite toPlay = ColorArg(cmd, 0);
     boost::scoped_ptr<SgTimeSearchControl> timeControl;
     if (cmd.NuArg() >= 2)
     {
@@ -366,7 +345,6 @@ void YGtpEngine::CmdSolve(GtpCommand& cmd)
     bool doTrace = false;
     if (cmd.NuArg() == 4)
         doTrace = cmd.BoolArg(2);
-    SgBlackWhite toPlay = YColorToSgColor(color);
     SgVector<SgMove> pv;
     m_search.SetPosition(m_brd);
     m_search.SetToPlay(toPlay);

@@ -138,11 +138,9 @@ void YUctThreadState::StartPlayouts()
 
 void YUctThreadState::StartPlayout()
 {
-    //std::cerr << "START OF PLAYOUT:\n" << m_brd.ToString() << '\n';
-
     m_emptyCells.clear();
     for (BoardIterator it(m_brd); it; ++it)
-        if (EMP==m_brd.board[*it])
+        if (SG_EMPTY == m_brd.board[*it])
             m_emptyCells.push_back(*it);
     ShuffleVector(m_emptyCells, m_random);
 }

@@ -6,6 +6,7 @@
 
 #include "SgSystem.h"
 #include "SgHash.h"
+#include "SgBoardColor.h"
 #include "move.h"
 #include "VectorIterator.h"
 
@@ -35,23 +36,11 @@ static const int BRDR_L     = 2; // 010
 static const int BRDR_R     = 4; // 100
 static const int BRDR_ALL   = 7; // 111
 
-static const int BLK = 0; // black "
-static const int WHT = 1; // white "
-static const int EMP = 2; // empty cell
-static const int GRD = 3; // guard "
 static const int TMP = 4;
-
-static const char BLK_CH = 'b';
-static const char WHT_CH = 'w';
-static const char EMP_CH = '.';
 
 static const int Y_SWAP = -1;
 static const int Y_NULL_MOVE = -2;
  
-static inline int oppnt(int x) {return 1-x; } // black,white are 0,1
-
-static inline int ndx(int x) {return x;}  // assume black,white are 0,1
-
 static const int NumNbrs = 6;              // num nbrs of each cell
 
 struct Move {
@@ -62,14 +51,6 @@ struct Move {
 } ;
 
 bool has_win(int bd_set) ;
-
-
-typedef enum 
-{
-    Y_BLACK_WINS,
-    Y_WHITE_WINS,
-    Y_NO_WINNER
-} YGameOverType;
 
 class ConstBoard 
 {
@@ -87,8 +68,8 @@ public:
 
     ConstBoard(int size);
 
-    static char ColorToChar(int value) ;       // EMP, BLK, WHT
-    static void ColorToString(int value) ; // empty, black, white
+    static char ColorToChar(SgBoardColor color);
+    static std::string ColorToString(SgBoardColor color);
 
     inline int fatten(int r,int c) const 
     {  return Np2G*(r+GUARDS) + (GUARDS+m_size-r-1+c); }
@@ -135,37 +116,13 @@ struct Board
 {
     ConstBoard m_constBrd;
 
-    std::vector<int> board;
+    std::vector<SgBoardColor> board;
     std::vector<int> parent;   
     std::vector<int> brdr;
     std::vector<int> reply[2];  // miai reply
     
-    int m_toPlay;
-    YGameOverType m_winner;  
-    
-    void init();
-    void zero_connectivity(int s, bool removeStone = true);
-    void set_miai    (int s, int m1, int m2);
-    void release_miai(Move mv);
-    bool not_in_miai (Move mv);
-    void put_stone   (Move mv);
-    void RemoveStone (int lcn);
-    int  move(Move mv, bool useMiai, int& brdset); // ret: miaiMove
-    int  moveMiaiPart(Move mv, bool useMiai, int& brdset, int cpt); // miai part of move
-    void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
-    void show();
-
-#if 0
-    void showMi(int s);
-    void showP();
-    void showBr(); //showBorder connectivity values
-#endif
-
-    bool IsGameOver() const { return m_winner != Y_NO_WINNER; }
-    YGameOverType GetWinner() const { return m_winner; }
-    bool IsWinner(int player) const;
-
-    SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };
+    SgBlackWhite m_toPlay;
+    SgBoardColor m_winner;  
 
     Board();
     Board(int size); // constructor
@@ -174,23 +131,44 @@ struct Board
 
     int Size() const { return Const().Size(); }
 
-    bool CanSwap() const;
-    void Swap();
-    void UndoSwap();
-
     std::string ToString() const;
     std::string BorderToString() const;
 
-    bool IsOccupied(int cell) const;
-    
-    bool IsEmpty(int cell) const
-    { return board[cell] == EMP; };
+    SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };
+
+    bool IsGameOver() const { return m_winner != SG_EMPTY; }
+    SgBoardColor GetWinner() const { return m_winner; }
+    bool IsWinner(SgBlackWhite player) const { return player == m_winner; }
+
+    bool CanSwap() const { return false; }
+    void Swap();
+    void UndoSwap();
+
+    bool IsOccupied(int cell) const { return board[cell] != SG_EMPTY; }
+    bool IsEmpty(int cell) const { return board[cell] == SG_EMPTY; };
 
     int ToPlay() const         { return m_toPlay; }
     void SetToPlay(int toPlay) { m_toPlay = toPlay; }
 
+    void zero_connectivity(int s, bool removeStone = true);
+    void set_miai    (int s, int m1, int m2);
+    void release_miai(Move mv);
+    bool not_in_miai (Move mv);
+    void put_stone   (Move mv);
+    void RemoveStone(int lcn);
+    int  move(Move mv, bool useMiai, int& brdset); // ret: miaiMove
+    int  moveMiaiPart(Move mv, bool useMiai, int& brdset, int cpt);
+    void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
+    void show();
+
 private:
-    void FlipToPlay();
+  
+    void init();
+
+    void FlipToPlay()
+    {
+        m_toPlay = (m_toPlay == SG_BLACK) ? SG_WHITE : SG_BLACK;
+    }
 
 };
 
