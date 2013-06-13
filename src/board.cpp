@@ -254,11 +254,11 @@ void Board::show()
     printf("%s\n", ToString().c_str());
 }
 
-void Board::zero_connectivity(int stone, bool remS) 
+void Board::zero_connectivity(SgBlackWhite color, bool remS) 
 { 
     for (int j=0; j<Const().TotalGBCells; j++) {
-        reply[ndx(stone)][j] = j;
-        if (board[j]==stone) {
+        reply[color][j] = j;
+        if (board[j]==color) {
             parent[j] = j;
             brdr[j]   = BRDR_NIL;
             board[j]  = TMP;
@@ -298,7 +298,7 @@ void Board::init()
     brdr[Const().fatten(-1,-1)+1] = BRDR_R;
     brdr[Const().fatten(N,N)] = BRDR_BOT;
  
-    m_winner = Y_NO_WINNER;
+    m_winner = SG_EMPTY;
 #if 0
     const int Np2G = Const().Np2G;
     printf("border values\n");

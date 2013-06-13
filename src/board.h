@@ -41,10 +41,6 @@ static const int TMP = 4;
 static const int Y_SWAP = -1;
 static const int Y_NULL_MOVE = -2;
  
-static inline int oppnt(int x) {return 1-x; } // black,white are 0,1
-
-static inline int ndx(int x) {return x;}  // assume black,white are 0,1
-
 static const int NumNbrs = 6;              // num nbrs of each cell
 
 struct Move {

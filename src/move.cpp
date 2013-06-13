@@ -5,16 +5,16 @@
 #include "move.h"
 
 bool has_win(int bd_set) { return bd_set==BRDR_ALL ; }
-bool Board::not_in_miai(Move mv) { return reply[ndx(mv.s)][mv.lcn]==mv.lcn ; }
+bool Board::not_in_miai(Move mv) { return reply[mv.s][mv.lcn]==mv.lcn ; }
 
 void Board::set_miai(int s, int x, int y) { 
-  reply[ndx(s)][x] = y; 
-  reply[ndx(s)][y] = x; }
+  reply[s][x] = y; 
+  reply[s][y] = x; }
 
 void Board::release_miai(Move mv) { // WARNING: does not alter miai connectivity
-  int y = reply[ndx(mv.s)][mv.lcn]; 
-  reply[ndx(mv.s)][mv.lcn] = mv.lcn; 
-  reply[ndx(mv.s)][y] = y; }
+  int y = reply[mv.s][mv.lcn]; 
+  reply[mv.s][mv.lcn] = mv.lcn; 
+  reply[mv.s][y] = y; }
 
 void Board::put_stone(Move mv) { 
   assert((board[mv.lcn]==EMP)||(board[mv.lcn]==mv.s)||board[mv.lcn]==TMP); 
@@ -39,10 +39,10 @@ int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
 // useMiai true... continue with move( )...
   int nbr,nbrRoot; int lcn = mv.lcn; int s = mv.s;
   release_miai(mv); // your own miai, so connectivity ok
-  int miReply = reply[ndx(oppnt(s))][lcn];
+  int miReply = reply[SgOppBW(s)][lcn];
   if (miReply != lcn) {
     //prtLcn(lcn); printf(" released opponent miai\n"); 
-    release_miai(Move(oppnt(s),lcn));
+    release_miai(Move(SgOppBW(s),lcn));
   }
   // avoid directional bridge bias: search in random order
   int x, perm[NumNbrs] = {0, 1, 2, 3, 4, 5}; 
@@ -60,11 +60,11 @@ int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
         (not_in_miai(mv1)||not_in_miai(mv2))) {
           if (!not_in_miai(mv1)) {
               if (Const().near_edge(lcn) && Const().near_edge(c1)) 
-              YborderRealign(Move(s,nbr),cpt,c1,reply[ndx(s)][c1],c2);
+              YborderRealign(Move(s,nbr),cpt,c1,reply[s][c1],c2);
           }
           else if (!not_in_miai(mv2)) {
               if (Const().near_edge(lcn) && Const().near_edge(c2)) 
-              YborderRealign(Move(s,nbr),cpt,c2,reply[ndx(s)][c2],c1);
+              YborderRealign(Move(s,nbr),cpt,c2,reply[s][c2],c1);
          }
          else if (Find(parent,nbr)!=Find(parent,cpt)) {  // new miai
            nbrRoot = Find(parent,nbr);
@@ -113,7 +113,7 @@ int Board::move(Move mv, bool useMiai, int& bdset)
     }
     bdset = brdr[cpt];
     if (has_win(bdset)) {
-        m_winner = (mv.s == SG_BLACK) ? Y_BLACK_WINS : Y_WHITE_WINS;
+        m_winner = mv.s;
     }
     if (!useMiai) {
         return lcn;       // no miai, so return lcn
