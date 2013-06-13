@@ -101,9 +101,7 @@ private:
     void RegisterCmd(const std::string& name,
                      GtpCallback<YGtpEngine>::Method method);
 
-    int ColorArg(const GtpCommand& cmd, std::size_t number) const;
-    int SgColorToYColor(SgBlackWhite color) const;
-    SgBlackWhite YColorToSgColor(int color) const;
+    SgBlackWhite ColorArg(const GtpCommand& cmd, std::size_t number) const;
 };
 
 //----------------------------------------------------------------------------

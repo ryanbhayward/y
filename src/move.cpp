@@ -55,8 +55,8 @@ int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
     Move mv1(s,c1); 
     Move mv2(s,c2); 
     if (board[nbr] == s &&
-        board[c1] == EMP &&
-        board[c2] == EMP &&
+        board[c1] == SG_EMPTY &&
+        board[c2] == SG_EMPTY &&
         (not_in_miai(mv1)||not_in_miai(mv2))) {
           if (!not_in_miai(mv1)) {
               if (Const().near_edge(lcn) && Const().near_edge(c1)) 
@@ -73,9 +73,9 @@ int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
            set_miai(s,c1,c2);
            } 
          }
-    else if ((board[nbr] == GRD) &&
-             (board[c1]  == EMP) &&
-             (board[c2]  == EMP) &&
+    else if ((board[nbr] == SG_BORDER) &&
+             (board[c1]  == SG_EMPTY) &&
+             (board[c2]  == SG_EMPTY) &&
              (not_in_miai(mv1))&&
              (not_in_miai(mv2))) { // new miai
       brdr[cpt] |= brdr[nbr];
@@ -108,12 +108,12 @@ int Board::move(Move mv, bool useMiai, int& bdset)
             nbrRoot = Find(parent,nbr);
             brdr[nbrRoot] |= brdr[cpt];
             cpt = Union(parent,cpt,nbrRoot); } 
-        else if (board[nbr] == GRD) {
+        else if (board[nbr] == SG_BORDER) {
             brdr[cpt] |= brdr[nbr]; }
     }
     bdset = brdr[cpt];
     if (has_win(bdset)) {
-        m_winner = (mv.s == BLK) ? Y_BLACK_WINS : Y_WHITE_WINS;
+        m_winner = (mv.s == SG_BLACK) ? Y_BLACK_WINS : Y_WHITE_WINS;
     }
     if (!useMiai) {
         return lcn;       // no miai, so return lcn

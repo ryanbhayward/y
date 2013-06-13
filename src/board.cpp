@@ -11,22 +11,24 @@
 
 using namespace std;
 
-char ConstBoard::ColorToChar(int value) 
+char ConstBoard::ColorToChar(SgBoardColor color) 
 {
-    switch(value) {
-    case EMP: return EMP_CH;
-    case BLK: return BLK_CH;
-    case WHT: return WHT_CH;
-    default: return value; 
+    switch(color) {
+    case SG_BLACK: return 'b';
+    case SG_WHITE: return 'w';
+    case SG_EMPTY: return '.';
+    default: return '?';
     }
 }
-void ConstBoard::ColorToString(int value) 
+
+std::string ConstBoard::ColorToString(SgBoardColor color) 
 {
-    switch(value) {
-    case EMP: printf("empty"); break;
-    case BLK: printf("black"); break;
-    case WHT: printf("white"); break;
-    default: printf(" ? "); } 
+    switch(color) {
+    case SG_BLACK: return "black";
+    case SG_WHITE: return "white";
+    case SG_EMPTY: return "empty";
+    default: return "?";
+    }
 }
 
 std::string ConstBoard::ToString(int cell) const
@@ -228,7 +230,6 @@ std::string Board::ToString() const
 std::string Board::BorderToString() const
 {
   ostringstream os;
-  const int N = Size();
   const int Np2G = Const().Np2G;
   os << "\n" << "Border Values:\n";
   int psn = 0;
@@ -262,7 +263,7 @@ void Board::zero_connectivity(int stone, bool remS)
             brdr[j]   = BRDR_NIL;
             board[j]  = TMP;
             if (remS)
-                board[j]= EMP;
+                board[j]= SG_EMPTY;
         }
     } 
 }
@@ -270,7 +271,6 @@ void Board::zero_connectivity(int stone, bool remS)
 void Board::init() 
 { 
     const int N = Size();
-    const int Np2G = Const().Np2G;
     const int T = Const().TotalGBCells;
 
     board.resize(T);
@@ -280,14 +280,14 @@ void Board::init()
     reply[1].resize(T);
 
     for (int j=0; j<T; j++) {
-        board[j] = GRD; 
+        board[j] = SG_BORDER; 
         brdr[j]  = BRDR_NIL; 
         parent[j]  = j;
         for (int k=0; k<2; k++) 
             reply[k][j] = j;
     }
     for (BoardIterator it(Const()); it; ++it)
-        board[*it] = EMP;
+        board[*it] = SG_EMPTY;
 
     for (int j=0; j<N; j++) { 
         brdr[Const().fatten(j,0)-1] = BRDR_L;
@@ -300,6 +300,7 @@ void Board::init()
  
     m_winner = Y_NO_WINNER;
 #if 0
+    const int Np2G = Const().Np2G;
     printf("border values\n");
     int psn = 0;
     for (int j = 0; j < Np2G; j++) {
@@ -330,32 +331,9 @@ Board::Board(int size)
     init(); 
 }
 
-bool Board::CanSwap() const { return false; }
-
 void Board::Swap()
 {
     // swap black stones with white stones
-}
-
-bool Board::IsOccupied(int cell) const
-{
-    return board[cell] != EMP;
-}
-
-bool Board::IsWinner(int player) const
-{
-    if (m_winner != Y_NO_WINNER) {
-        if (player == BLK)
-            return m_winner == Y_BLACK_WINS;
-        if (player == WHT)
-            return m_winner == Y_WHITE_WINS;
-    }
-    return false;
-}
-
-void Board::FlipToPlay()
-{
-    m_toPlay = (m_toPlay == BLK) ? WHT : BLK;
 }
 
 //////////////////////////////////////////////////////////////////////
