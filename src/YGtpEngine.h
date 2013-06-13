@@ -30,6 +30,7 @@ public:
     void CmdPlay(GtpCommand& cmd);
     void CmdName(GtpCommand& cmd);
     void CmdShowBoard(GtpCommand& cmd);
+    void CmdShowBorders(GtpCommand& cmd);
     void CmdBoardSize(GtpCommand& cmd);
     void CmdClearBoard(GtpCommand& cmd);
     void CmdSolve(GtpCommand& cmd);

@@ -178,6 +178,7 @@ struct Board
     void Swap();
 
     std::string ToString() const;
+    std::string BorderToString() const;
 
     bool IsOccupied(int cell) const;
     

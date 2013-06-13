@@ -225,6 +225,29 @@ std::string Board::ToString() const
     return os.str();
 }
 
+std::string Board::BorderToString() const
+{
+  ostringstream os;
+  const int N = Size();
+  const int Np2G = Const().Np2G;
+  os << "\n" << "Border Values:\n";
+  int psn = 0;
+  for (int j = 0; j < Np2G; j++) {
+    for (int k = 0; k < j; k++)
+      os << ' ';
+    for (int k = 0; k < Np2G; k++) {
+      int x = brdr[ConstFind(parent,psn++)];
+      if (x != BRDR_NIL)
+        os << "  " << x;
+      else
+        os << "  *";
+    }
+    os << "\n";
+  }
+  os << "\n"; 
+  return os.str();
+}
+
 void Board::show() 
 {
     printf("%s\n", ToString().c_str());
