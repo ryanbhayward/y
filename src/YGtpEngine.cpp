@@ -129,7 +129,7 @@ void YGtpEngine::Play(int color, int cell)
 
         //m_brd.move(color, cell);
         int bdset;
-        m_brd.move(Move(color,cell), true, bdset);
+        m_brd.move(Move(color,cell), false, bdset);
     }
     m_history.push_back(cell);
 }

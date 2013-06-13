@@ -276,7 +276,7 @@ void Board::RemoveStone(int lcn)
     board[lcn] = SG_EMPTY;
     for (BoardIterator it(Const()); it; ++it) {
         if (board[*it] == TMP)
-	     move(Move(color, *it), true, bdset);
+	     move(Move(color, *it), false, bdset);
     }     
 }
 
@@ -345,7 +345,7 @@ Board::Board(int size)
 
 void Board::Swap()
 {
-    for (BoardIterator it(*this); it; ++it)
+    for (BoardIterator it(Const()); it; ++it)
 	 board[*it] = (board[*it] == SG_BLACK) ? SG_WHITE : SG_BLACK;
 }
 
