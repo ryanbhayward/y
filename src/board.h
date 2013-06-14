@@ -122,7 +122,8 @@ struct Board
     std::vector<int> reply[2];  // miai reply
     
     SgBlackWhite m_toPlay;
-    SgBoardColor m_winner;  
+    SgBoardColor m_winner;
+    bool         m_canSwap;
 
     Board();
     Board(int size); // constructor
@@ -141,12 +142,13 @@ struct Board
     SgBoardColor GetWinner() const { return m_winner; }
     bool IsWinner(SgBlackWhite player) const { return player == m_winner; }
 
-    bool CanSwap() const { return false; }
+    bool CanSwap() const { return m_canSwap; }
     void Swap();
     void UndoSwap();
 
     bool IsOccupied(int cell) const { return board[cell] != SG_EMPTY; }
     bool IsEmpty(int cell) const { return board[cell] == SG_EMPTY; };
+    int  TotalEmptyCells();
 
     int ToPlay() const         { return m_toPlay; }
     void SetToPlay(int toPlay) { m_toPlay = toPlay; }

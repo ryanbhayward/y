@@ -31,6 +31,7 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("exec", &YGtpEngine::CmdExec);
     RegisterCmd("name", &YGtpEngine::CmdName);
     RegisterCmd("play", &YGtpEngine::CmdPlay);
+    RegisterCmd("swap", &YGtpEngine::CmdSwap);
     RegisterCmd("boardsize", &YGtpEngine::CmdBoardSize);
     RegisterCmd("showboard", &YGtpEngine::CmdShowBoard);
     RegisterCmd("showborders", &YGtpEngine::CmdShowBorders);
@@ -185,7 +186,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
         for (std::size_t i = 0; i < sequence.size(); i++) 
             std::cerr << ' ' << m_brd.Const().ToString(sequence[i]);
         std::cerr << '\n';
-
+	
         if (m_brd.CanSwap() && score < 0.5)
             return Y_SWAP;
         return sequence[0];
@@ -262,6 +263,12 @@ void YGtpEngine::CmdUndo(GtpCommand& cmd)
 {
     cmd.CheckNuArg(0);
     Undo();
+}
+
+void YGtpEngine::CmdSwap(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(0);
+    m_brd.Swap();
 }
 
 void YGtpEngine::CmdShowBoard(GtpCommand& cmd)

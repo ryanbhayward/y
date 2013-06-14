@@ -100,6 +100,10 @@ int Board::move(Move mv, bool useMiai, int& bdset)
     m_toPlay = mv.s;
     put_stone(mv);
     FlipToPlay();
+
+    int num_empty = TotalEmptyCells();
+    if(m_canSwap && (num_empty < (Const().TotalCells-1)))
+	m_canSwap = false;
     
     cpt = lcn; // cpt of s group containing lcn
     for (int t=0; t<NumNbrs; t++) {

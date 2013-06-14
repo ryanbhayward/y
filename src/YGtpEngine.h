@@ -36,6 +36,7 @@ public:
     void CmdClearBoard(GtpCommand& cmd);
     void CmdSolve(GtpCommand& cmd);
     void CmdUndo(GtpCommand& cmd);
+    void CmdSwap(GtpCommand& cmd);
     void CmdGenMove(GtpCommand& cmd);
     void CmdAnalyzeCommands(GtpCommand& cmd);
     void CmdSetPlayer(GtpCommand& cmd);

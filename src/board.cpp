@@ -301,6 +301,15 @@ void Board::RemoveStone(int lcn)
     }     
 }
 
+int  Board::TotalEmptyCells()
+{
+    int num_empty = 0;
+    for (BoardIterator it(Const()); it; ++it)
+	if (board[*it] == SG_EMPTY)
+	    num_empty++;
+    return num_empty;
+}
+
 void Board::init() 
 { 
     const int N = Size();
@@ -331,7 +340,8 @@ void Board::init()
     brdr[Const().fatten(-1,-1)+1] = BRDR_R;
     brdr[Const().fatten(N,N)] = BRDR_BOT;
  
-    m_winner = SG_EMPTY;
+    m_winner  = SG_EMPTY;
+    m_canSwap = true;
 #if 0
     const int Np2G = Const().Np2G;
     printf("border values\n");
@@ -366,9 +376,21 @@ Board::Board(int size)
 
 void Board::Swap()
 {
+    // FIXME: Needs to switch bridges later
     for (BoardIterator it(Const()); it; ++it)
-	 board[*it] = (board[*it] == SG_BLACK) ? SG_WHITE : SG_BLACK;
+	if(board[*it] != SG_EMPTY)
+	    board[*it] = (board[*it] == SG_BLACK) ? SG_WHITE : SG_BLACK;
+    m_canSwap = false;
+    return;
 }
 
-void Board::UndoSwap() { return; }
+void Board::UndoSwap() 
+{ 
+    // FIXME: Needs to switch bridges later
+    for (BoardIterator it(Const()); it; ++it)
+	if(board[*it] != SG_EMPTY)
+	    board[*it] = (board[*it] == SG_BLACK) ? SG_WHITE : SG_BLACK;
+    m_canSwap = true;
+    return; 
+}
 //////////////////////////////////////////////////////////////////////
