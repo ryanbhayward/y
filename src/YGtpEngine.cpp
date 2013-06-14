@@ -269,6 +269,7 @@ void YGtpEngine::CmdSwap(GtpCommand& cmd)
 {
     cmd.CheckNuArg(0);
     m_brd.Swap();
+    m_history.push_back(Y_SWAP);
 }
 
 void YGtpEngine::CmdShowBoard(GtpCommand& cmd)
