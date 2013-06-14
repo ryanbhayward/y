@@ -34,6 +34,7 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("boardsize", &YGtpEngine::CmdBoardSize);
     RegisterCmd("showboard", &YGtpEngine::CmdShowBoard);
     RegisterCmd("showborders", &YGtpEngine::CmdShowBorders);
+    RegisterCmd("showparents", &YGtpEngine::CmdShowParents);
     RegisterCmd("clear_board", &YGtpEngine::CmdClearBoard);
     RegisterCmd("genmove", &YGtpEngine::CmdGenMove);
     RegisterCmd("hexgui-analyze_commands", 
@@ -44,12 +45,12 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("undo", &YGtpEngine::CmdUndo);
     RegisterCmd("uct_param_search", &YGtpEngine::CmdUctParamSearch);
     RegisterCmd("uct_proven_nodes", &YGtpEngine::CmdUctProvenNodes);
-    RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
-    RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
-    RegisterCmd("y_winner", &YGtpEngine::CmdWinner);
-    RegisterCmd("y_solve", &YGtpEngine::CmdSolve);
+    RegisterCmd("uct_s// cores", &YGtpEngine::CmdUctScores);
+    // RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
+    // RegisterCmd("y_winner", &YGtpEngine::CmdWinner);
+    // RegisterCmd("y_solve", &YGtpEngine::CmdSolve);
     RegisterCmd("version", &YGtpEngine::CmdVersion);
-
+    
     NewGame();
 }
 
@@ -273,6 +274,12 @@ void YGtpEngine::CmdShowBorders(GtpCommand& cmd)
 {
     SG_UNUSED(cmd);
     cmd << m_brd.BorderToString() << '\n';
+}
+
+void YGtpEngine::CmdShowParents(GtpCommand& cmd)
+{
+    SG_UNUSED(cmd);
+    cmd << m_brd.ParentsToString() << '\n';
 }
 
 void YGtpEngine::CmdWinner(GtpCommand& cmd)

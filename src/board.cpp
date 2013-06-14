@@ -229,24 +229,45 @@ std::string Board::ToString() const
 
 std::string Board::BorderToString() const
 {
-  ostringstream os;
-  const int Np2G = Const().Np2G;
-  os << "\n" << "Border Values:\n";
-  int psn = 0;
-  for (int j = 0; j < Np2G; j++) {
-    for (int k = 0; k < j; k++)
-      os << ' ';
-    for (int k = 0; k < Np2G; k++) {
-      int x = brdr[ConstFind(parent,psn++)];
-      if (x != BRDR_NIL)
-        os << "  " << x;
-      else
-        os << "  *";
+    ostringstream os;
+    const int Np2G = Const().Np2G;
+    os << "\n" << "Border Values:\n";
+    int psn = 0;
+    for (int j = 0; j < Np2G; j++) {
+	for (int k = 0; k < j; k++)
+	    os << ' ';
+	for (int k = 0; k < Np2G; k++) {
+	    int x = brdr[ConstFind(parent,psn++)];
+	    if (x != BRDR_NIL)
+		os << "  " << x;
+	    else
+		os << "  *";
+	}
+	os << "\n";
     }
-    os << "\n";
-  }
-  os << "\n"; 
-  return os.str();
+    os << "\n"; 
+    return os.str();
+}
+
+std::string Board::ParentsToString() const
+{
+    ostringstream os;
+    const int N = Size();
+    os << "\n" << "UF Parents (for non-captains only):\n\n";
+    for (int j = 0; j < N; j++) {
+	int psn = Const().fatten(j,0);
+	for (int k = 0; k < N-j; k++) 
+	    os << ' ';
+	for (int k = 0; k <= j; k++) {
+	    int x = ConstFind(parent, psn++);
+	    if (x!=psn-1)
+		os << ' ' << Const().ToString(x);
+	    else
+		os << "  *";
+	}
+	os << "\n";
+    }
+    return os.str();
 }
 
 void Board::show() 
