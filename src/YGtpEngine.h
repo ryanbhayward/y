@@ -43,7 +43,7 @@ public:
     void CmdTimeLeft(GtpCommand& cmd);
     void CmdTimeSettings(GtpCommand& cmd);
     void CmdUseGridCoords(GtpCommand& cmd);
-    void CmdUctParamSearch(GtpCommand& cmd);
+    void CmdParam(GtpCommand& cmd);
     void CmdUctProvenNodes(GtpCommand& cmd);
     void CmdUctScores(GtpCommand& cmd);
     void CmdRaveScores(GtpCommand& cmd);
@@ -84,6 +84,8 @@ private:
     bool m_timeSettingsSpecified;
 
     bool m_ignoreClock;
+
+    bool m_allowSwap;
    
     SgBlackWhite BlackWhiteArg(const GtpCommand& cmd, 
                                std::size_t number) const;

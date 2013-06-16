@@ -26,7 +26,8 @@ YGtpEngine::YGtpEngine(int boardSize)
       m_mainTime(0),
       m_timeLeft(0),
       m_timeSettingsSpecified(false),
-      m_ignoreClock(false)
+      m_ignoreClock(false),
+      m_allowSwap(true)
 {
     RegisterCmd("exec", &YGtpEngine::CmdExec);
     RegisterCmd("name", &YGtpEngine::CmdName);
@@ -44,12 +45,12 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("time_left", &YGtpEngine::CmdTimeLeft);
     RegisterCmd("time_settings", &YGtpEngine::CmdTimeSettings);
     RegisterCmd("undo", &YGtpEngine::CmdUndo);
-    RegisterCmd("uct_param_search", &YGtpEngine::CmdUctParamSearch);
     RegisterCmd("uct_proven_nodes", &YGtpEngine::CmdUctProvenNodes);
     RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
     RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
     RegisterCmd("final_score", &YGtpEngine::CmdFinalScore);
     RegisterCmd("y_solve", &YGtpEngine::CmdSolve);
+    RegisterCmd("y_param", &YGtpEngine::CmdParam);
     RegisterCmd("version", &YGtpEngine::CmdVersion);
     
     NewGame();
@@ -71,7 +72,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
 {
     cmd.CheckArgNone();
     cmd <<
-        "param/Game Param/param_game\n"
+        "param/Search Parameters/y_param\n"
         "plist/All Legal Moves/all_legal_moves %c\n"
         "string/ShowBoard/showboard\n"
         "string/Final Score/final_score\n"
@@ -120,8 +121,13 @@ void YGtpEngine::NewGame()
 
 void YGtpEngine::Play(int color, int cell)
 {
-    if (cell == Y_SWAP && m_brd.CanSwap())
+    if (cell == Y_SWAP) {
+        if (!m_allowSwap)
+            throw GtpFailure("Swap setting is disabled!");
+        if (!m_brd.CanSwap())
+            throw GtpFailure("Cannot swap in this position!");
     	m_brd.Swap();
+    }
     else if (cell != Y_NULL_MOVE)
     {
         if (! m_brd.Const().IsOnBoard(cell))
@@ -187,7 +193,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
             std::cerr << ' ' << m_brd.Const().ToString(sequence[i]);
         std::cerr << '\n';
 	
-        if (m_brd.CanSwap() && score < 0.5)
+        if (m_allowSwap && m_brd.CanSwap() && score < 0.5)
             return Y_SWAP;
         return sequence[0];
     }
@@ -416,11 +422,12 @@ void YGtpEngine::CmdSolve(GtpCommand& cmd)
     cmd << ' ' << depth << ' ' << nodes;
 }
 
-void YGtpEngine::CmdUctParamSearch(GtpCommand& cmd)
+void YGtpEngine::CmdParam(GtpCommand& cmd)
 {
     if (cmd.NuArg() == 0)
     {
         cmd << '\n'
+            << "[bool] allow_swap " << m_allowSwap << '\n'
             << "[bool] ignore_clock " << m_ignoreClock << '\n'
             << "[bool] use_rave " << m_uctSearch.Rave() << '\n'
             << "[string] bias_term_constant " 
@@ -434,6 +441,8 @@ void YGtpEngine::CmdUctParamSearch(GtpCommand& cmd)
         std::string name = cmd.Arg(0);
         if (name == "use_rave")
             m_uctSearch.SetRave(cmd.BoolArg(1));
+        else if (name == "allow_swap")
+            m_allowSwap = cmd.BoolArg(1);
         else if (name == "ignore_clock")
             m_ignoreClock = cmd.BoolArg(1);
         else if (name == "bias_term_constant")
