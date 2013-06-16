@@ -147,12 +147,8 @@ class Tournament:
             print "Game ", gameIndex
             print "==========================================================="
             
-        bcmd = "nice " + blackCmd + " --seed %SRAND" \
-               + " --logfile-name " + self._outdir + "/"  \
-               + blackName + "-" + str(gameIndex) + ".log"
-        wcmd = "nice " + whiteCmd + " --seed %SRAND" \
-               + " --logfile-name " + self._outdir + "/"  \
-               + whiteName + "-" + str(gameIndex) + ".log"
+        bcmd = "nice " + blackCmd + " --seed %SRAND"
+        wcmd = "nice " + whiteCmd + " --seed %SRAND"
         bLogName = self._outdir + "/" + blackName + "-" + str(gameIndex) \
                           + "-stderr.log"
         wLogName = self._outdir + "/" + whiteName + "-" + str(gameIndex) \

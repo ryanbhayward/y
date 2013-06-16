@@ -48,7 +48,7 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("uct_proven_nodes", &YGtpEngine::CmdUctProvenNodes);
     RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
     RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
-    RegisterCmd("y_winner", &YGtpEngine::CmdWinner);
+    RegisterCmd("final_score", &YGtpEngine::CmdFinalScore);
     RegisterCmd("y_solve", &YGtpEngine::CmdSolve);
     RegisterCmd("version", &YGtpEngine::CmdVersion);
     
@@ -290,15 +290,15 @@ void YGtpEngine::CmdShowParents(GtpCommand& cmd)
     cmd << m_brd.ParentsToString() << '\n';
 }
 
-void YGtpEngine::CmdWinner(GtpCommand& cmd)
+void YGtpEngine::CmdFinalScore(GtpCommand& cmd)
 {
     SgBoardColor winner = m_brd.GetWinner();
     if (winner == SG_BLACK)
-        cmd << "black";
+        cmd << "B+";
     else if (winner == SG_WHITE)
-        cmd << "white";
+        cmd << "W+";
     else
-        cmd << "none";
+        cmd << "cannot score";
 }
 
 void YGtpEngine::CmdGenMove(GtpCommand& cmd)
