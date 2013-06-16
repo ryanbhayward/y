@@ -1,0 +1,65 @@
+How to run a tournament:
+
+1) Run a tournament with one of the run-prog-vs-prog.sh scripts.
+
+   Programs alternate playing each opening in the set of openings
+   provided.  Each round corresponds to each program playing black once
+   for each opening.
+
+   An example tournament where MoHex with new settings plays against
+   itself with old settings:
+
+   run-mohex-vs-mohex.sh --size 11 --rounds 2 Mohex4sKnow100 Mohex4sKnow0
+
+   where Mohex4sKnow100.htp and Mohex4sKnow0.htp are config files in the
+   tournament directory. 11x11 is the default size and the default number of
+   rounds is 10.
+
+   Given the board size, the script looks for the corresponding openings file
+   under tournament/openings (e.g. 11x11-all-1ply), but you can also specify
+   an openings files using the "--openings" option.
+
+   Before running the script, make sure you manually create the tournament/jobs
+   directory. The directory for this specific tournament is automatically
+   created under jobs/ and will contain all sgfs, results file, etc.
+
+2) The 'results' file
+
+The 'results' file contains a listing of the completed games and
+results.  If you stop the tournament script for any reason (or if it
+detects an error and stops itself), you will lose only the last game
+played.  You can continue the tournament using the same command you used
+to start it.
+
+3) the nnnn.sgf files
+
+These are the actual games played.  Each sgf file lists the exact
+arguments sent to the programs so you should be able to recreate the
+game as long as your programs are deterministic (i.e, after the initial
+seed value to their random number generator). 
+
+4) Getting a summary
+
+At any time, you may run
+
+   ./summary --file [results file] [--showTable] [--count n]
+
+to obtain a compact summary of the tournament results so far.  The
+results will be broken down by opening. Use the "--showTable" command if
+you want to games down by opening and show which were split and
+non-split. Use the "--count" option if you want the summary only for
+the first n games (where n is a positive integer; e.g. "--count 242"
+gives a summary of the first round when using all 11x11 openings).
+
+5) The openings
+
+The available openings are found under the openings/ directory. 
+Each file contains exactly one opening per line. Make sure there
+are no extra empty lines at the end of the file, as currently, every
+line is used as an opening.
+
+6) Other tools
+
+The asymmetric.py script shows which openings are being stolen (i.e.
+won as both black and white) by each player. The difference.py script
+shows what game results differed between two tournaments.

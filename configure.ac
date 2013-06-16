@@ -78,5 +78,6 @@ AX_CXXFLAGS_GCC_OPTION(-Wextra)
 
 AC_OUTPUT([
 Makefile \
-src/Makefile
+src/Makefile \
+tournament/Makefile
 ])
