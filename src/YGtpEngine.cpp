@@ -46,10 +46,10 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("undo", &YGtpEngine::CmdUndo);
     RegisterCmd("uct_param_search", &YGtpEngine::CmdUctParamSearch);
     RegisterCmd("uct_proven_nodes", &YGtpEngine::CmdUctProvenNodes);
-    RegisterCmd("uct_s// cores", &YGtpEngine::CmdUctScores);
-    // RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
-    // RegisterCmd("y_winner", &YGtpEngine::CmdWinner);
-    // RegisterCmd("y_solve", &YGtpEngine::CmdSolve);
+    RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
+    RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
+    RegisterCmd("y_winner", &YGtpEngine::CmdWinner);
+    RegisterCmd("y_solve", &YGtpEngine::CmdSolve);
     RegisterCmd("version", &YGtpEngine::CmdVersion);
     
     NewGame();
