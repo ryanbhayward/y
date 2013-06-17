@@ -101,8 +101,24 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
         return SG_NULLMOVE;
     if (m_brd.IsGameOver())
         return SG_NULLMOVE;
-    SgMove move = m_emptyCells.back();
-    m_emptyCells.pop_back();
+    SgMove move = SG_NULLMOVE;
+    if (m_search.UseSaveBridge()) 
+    {
+        move = m_brd.SaveBridge(m_brd.LastMove(), m_brd.ToPlay(), m_random);
+ #if 0
+        if (move != SG_NULLMOVE)
+            std::cerr << m_brd.ToString() << "\n"
+                      << "Last move " << m_brd.Const().ToString(m_brd.LastMove()) << '\n'
+                      << "Save move " << m_brd.Const().ToString(move) << '\n';
+#endif
+    } 
+    if (move == SG_NULLMOVE)
+    {
+        do {
+            move = m_emptyCells.back();
+            m_emptyCells.pop_back();
+        } while (m_brd.board[move] != SG_EMPTY);
+    }
     return move;
 }
 
@@ -146,8 +162,9 @@ void YUctThreadState::EndPlayout()
 //----------------------------------------------------------------------------
 
 YUctSearch::YUctSearch(YUctThreadStateFactory* threadStateFactory)
-    : SgUctSearch(threadStateFactory, Y_MAX_CELL+1),
-      m_brd(4)
+    : SgUctSearch(threadStateFactory, Y_MAX_CELL+1)
+    , m_brd(13)
+    , m_useSaveBridge(true)
 {
     SetMoveSelect(SG_UCTMOVESELECT_COUNT);
     SetNumberThreads(1);    

@@ -125,8 +125,14 @@ public:
 
     const Board& GetBoard() const;
 
+    bool UseSaveBridge() const    { return m_useSaveBridge; }
+    void SetUseSaveBridge(bool f) { m_useSaveBridge = f; }
+
 private:
     Board m_brd;
+
+    bool m_useSaveBridge;
+
 };
 
 inline void YUctSearch::SetBoard(const Board& brd)

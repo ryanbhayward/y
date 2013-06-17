@@ -167,6 +167,11 @@ struct Board
     void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
     void show();
 
+    // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
+    // a move to reestablish the connection.
+    int SaveBridge(int lastMove, const SgBlackWhite toPlay, 
+                   SgRandom& random) const;
+
 private:
   
     void init();

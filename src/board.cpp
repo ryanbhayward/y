@@ -391,8 +391,50 @@ void Board::UndoSwap()
     // FIXME: Needs to switch bridges later
     for (BoardIterator it(Const()); it; ++it)
 	if(board[*it] != SG_EMPTY)
-	    board[*it] = (board[*it] == SG_BLACK) ? SG_WHITE : SG_BLACK;
+	    board[*it] = SgOppBW(board[*it]);
     m_canSwap = true;
     return; 
 }
 //////////////////////////////////////////////////////////////////////
+
+int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay, 
+                      SgRandom& random) const
+{
+    //if (m_oppNbs < 2 || m_emptyNbs == 0 || m_emptyNbs > 4)
+    //    return INVALID_POINT;
+    // State machine: s is number of cells matched.
+    // In clockwise order, need to match CEC, where C is the color to
+    // play and E is an empty cell. We start at a random direction and
+    // stop at first match, which handles the case of multiple bridge
+    // patterns occuring at once.
+    // TODO: speed this up?
+    int s = 0;
+    const int start = random.Int(6);
+    int ret = SG_NULLMOVE;
+    for (int j = 0; j < 8; ++j)
+    {
+        const int i = (j + start) % 6;
+        const int p = lastMove + Const().Nbr_offsets[i];
+        const bool mine = board[p] == toPlay;
+        if (s == 0)
+        {
+            if (mine) s = 1;
+        }
+        else if (s == 1)
+        {
+            if (mine) s = 1;
+            else if (board[p] == !toPlay) s = 0;
+            else
+            {
+                s = 2;
+                ret = p;
+            }
+        }
+        else if (s == 2)
+        {
+            if (mine) return ret; // matched!!
+            else s = 0;
+        }
+    }
+    return SG_NULLMOVE;
+}
