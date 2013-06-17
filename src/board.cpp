@@ -298,6 +298,7 @@ void Board::RemoveStone(int lcn)
         if (board[*it] == TMP)
 	     move(Move(color, *it), false);
     }     
+    m_lastMove = SG_NULLMOVE;
 }
 
 int  Board::TotalEmptyCells()
@@ -341,6 +342,8 @@ void Board::init()
  
     m_winner  = SG_EMPTY;
     m_canSwap = true;
+    m_lastMove = SG_NULLMOVE;
+
 #if 0
     const int Np2G = Const().Np2G;
     printf("border values\n");

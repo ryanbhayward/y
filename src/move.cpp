@@ -98,6 +98,7 @@ int Board::move(Move mv, bool useMiai)
     m_toPlay = mv.s;
     put_stone(mv);
     FlipToPlay();
+    m_lastMove = lcn;
 
     int num_empty = TotalEmptyCells();
     if(m_canSwap && (num_empty < (Const().TotalCells-1)))

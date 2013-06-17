@@ -128,7 +128,7 @@ void YGtpEngine::Play(int color, int cell)
             throw GtpFailure("Cannot swap in this position!");
     	m_brd.Swap();
     }
-    else if (cell != Y_NULL_MOVE)
+    else if (cell != SG_RESIGN)
     {
         if (! m_brd.Const().IsOnBoard(cell))
             throw GtpFailure("Cell not on board!");
@@ -145,9 +145,11 @@ void YGtpEngine::Undo()
     int cell = m_history.back();
     if (cell == Y_SWAP)
     	m_brd.UndoSwap();
-    else if (cell != Y_NULL_MOVE)
+    else if (cell != SG_RESIGN)
     	m_brd.RemoveStone(cell);
     m_history.pop_back();
+    if (!m_history.empty())
+        m_brd.SetLastMove(m_history.back());
 }
 
 int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
@@ -206,7 +208,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
         return 1; // FIXME: IMPLEMENT
     }
     throw GtpFailure("Invalid player!");
-    return Y_NULL_MOVE;
+    return SG_RESIGN;
 }
 
 //----------------------------------------------------------------------------
@@ -252,7 +254,7 @@ void YGtpEngine::CmdPlay(GtpCommand& cmd)
     int color = ColorArg(cmd, 0);
     if (cmd.ArgToLower(1) == "resign") 
     	// play dummy move to keep HGui in sync with undo
-        Play(color, Y_NULL_MOVE);
+        Play(color, SG_RESIGN);
     // else if (color != m_brd.ToPlay())
     //     throw GtpFailure("It is the other player's turn!");
     else
@@ -311,7 +313,6 @@ void YGtpEngine::CmdGenMove(GtpCommand& cmd)
     // if (color != m_brd.ToPlay())
     //     throw GtpFailure("It is the other player's turn!");
     if (m_brd.IsGameOver()) {
-        std::cerr << "GAME OVER!?!\n";
         cmd << "resign";
     }
     else

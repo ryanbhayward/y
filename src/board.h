@@ -7,6 +7,7 @@
 #include "SgSystem.h"
 #include "SgHash.h"
 #include "SgBoardColor.h"
+#include "SgMove.h"
 #include "move.h"
 #include "VectorIterator.h"
 
@@ -38,8 +39,7 @@ static const int BRDR_ALL   = 7; // 111
 
 static const int TMP = 4;
 
-static const int Y_SWAP = -1;
-static const int Y_NULL_MOVE = -2;
+static const int Y_SWAP = -2;  // SG_NULLMOVE == -1
  
 static const int NumNbrs = 6;              // num nbrs of each cell
 
@@ -124,6 +124,7 @@ struct Board
     SgBlackWhite m_toPlay;
     SgBoardColor m_winner;
     bool         m_canSwap;
+    int          m_lastMove;
 
     Board();
     Board(int size); // constructor
@@ -159,6 +160,8 @@ struct Board
     bool not_in_miai (Move mv);
     void put_stone   (Move mv);
     void RemoveStone(int lcn);
+    int LastMove() const { return m_lastMove; }
+    void SetLastMove(int lcn) { m_lastMove = lcn; } // used after undo
     int  move(Move mv, bool useMiai);
     int  moveMiaiPart(Move mv, bool useMiai, int cpt);
     void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
