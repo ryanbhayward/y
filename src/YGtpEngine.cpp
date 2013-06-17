@@ -323,7 +323,10 @@ void YGtpEngine::CmdGenMove(GtpCommand& cmd)
         if (m_timeSettingsSpecified && !m_ignoreClock)
             m_timeLeft[color] -= timer.GetTime();
         Play(color, move);
-        cmd << m_brd.Const().ToString(move);
+        if (move == Y_SWAP)
+            cmd << "swap";
+        else
+            cmd << m_brd.Const().ToString(move);
     }
 }
 
