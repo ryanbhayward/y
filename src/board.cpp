@@ -291,13 +291,12 @@ void Board::zero_connectivity(SgBlackWhite color, bool remS)
 
 void Board::RemoveStone(int lcn)
 {
-    int bdset;
     int color = board[lcn];
     this->zero_connectivity(color, false);
     board[lcn] = SG_EMPTY;
     for (BoardIterator it(Const()); it; ++it) {
         if (board[*it] == TMP)
-	     move(Move(color, *it), false, bdset);
+	     move(Move(color, *it), false);
     }     
 }
 

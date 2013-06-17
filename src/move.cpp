@@ -35,7 +35,7 @@ void Board::YborderRealign(Move mv, int& cpt, int c1, int c2, int c3) {
   cpt = Union(parent,cpt,xRoot);
 }
 
-int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
+int Board::moveMiaiPart(Move mv, bool useMiai, int cpt) {
 // useMiai true... continue with move( )...
   int nbr,nbrRoot; int lcn = mv.lcn; int s = mv.s;
   release_miai(mv); // your own miai, so connectivity ok
@@ -82,13 +82,11 @@ int Board::moveMiaiPart(Move mv, bool useMiai, int& bdset, int cpt) {
       set_miai(s,c1,c2);
       }
   }
-  bdset = brdr[cpt];
   return miReply;
 }
 
-int Board::move(Move mv, bool useMiai, int& bdset) 
-{  //bdset comp. from scratch
-    // put mv.s on board, update connectivity for mv.s
+int Board::move(Move mv, bool useMiai) 
+{   // put mv.s on board, update connectivity for mv.s
     // WARNING  oppnt(mv.s) connectivity will be broken if mv.s hits oppnt miai
     //   useMiai ? miai adjacency : stone adjacency
     // return opponent miai reply of mv, will be mv.lcn if no miai
@@ -115,12 +113,11 @@ int Board::move(Move mv, bool useMiai, int& bdset)
         else if (board[nbr] == SG_BORDER) {
             brdr[cpt] |= brdr[nbr]; }
     }
-    bdset = brdr[cpt];
-    if (has_win(bdset)) {
+    if (has_win(brdr[cpt])) {
         m_winner = mv.s;
     }
     if (!useMiai) {
         return lcn;       // no miai, so return lcn
     } 
-    return moveMiaiPart(mv, useMiai, bdset,cpt);
+    return moveMiaiPart(mv, useMiai, cpt);
 }

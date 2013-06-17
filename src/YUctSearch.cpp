@@ -63,18 +63,12 @@ SgUctValue YUctThreadState::Evaluate()
 
 void YUctThreadState::Execute(SgMove move)
 {
-    //m_brd.PlayStone(m_brd.ToPlay(), move);
-    int bdset;
-    m_brd.move(Move(m_brd.ToPlay(), move), false, bdset);
+    m_brd.move(Move(m_brd.ToPlay(), move), false);
 }
 
 void YUctThreadState::ExecutePlayout(SgMove move)
 {
-    //m_brd.PlayStone(m_brd.ToPlay(), move);
-    int bdset;
-    m_brd.move(Move(m_brd.ToPlay(), move), false, bdset);
-    //std::cerr << m_brd.ToString() << '\n';
-    //std::cerr << "played " << m_brd.Const().ToString(move) << '\n';
+    m_brd.move(Move(m_brd.ToPlay(), move), false);
 }
 
 bool YUctThreadState::GenerateAllMoves(SgUctValue count, 

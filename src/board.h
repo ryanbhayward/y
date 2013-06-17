@@ -159,8 +159,8 @@ struct Board
     bool not_in_miai (Move mv);
     void put_stone   (Move mv);
     void RemoveStone(int lcn);
-    int  move(Move mv, bool useMiai, int& brdset); // ret: miaiMove
-    int  moveMiaiPart(Move mv, bool useMiai, int& brdset, int cpt);
+    int  move(Move mv, bool useMiai);
+    int  moveMiaiPart(Move mv, bool useMiai, int cpt);
     void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
     void show();
 

@@ -134,10 +134,7 @@ void YGtpEngine::Play(int color, int cell)
             throw GtpFailure("Cell not on board!");
         if (m_brd.IsOccupied(cell))
             throw GtpFailure("Cell is occupied!");
-
-        //m_brd.move(color, cell);
-        int bdset;
-        m_brd.move(Move(color,cell), false, bdset);
+        m_brd.move(Move(color,cell), false);
     }
     m_history.push_back(cell);
 }
