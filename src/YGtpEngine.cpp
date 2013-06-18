@@ -422,6 +422,7 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
         cmd << '\n'
             << "[bool] allow_swap " << m_allowSwap << '\n'
             << "[bool] ignore_clock " << m_ignoreClock << '\n'
+            << "[bool] use_livegfx " << m_uctSearch.LiveGfx() << '\n'
             << "[bool] use_rave " << m_uctSearch.Rave() << '\n'
             << "[bool] use_savebridge " << m_uctSearch.UseSaveBridge() << '\n'
             << "[string] bias_term_constant " 
@@ -439,6 +440,8 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
         std::string name = cmd.Arg(0);
         if (name == "use_rave")
             m_uctSearch.SetRave(cmd.BoolArg(1));
+        else if (name == "use_livegfx")
+            m_uctSearch.SetLiveGfx(cmd.BoolArg(1));
         else if (name == "use_savebridge")
             m_uctSearch.SetUseSaveBridge(cmd.BoolArg(1));
         else if (name == "allow_swap")

@@ -108,7 +108,8 @@ public:
     /** @name Virtual functions from SgUctSearch */
     // @{
 
-    void OnSearchIteration(std::size_t gameNumber, const unsigned int threadId,
+    void OnSearchIteration(SgUctValue gameNumber, 
+                           const unsigned int threadId,
                            const SgUctGameInfo& info);
     
     void OnStartSearch();
@@ -128,11 +129,17 @@ public:
     bool UseSaveBridge() const    { return m_useSaveBridge; }
     void SetUseSaveBridge(bool f) { m_useSaveBridge = f; }
 
+    bool LiveGfx() const          { return m_liveGfx; }
+    void SetLiveGfx(bool f)       { m_liveGfx = f; }
+
 private:
     Board m_brd;
 
     bool m_useSaveBridge;
 
+    bool m_liveGfx;
+
+    SgUctValue m_nextLiveGfx;
 };
 
 inline void YUctSearch::SetBoard(const Board& brd)

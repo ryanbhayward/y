@@ -7,7 +7,8 @@ move.cpp \
 YMain.cpp \
 YGtpEngine.cpp \
 YSearch.cpp \
-YUctSearch.cpp
+YUctSearch.cpp \
+YUctSearchUtil.cpp
 
 noinst_HEADERS = \
 board.h \
@@ -15,7 +16,8 @@ connect.h \
 move.h \
 YGtpEngine.h \
 YSearch.h \
-YUctSearch.h
+YUctSearch.h \
+YUctSearchUtil.h
 
 y_LDADD = \
 $(FUEGO_BUILD)/smartgame/libfuego_smartgame.a \

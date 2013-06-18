@@ -5,6 +5,7 @@
 
 #include "SgSystem.h"
 #include "YUctSearch.h"
+#include "YUctSearchUtil.h"
 
 //----------------------------------------------------------------------------
 
@@ -165,6 +166,7 @@ YUctSearch::YUctSearch(YUctThreadStateFactory* threadStateFactory)
     : SgUctSearch(threadStateFactory, Y_MAX_CELL+1)
     , m_brd(13)
     , m_useSaveBridge(true)
+    , m_liveGfx(false)
 {
     SetMoveSelect(SG_UCTMOVESELECT_COUNT);
     SetNumberThreads(1);    
@@ -192,17 +194,28 @@ SgUctValue YUctSearch::UnknownEval() const
     return 0.5;
 }
 
-void YUctSearch::OnSearchIteration(std::size_t gameNumber, 
-                                    const unsigned int threadId,
-                                    const SgUctGameInfo& info)
+void YUctSearch::OnSearchIteration(SgUctValue gameNumber, 
+                                   const unsigned int threadId,
+                                   const SgUctGameInfo& info)
 {
-    SG_UNUSED(gameNumber);
-    SG_UNUSED(threadId);
-    SG_UNUSED(info);
+    SgUctSearch::OnSearchIteration(gameNumber, threadId, info);
+    if (m_liveGfx && threadId == 0 && gameNumber > m_nextLiveGfx)
+    {
+        m_nextLiveGfx = gameNumber + Statistics().m_gamesPerSecond;
+        std::ostringstream os;
+        os << "gogui-gfx:\n";
+        os << "uct\n";
+        SgBlackWhite toPlay = m_brd.ToPlay();
+        YUctSearchUtil::GoGuiGfx(*this, toPlay, m_brd.Const(), os);
+        os << '\n';
+        std::cout << os.str();
+        std::cout.flush();
+    }
 }
 
 void YUctSearch::OnStartSearch()
 {
+    m_nextLiveGfx = 1000;
 }
 
 void YUctSearch::OnEndSearch()
