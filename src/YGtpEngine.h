@@ -37,6 +37,9 @@ public:
     void CmdSolve(GtpCommand& cmd);
     void CmdUndo(GtpCommand& cmd);
     void CmdGenMove(GtpCommand& cmd);
+#if GTPENGINE_INTERRUPT
+    void CmdInterrupt(GtpCommand& cmd);
+#endif
     void CmdAnalyzeCommands(GtpCommand& cmd);
     void CmdSetPlayer(GtpCommand& cmd);
     void CmdTimeLeft(GtpCommand& cmd);
@@ -50,6 +53,11 @@ public:
     void CmdVersion(GtpCommand& cmd);
 
     // @}
+
+#if GTPENGINE_INTERRUPT
+    /** Calls SgSetUserAbort(). */
+    void Interrupt();
+#endif
 
 protected:
     /* Clears SgAbortFlag() */

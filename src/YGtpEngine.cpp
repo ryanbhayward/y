@@ -38,6 +38,9 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("showparents", &YGtpEngine::CmdShowParents);
     RegisterCmd("clear_board", &YGtpEngine::CmdClearBoard);
     RegisterCmd("genmove", &YGtpEngine::CmdGenMove);
+#if GTPENGINE_INTERRUPT
+    RegisterCmd("gogui-interrupt", &YGtpEngine::CmdInterrupt);
+#endif
     RegisterCmd("hexgui-analyze_commands", 
                 &YGtpEngine::CmdAnalyzeCommands);
     RegisterCmd("set_player", &YGtpEngine::CmdSetPlayer);
@@ -210,6 +213,16 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
     return SG_RESIGN;
 }
 
+#if GTPENGINE_INTERRUPT
+
+void YGtpEngine::Interrupt()
+{
+    SgSetUserAbort(true);
+}
+
+#endif // GTPENGINE_INTERRUPT
+
+
 //----------------------------------------------------------------------------
 
 void YGtpEngine::CmdExec(GtpCommand& cmd)
@@ -223,6 +236,17 @@ void YGtpEngine::CmdExec(GtpCommand& cmd)
         std::cerr << "Errors occured.\n";
     }
 }
+
+#if GTPENGINE_INTERRUPT
+
+/** Does nothing, but lets gogui know we can be interrupted with the 
+    "# interrupt" gtp command. */
+void YGtpEngine::CmdInterrupt(GtpCommand& cmd)
+{
+    cmd.CheckArgNone();
+}
+
+#endif
 
 void YGtpEngine::CmdName(GtpCommand& cmd)
 {
