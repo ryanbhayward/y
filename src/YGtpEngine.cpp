@@ -27,7 +27,7 @@ YGtpEngine::YGtpEngine(int boardSize)
       m_timeLeft(0),
       m_timeSettingsSpecified(false),
       m_ignoreClock(false),
-      m_allowSwap(false)
+      m_allowSwap(true)
 {
     RegisterCmd("exec", &YGtpEngine::CmdExec);
     RegisterCmd("name", &YGtpEngine::CmdName);

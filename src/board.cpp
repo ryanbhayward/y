@@ -40,7 +40,7 @@ std::string ConstBoard::ToString(int cell) const
 
 int ConstBoard::FromString(const string& name) const
 {
-    if (name == "swap")
+    if (name.size() >= 4 && name.substr(0,4) == "swap")
     	return Y_SWAP;
     int x = name[0] - 'a' + 1;
     std::istringstream sin(name.substr(1));
