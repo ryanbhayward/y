@@ -427,6 +427,8 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
             << "[bool] use_savebridge " << m_uctSearch.UseSaveBridge() << '\n'
             << "[string] bias_term_constant " 
             << m_uctSearch.BiasTermConstant() << '\n'
+            << "[string] expand_threshold " 
+            << m_uctSearch.ExpandThreshold() << '\n'
             << "[string] num_threads " << m_uctSearch.NumberThreads() << '\n'
             << "[string] max_games " << m_uctMaxGames << '\n'
             << "[string] max_memory "
@@ -450,6 +452,8 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
             m_ignoreClock = cmd.BoolArg(1);
         else if (name == "bias_term_constant")
             m_uctSearch.SetBiasTermConstant(cmd.FloatArg(1));
+        else if (name == "expand_threshold")
+            m_uctSearch.SetExpandThreshold(cmd.IntArg(1, 1));
         else if (name == "num_threads")
             m_uctSearch.SetNumberThreads(cmd.IntArg(1, 1));
         else if (name == "max_games")
