@@ -175,7 +175,7 @@ YUctSearch::YUctSearch(YUctThreadStateFactory* threadStateFactory)
     SetRandomizeRaveFrequency(0);
     SetRaveWeightInitial(1.0);
     SetRaveWeightFinal(20000.0);
-    SetMaxNodes(11500000);  // 1GB of memory
+    SetMaxNodes(2000000000 / sizeof(SgUctNode) / 2); // 2GB of memory
 }
  
 YUctSearch::~YUctSearch()

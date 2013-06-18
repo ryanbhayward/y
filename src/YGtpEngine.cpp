@@ -436,6 +436,10 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
             << m_uctSearch.BiasTermConstant() << '\n'
             << "[string] num_threads " << m_uctSearch.NumberThreads() << '\n'
             << "[string] max_games " << m_uctMaxGames << '\n'
+            << "[string] max_memory "
+            << m_uctSearch.MaxNodes() * 2 * sizeof(SgUctNode) << '\n'
+            << "[string] max_nodes "
+            << m_uctSearch.MaxNodes() << '\n'
             << "[string] max_time " << m_uctMaxTime << '\n';
     }
     else if (cmd.NuArg() == 2)
@@ -455,6 +459,11 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
             m_uctSearch.SetNumberThreads(cmd.IntArg(1, 1));
         else if (name == "max_games")
             m_uctMaxGames = cmd.SizeTypeArg(1, 2);
+        else if (name == "max_memory")
+            m_uctSearch.SetMaxNodes(cmd.ArgMin<std::size_t>(1, 1) 
+                                 / sizeof(SgUctNode) / 2);
+        else if (name == "max_nodes")
+            m_uctSearch.SetMaxNodes(cmd.ArgMin<std::size_t>(1, 1));
         else if (name == "max_time")
             m_uctMaxTime = cmd.FloatArg(1);
         else
