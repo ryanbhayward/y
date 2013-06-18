@@ -32,7 +32,6 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("exec", &YGtpEngine::CmdExec);
     RegisterCmd("name", &YGtpEngine::CmdName);
     RegisterCmd("play", &YGtpEngine::CmdPlay);
-    RegisterCmd("swap", &YGtpEngine::CmdSwap);
     RegisterCmd("boardsize", &YGtpEngine::CmdBoardSize);
     RegisterCmd("showboard", &YGtpEngine::CmdShowBoard);
     RegisterCmd("showborders", &YGtpEngine::CmdShowBorders);
@@ -124,7 +123,7 @@ void YGtpEngine::Play(int color, int cell)
     if (cell == Y_SWAP) {
         if (!m_allowSwap)
             throw GtpFailure("Swap setting is disabled!");
-        if (!m_brd.CanSwap())
+        if (m_history.size() != 1)
             throw GtpFailure("Cannot swap in this position!");
     	m_brd.Swap();
     }
@@ -144,7 +143,7 @@ void YGtpEngine::Undo()
     SG_ASSERT(! m_history.empty());
     int cell = m_history.back();
     if (cell == Y_SWAP)
-    	m_brd.UndoSwap();
+    	m_brd.Swap();
     else if (cell != SG_RESIGN)
     	m_brd.RemoveStone(cell);
     m_history.pop_back();
@@ -192,7 +191,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
             std::cerr << ' ' << m_brd.Const().ToString(sequence[i]);
         std::cerr << '\n';
 	
-        if (m_allowSwap && m_brd.CanSwap() && score < 0.5)
+        if (m_allowSwap && m_history.size()==1 && score < 0.5)
             return Y_SWAP;
         return sequence[0];
     }
@@ -268,13 +267,6 @@ void YGtpEngine::CmdUndo(GtpCommand& cmd)
 {
     cmd.CheckNuArg(0);
     Undo();
-}
-
-void YGtpEngine::CmdSwap(GtpCommand& cmd)
-{
-    cmd.CheckNuArg(0);
-    m_brd.Swap();
-    m_history.push_back(Y_SWAP);
 }
 
 void YGtpEngine::CmdShowBoard(GtpCommand& cmd)

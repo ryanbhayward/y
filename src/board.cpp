@@ -341,7 +341,6 @@ void Board::init()
     brdr[Const().fatten(N,N)] = BRDR_BOT;
  
     m_winner  = SG_EMPTY;
-    m_canSwap = true;
     m_lastMove = SG_NULLMOVE;
 
 #if 0
@@ -381,18 +380,7 @@ void Board::Swap()
     // FIXME: Needs to switch bridges later
     for (BoardIterator it(Const()); it; ++it)
 	if(board[*it] != SG_EMPTY)
-	    board[*it] = (board[*it] == SG_BLACK) ? SG_WHITE : SG_BLACK;
-    m_canSwap = false;
-    return;
-}
-
-void Board::UndoSwap() 
-{ 
-    // FIXME: Needs to switch bridges later
-    for (BoardIterator it(Const()); it; ++it)
-	if(board[*it] != SG_EMPTY)
 	    board[*it] = SgOppBW(board[*it]);
-    m_canSwap = true;
     return; 
 }
 //////////////////////////////////////////////////////////////////////

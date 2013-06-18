@@ -123,7 +123,6 @@ struct Board
     
     SgBlackWhite m_toPlay;
     SgBoardColor m_winner;
-    bool         m_canSwap;
     int          m_lastMove;
 
     Board();
@@ -143,9 +142,7 @@ struct Board
     SgBoardColor GetWinner() const { return m_winner; }
     bool IsWinner(SgBlackWhite player) const { return player == m_winner; }
 
-    bool CanSwap() const { return m_canSwap; }
     void Swap();
-    void UndoSwap();
 
     bool IsOccupied(int cell) const { return board[cell] != SG_EMPTY; }
     bool IsEmpty(int cell) const { return board[cell] == SG_EMPTY; };
