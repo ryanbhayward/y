@@ -47,13 +47,17 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("time_left", &YGtpEngine::CmdTimeLeft);
     RegisterCmd("time_settings", &YGtpEngine::CmdTimeSettings);
     RegisterCmd("undo", &YGtpEngine::CmdUndo);
-    RegisterCmd("uct_proven_nodes", &YGtpEngine::CmdUctProvenNodes);
-    RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
-    RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
     RegisterCmd("final_score", &YGtpEngine::CmdFinalScore);
     RegisterCmd("y_solve", &YGtpEngine::CmdSolve);
     RegisterCmd("y_param", &YGtpEngine::CmdParam);
     RegisterCmd("version", &YGtpEngine::CmdVersion);
+
+    RegisterCmd("uct_proven_nodes", &YGtpEngine::CmdUctProvenNodes);
+    RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
+    RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
+    
+    RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
+    RegisterCmd("block_liberties", &YGtpEngine::CmdBlockLiberties);
     
     NewGame();
 }
@@ -76,6 +80,8 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
     cmd <<
         "param/Search Parameters/y_param\n"
         "plist/All Legal Moves/all_legal_moves %c\n"
+        "group/Block Stones/block_stones %p\n"
+        "plist/Block Liberties/block_liberties %p\n"
         "string/ShowBoard/showboard\n"
         "string/Final Score/final_score\n"
         "varc/Reg GenMove/reg_genmove %c\n";
@@ -116,7 +122,7 @@ void YGtpEngine::ApplyTimeSettings()
 
 void YGtpEngine::NewGame()
 {
-    m_brd = Board(); //m_brd.Clear();
+    m_brd.SetSize(m_brd.Size());
     m_history.clear();
     ApplyTimeSettings();
 }
@@ -136,7 +142,7 @@ void YGtpEngine::Play(int color, int cell)
             throw GtpFailure("Cell not on board!");
         if (m_brd.IsOccupied(cell))
             throw GtpFailure("Cell is occupied!");
-        m_brd.move(Move(color,cell), false);
+        m_brd.Play(Move(color,cell));
     }
     m_history.push_back(cell);
 }
@@ -168,7 +174,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
     if (m_playerName == "uct")
     {
         m_brd.SetToPlay(toPlay);        
-        m_uctSearch.SetBoard(m_brd);
+        m_uctSearch.SetPosition(m_brd);
         std::vector<SgMove> sequence;
         double maxTime = m_uctMaxTime;
         std::size_t maxGames = m_uctMaxGames;
@@ -262,7 +268,7 @@ void YGtpEngine::CmdBoardSize(GtpCommand& cmd)
 {
     cmd.CheckNuArg(2);  // ignore second argument (so we work in hexgui)
     int size = cmd.IntArg(0, 1, Y_MAX_SIZE);
-    m_brd = Board(size);
+    m_brd.SetSize(size);
 }
 
 void YGtpEngine::CmdClearBoard(GtpCommand& cmd)
@@ -584,3 +590,34 @@ void YGtpEngine::CmdRaveScores(GtpCommand& cmd)
 }
 
 //----------------------------------------------------------------------------
+
+void YGtpEngine::CmdBlockStones(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    if (m_brd.GetColor(p) == SG_EMPTY)
+        return;
+    int anchor = m_brd.Anchor(p);
+    SgBlackWhite color = m_brd.GetColor(anchor);
+    cmd << m_brd.Const().ToString(anchor);
+    for (BoardIterator it(m_brd.Const()); it; ++it) {
+        if (*it != anchor
+            && m_brd.GetColor(*it) == color 
+            && m_brd.IsInBlock(*it, anchor))
+            cmd << ' ' << m_brd.Const().ToString(*it);
+    }
+}
+
+void YGtpEngine::CmdBlockLiberties(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    if (m_brd.GetColor(p) == SG_EMPTY)
+        return;
+    int anchor = m_brd.Anchor(p);
+    for (BoardIterator it(m_brd.Const()); it; ++it) {
+        if (m_brd.GetColor(*it) == SG_EMPTY 
+            && m_brd.IsLibertyOfBlock(*it, anchor))
+            cmd << ' ' << m_brd.Const().ToString(*it);
+    }
+}

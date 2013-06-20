@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "SgSystem.h"
+#include "SgArrayList.h"
 #include "SgHash.h"
 #include "SgBoardColor.h"
 #include "SgMove.h"
@@ -28,14 +29,8 @@ static const int Y_INFINITY = 9999;
 //                  g g g . . . . . . 
 
 
-static const int Y_MAX_CELL = 255;
+static const int Y_MAX_CELL = 512;
 static const int Y_MAX_SIZE = 19;   // such that TotalCells < Y_MAX_CELL
-
-static const int BRDR_NIL  = 0; // 000   border values, used bitwise
-static const int BRDR_BOT   = 1; // 001
-static const int BRDR_L     = 2; // 010
-static const int BRDR_R     = 4; // 100
-static const int BRDR_ALL   = 7; // 111
 
 static const int TMP = 4;
 
@@ -49,8 +44,6 @@ struct Move {
   Move(int x, int y) : s(x), lcn(y) {}
   Move() {}
 } ;
-
-bool has_win(int bd_set) ;
 
 class ConstBoard 
 {
@@ -66,6 +59,7 @@ public:
     int Nbr_offsets[NumNbrs+1];
     int Bridge_offsets[NumNbrs];
 
+    ConstBoard();
     ConstBoard(int size);
 
     static char ColorToChar(SgBoardColor color);
@@ -114,23 +108,14 @@ private:
 
 struct Board 
 {
-    ConstBoard m_constBrd;
-
-    std::vector<SgBoardColor> board;
-    std::vector<int> parent;   
-    std::vector<int> brdr;
-    std::vector<int> reply[2];  // miai reply
-    
-    SgBlackWhite m_toPlay;
-    SgBoardColor m_winner;
-    int          m_lastMove;
-
-    Board();
-    Board(int size); // constructor
+    explicit Board(int size);
 
     const ConstBoard& Const() const { return m_constBrd; }
 
+    void SetSize(int size);
     int Size() const { return Const().Size(); }
+
+    void SetPosition(const Board& other);
 
     std::string ToString() const;
     std::string BorderToString() const;
@@ -138,46 +123,149 @@ struct Board
 
     SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };
 
-    bool IsGameOver() const { return m_winner != SG_EMPTY; }
-    SgBoardColor GetWinner() const { return m_winner; }
-    bool IsWinner(SgBlackWhite player) const { return player == m_winner; }
+    bool IsGameOver() const { return m_state.m_winner != SG_EMPTY; }
+    SgBoardColor GetWinner() const { return m_state.m_winner; }
+    bool IsWinner(SgBlackWhite player) const 
+    { return player == m_state.m_winner; }
 
     void Swap();
 
-    bool IsOccupied(int cell) const { return board[cell] != SG_EMPTY; }
-    bool IsEmpty(int cell) const { return board[cell] == SG_EMPTY; };
-    int  TotalEmptyCells();
+    bool IsOccupied(int cell) const 
+    { return m_state.m_color[cell] != SG_EMPTY; }
+    
+    bool IsEmpty(int cell) const 
+    { return m_state.m_color[cell] == SG_EMPTY; }
 
-    int ToPlay() const         { return m_toPlay; }
-    void SetToPlay(int toPlay) { m_toPlay = toPlay; }
+    SgBoardColor GetColor(int cell) const
+    { return m_state.m_color[cell]; }
 
-    void zero_connectivity(int s, bool removeStone = true);
-    void set_miai    (int s, int m1, int m2);
-    void release_miai(Move mv);
-    bool not_in_miai (Move mv);
-    void put_stone   (Move mv);
+    int ToPlay() const         { return m_state.m_toPlay; }
+    void SetToPlay(int toPlay) { m_state.m_toPlay = toPlay; }
+
     void RemoveStone(int lcn);
-    int LastMove() const { return m_lastMove; }
-    void SetLastMove(int lcn) { m_lastMove = lcn; } // used after undo
-    int  move(Move mv, bool useMiai);
-    int  moveMiaiPart(Move mv, bool useMiai, int cpt);
-    void YborderRealign(Move mv, int& cpt, int c1, int c2, int c3);
-    void show();
+    int LastMove() const { return m_state.m_lastMove; }
+    void SetLastMove(int lcn) { m_state.m_lastMove = lcn; } // used after undo
+    void Play(Move mv);
 
     // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
     // a move to reestablish the connection.
     int SaveBridge(int lastMove, const SgBlackWhite toPlay, 
                    SgRandom& random) const;
 
+    int Anchor(int p) const 
+    { return m_state.m_block[p]->m_anchor; }
+
+    bool IsInBlock(int p, int anchor) const
+    { return m_state.m_block[p]->m_anchor == anchor; }
+
+    bool IsLibertyOfBlock(int p, int anchor) const
+    { return m_state.m_block[anchor]->m_liberties.Contains(p); }
+
+    void SetSavePoint1()      { CopyState(m_savePoint1, m_state); }
+    void SetSavePoint2()      { CopyState(m_savePoint2, m_state); }
+    void RestoreSavePoint1()  { CopyState(m_state, m_savePoint1); }
+    void RestoreSavePoint2()  { CopyState(m_state, m_savePoint2); }
+
+    void CheckConsistency();
 private:
-  
-    void init();
+
+    static const int BORDER_NONE  = 0; // 000   border values, used bitwise
+    static const int BORDER_BOTTOM= 1; // 001
+    static const int BORDER_LEFT  = 2; // 010
+    static const int BORDER_RIGHT = 4; // 100
+    static const int BORDER_ALL   = 7; // 111
+
+    struct Block
+    {
+        static const int MAX_STONES = Y_MAX_CELL;
+        static const int MAX_LIBERTIES = Y_MAX_CELL;
+
+        typedef SgArrayList<int, MAX_LIBERTIES> LibertyList;
+        typedef LibertyList::Iterator LibertyIterator;
+
+        typedef SgArrayList<int, MAX_STONES> StoneList;
+        typedef StoneList::Iterator StoneIterator;
+
+        int m_anchor;
+        int m_border;
+        SgBlackWhite m_color;
+        LibertyList m_liberties;    
+        StoneList m_stones;
+
+        Block()
+        { }
+
+        Block(int p, SgBlackWhite color)
+            : m_anchor(p)
+            , m_color(color)
+        { }
+
+        void UpdateAnchor(int other)
+        { m_anchor = std::min(m_anchor, other); }
+    };
+
+    class CellNbrIterator
+    {
+    public:
+        CellNbrIterator(const ConstBoard& cbrd, int p)
+            : m_cbrd(cbrd)
+            , m_point(p)
+            , m_index(0)
+        { }
+
+        /** Advance the state of the iteration to the next liberty. */
+        void operator++()
+        { ++m_index; }
+
+        /** Return the current liberty. */
+        int operator*() const
+        { return m_point + m_cbrd.Nbr_offsets[m_index]; }
+
+        /** Return true if iteration is valid, otherwise false. */
+        operator bool() const
+        { return m_index < 6; }
+
+    private:
+        const ConstBoard& m_cbrd;
+        int m_point;
+        int m_index;
+    };
+
+    ConstBoard m_constBrd;
+
+    struct State 
+    {
+        std::vector<SgBoardColor> m_color;
+        std::vector<Block*> m_block;
+        std::vector<Block> m_blockList;
+        
+        SgBlackWhite m_toPlay;
+        SgBoardColor m_winner;
+        int          m_lastMove;
+
+        void Init(int T);
+        void CopyState(const State& other);
+    };
+
+    State m_state;
+    State m_savePoint1;
+    State m_savePoint2;
+        
+    void CreateSingleStoneBlock(int p, SgBlackWhite color, int border);
+
+    bool IsAdjacent(int p, const Block* b);
+
+    void AddStoneToBlock(int p, int border, Block* b);
+
+    void MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks);
 
     void FlipToPlay()
-    {
-        m_toPlay = (m_toPlay == SG_BLACK) ? SG_WHITE : SG_BLACK;
-    }
+    { m_state.m_toPlay = SgOppBW(m_state.m_toPlay); }
 
+    void CopyState(Board::State& a, const Board::State& b);
+
+    Board(const Board& other);          // not implemented
+    void operator=(const Board& other); // not implemented
 };
 
 //----------------------------------------------------------------------

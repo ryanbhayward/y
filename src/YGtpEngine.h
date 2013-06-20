@@ -52,6 +52,9 @@ public:
     void CmdFinalScore(GtpCommand& cmd);
     void CmdVersion(GtpCommand& cmd);
 
+    void CmdBlockStones(GtpCommand& cmd);
+    void CmdBlockLiberties(GtpCommand& cmd);
+
     // @}
 
 #if GTPENGINE_INTERRUPT

@@ -2,8 +2,6 @@ bin_PROGRAMS = y
 
 y_SOURCES = \
 board.cpp \
-connect.cpp \
-move.cpp \
 YMain.cpp \
 YGtpEngine.cpp \
 YSearch.cpp \
@@ -12,8 +10,6 @@ YUctSearchUtil.cpp
 
 noinst_HEADERS = \
 board.h \
-connect.h \
-move.h \
 YGtpEngine.h \
 YSearch.h \
 YUctSearch.h \

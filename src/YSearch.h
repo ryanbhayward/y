@@ -88,7 +88,7 @@ inline SgBlackWhite YSearch::GetToPlay() const
 
 inline void YSearch::SetPosition(const Board& brd)
 {
-    m_brd = brd;
+    m_brd.SetPosition(brd);
 }
 
 inline SgHashCode YSearch::GetHashCode() const

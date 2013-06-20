@@ -122,7 +122,7 @@ public:
 
     // @} // name
 
-    void SetBoard(const Board& brd);
+    void SetPosition(const Board& brd);
 
     const Board& GetBoard() const;
 
@@ -142,9 +142,9 @@ private:
     SgUctValue m_nextLiveGfx;
 };
 
-inline void YUctSearch::SetBoard(const Board& brd)
+inline void YUctSearch::SetPosition(const Board& brd)
 {
-    m_brd = brd;
+    m_brd.SetPosition(brd);
 }
 
 inline const Board& YUctSearch::GetBoard() const

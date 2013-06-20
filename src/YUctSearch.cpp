@@ -43,7 +43,7 @@ YUctThreadState::YUctThreadState(const YUctSearch& search,
                                    const unsigned int threadId)
     : SgUctThreadState(threadId, Y_MAX_CELL + 1),
       m_search(search),
-      m_brd(search.GetBoard())
+      m_brd(search.GetBoard().Size())
 {
 }
 
@@ -55,21 +55,21 @@ SgUctValue YUctThreadState::Evaluate()
 {
     SG_ASSERT(m_brd.IsGameOver());
     // std::cerr << "GAME OVER" << m_brd.ToString() << '\n';
-    // if (m_brd.IsWinner(BLK))
+    // if (m_brd.IsWinner(SG_BLACK))
     //     std::cerr << "BLACK WINS!\n";
-    // if (m_brd.IsWinner(WHT))
+    // if (m_brd.IsWinner(SG_WHITE))
     //     std::cerr << "WHITE WINS!\n";
     return m_brd.IsWinner(m_brd.ToPlay()) ? 1.0 : 0.0;
 }
 
 void YUctThreadState::Execute(SgMove move)
 {
-    m_brd.move(Move(m_brd.ToPlay(), move), false);
+    m_brd.Play(Move(m_brd.ToPlay(), move));
 }
 
 void YUctThreadState::ExecutePlayout(SgMove move)
 {
-    m_brd.move(Move(m_brd.ToPlay(), move), false);
+    m_brd.Play(Move(m_brd.ToPlay(), move));
 }
 
 bool YUctThreadState::GenerateAllMoves(SgUctValue count, 
@@ -98,6 +98,7 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
 SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
 {
     skipRaveUpdate = false;
+    //m_brd.CheckConsistency();
     if (m_emptyCells.empty())
         return SG_NULLMOVE;
     if (m_brd.IsGameOver())
@@ -106,26 +107,21 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
     if (m_search.UseSaveBridge()) 
     {
         move = m_brd.SaveBridge(m_brd.LastMove(), m_brd.ToPlay(), m_random);
- #if 0
-        if (move != SG_NULLMOVE)
-            std::cerr << m_brd.ToString() << "\n"
-                      << "Last move " << m_brd.Const().ToString(m_brd.LastMove()) << '\n'
-                      << "Save move " << m_brd.Const().ToString(move) << '\n';
-#endif
     } 
     if (move == SG_NULLMOVE)
     {
         do {
             move = m_emptyCells.back();
             m_emptyCells.pop_back();
-        } while (m_brd.board[move] != SG_EMPTY);
+        } while (m_brd.GetColor(move) != SG_EMPTY);
     }
     return move;
 }
 
 void YUctThreadState::StartSearch()
 {
-    m_brd = m_search.GetBoard();
+    m_brd.SetPosition(m_search.GetBoard());
+    m_brd.SetSavePoint1();
 }
 
 void YUctThreadState::TakeBackInTree(std::size_t nuMoves)
@@ -140,18 +136,23 @@ void YUctThreadState::TakeBackPlayout(std::size_t nuMoves)
 
 void YUctThreadState::GameStart()
 {
-    m_brd = m_search.GetBoard();
+    m_brd.RestoreSavePoint1();
 }
 
 void YUctThreadState::StartPlayouts()
 {
+    if (m_search.NumberPlayouts() > 1)
+        m_brd.SetSavePoint2();
 }
 
 void YUctThreadState::StartPlayout()
 {
+    if (m_search.NumberPlayouts() > 1)
+        m_brd.RestoreSavePoint2();
+
     m_emptyCells.clear();
     for (BoardIterator it(m_brd); it; ++it)
-        if (SG_EMPTY == m_brd.board[*it])
+        if (SG_EMPTY == m_brd.GetColor(*it))
             m_emptyCells.push_back(*it);
     ShuffleVector(m_emptyCells, m_random);
 }

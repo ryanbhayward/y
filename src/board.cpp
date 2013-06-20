@@ -49,6 +49,10 @@ int ConstBoard::FromString(const string& name) const
     return fatten(y-1, x-1);
 }
 
+ConstBoard::ConstBoard()
+    : m_size(-1)
+{ }
+
 ConstBoard::ConstBoard(int size)
     : m_size(size)
     , Np2G(m_size+2*GUARDS)
@@ -76,117 +80,254 @@ ConstBoard::ConstBoard(int size)
             m_cells.push_back(fatten(r,c));
 }
 
-#if 0
-///////////// Playout::
+//----------------------------------------------------------------------
 
-void Playout::single_playout(int& turn, int& k, bool useMiai) { 
-  Board L(B);
-  k = -1; // k+1 is num stones placed before winner found
-  int bd_set = BRDR_NIL; 
-  shuffle_interval(Avail, 0, numAvail-1);
-  do { 
-    k++;
-    if (L.board[Avail[k]]!=EMP) {
-      printf("k %d  turn %d\n",k,turn);
-      L.show();
-    }
-    assert(L.board[Avail[k]]==EMP);
-
-    Move mv(turn, Avail[k]);
-    int miReply = L.move(mv, useMiai, bd_set);
-    // played into oppt miai ?
-    int resp = L.reply[ndx(oppnt(turn))][Avail[k]];
-    if (resp!=Avail[k]) {//prep for autorespond on next move
-      int z;
-      for (z=k+1; Avail[z]!=resp; z++) ;
-      if (z>=TotalCells) {
-       printf("miai problem   resp %d k %d turn %d\n",resp,k,turn);
-       B.show(); L.show(); shapeAs(RHOMBUS,Avail);
-       L.showMi(oppnt(turn)); B.showMi(oppnt(turn));
-       L.showMi(turn); B.showMi(turn);
-      }
-      assert(z<TotalCells); assert((k+1)<TotalCells);
-      swap(Avail[k+1],Avail[z]);
-    }
-    turn = oppnt(turn);
-  } while (!has_win(bd_set)) ; }
-
-Playout::Playout(Board& B):B(B) 
+Board::Board(int size) 
 { 
-    int psn; int j=0;
-    for (BoardIterator it(B); it; ++it) {
-        if (EMP==B.board[*it])
-            Avail[j++]=psn;
-    }
-    assert(j!=0); // must be available move
-    numAvail = j;
-    numWinners = 0;
-    memset(wins,0,sizeof(wins));
-    memset(winsBW,0,sizeof(winsBW));
-    memset(colorScore,0,sizeof(colorScore));
-    memset(win_length,0,sizeof(win_length)); 
-}
-#endif
-
-//////////////////// Board::
- 
-#if 0
-void Board::showMi(int s) 
-{ 
-    for (int j = 0; j < N; j++) {
-        int psn = (j+GUARDS)*Np2G + GUARDS; //printf("psn %2d ",psn);
-        for (int k = 0; k < j; k++) 
-            printf(" ");
-        for (int k = 0; k < N-j; k++) {
-            int x = reply[ndx(s)][psn++];
-            if (x!=psn-1)
-                printf(" %3d", x);
-            else
-                printf("   *");
-        }
-        printf("\n");
-    }
-    printf("\n"); 
+    SetSize(size);
 }
 
-void Board::showP() 
+void Board::State::Init(int T)
 {
-    printf("UF parents (for non-captains only)\n");
-    for (int j = 0; j < N; j++) {
-        int psn = (j+GUARDS)*Np2G + GUARDS; //printf("psn %2d ",psn);
-        for (int k = 0; k < j; k++) 
-            printf(" ");
-        for (int k = 0; k < N-j; k++) {
-            int x = parent[psn++];
-            if (x!=psn-1)
-                prtLcn(x);//printf(" %3d", x);
-            else
-                printf("   *");
-        }
-        printf("\n");
-    }
-    printf("\n"); }
+    m_color.resize(T);
+    std::fill(m_color.begin(), m_color.end(), SG_BORDER);
 
-void Board::showBr() 
-{ 
-    printf("border values\n");
-    int psn = 0;
-    for (int j = 0; j < Np2G; j++) {
-        for (int k = 0; k < j; k++)
-            printf(" ");
-        for (int k = 0; k < Np2G; k++) {
-            int x = brdr[psn++];
-            if (x != BRDR_NIL)
-                printf(" %3d", x);
-            else
-                printf("  * ");
-        }
-        printf("\n");
-    }
-    printf("\n"); 
+    m_block.resize(T+3);
+    std::fill(m_block.begin(), m_block.end(), (Block*)0);
+
+    m_blockList.resize(T+3);
 }
 
-#endif
+void Board::SetSize(int size)
+{ 
+    m_constBrd = ConstBoard(size);
+
+    const int N = Size();
+    const int T = Const().TotalGBCells;
+    m_state.Init(T);
+ 
+    // Create block for left edge
+    {
+        Block& b = m_state.m_blockList[T+0];
+        b.m_anchor = -1;  // never used for edge blocks
+        b.m_border = BORDER_LEFT;
+        b.m_color = SG_BORDER;
+        b.m_stones.Clear();
+        for (int i = 0; i < N; ++i)
+            b.m_liberties.PushBack(Const().fatten(i,0));
+    }
+    // Create block for right edge
+    {
+        Block& b = m_state.m_blockList[T+1];
+        b.m_anchor = -1;  // never used for edge blocks
+        b.m_border = BORDER_RIGHT;
+        b.m_color = SG_BORDER;
+        b.m_stones.Clear();
+        for (int i = 0; i < N; ++i)
+            b.m_liberties.PushBack(Const().fatten(i,i));
+    }
+    // Create block for bottom edge
+    {
+        Block& b = m_state.m_blockList[T+2];
+        b.m_anchor = -1;  // never used for edge blocks
+        b.m_border = BORDER_BOTTOM;
+        b.m_color = SG_BORDER;
+        b.m_stones.Clear();
+        for (int i = 0; i < N; ++i)
+            b.m_liberties.PushBack(Const().fatten(N,i-1));
+    }
+    // set guards to point to their border block
+    for (int i=0; i<N; i++) { 
+        m_state.m_block[Const().fatten(i,0)-1] = &m_state.m_blockList[T+0];
+        m_state.m_block[Const().fatten(i,i)+1] = &m_state.m_blockList[T+1];
+        m_state.m_block[Const().fatten(N,i)] = &m_state.m_blockList[T+2];
+    }
+    m_state.m_block[Const().fatten(-1,0)-1] = &m_state.m_blockList[T+0];
+    m_state.m_block[Const().fatten(-1,-1)+1] = &m_state.m_blockList[T+1];
+    m_state.m_block[Const().fatten(N,N)] = &m_state.m_blockList[T+2];
+   
+    for (BoardIterator it(Const()); it; ++it)
+        m_state.m_color[*it] = SG_EMPTY;
+
+    m_state.m_winner  = SG_EMPTY;
+    m_state.m_lastMove = SG_NULLMOVE;
+}
+
+void Board::SetPosition(const Board& other) 
+{
+    SetSize(other.Size());
+    for (BoardIterator it(Const()); it; ++it) {
+        SgBlackWhite c = other.m_state.m_color[*it];
+        if (c != SG_EMPTY)
+            Play(Move(c, *it));
+    }
+    m_state.m_toPlay = other.m_state.m_toPlay;
+}
+
+void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
+{
+    Block* b = m_state.m_block[p] = &m_state.m_blockList[p];
+    b->m_anchor = p;
+    b->m_color = color;
+    b->m_border = border;
+    b->m_stones.SetTo(p);
+    b->m_liberties.Clear();
+    for (CellNbrIterator it(Const(), p); it; ++it) {
+        if (m_state.m_color[*it] == SG_EMPTY)
+            b->m_liberties.PushBack(*it);
+    }
+}
+
+bool Board::IsAdjacent(int p, const Block* b)
+{
+    for (CellNbrIterator it(Const(), p); it; ++it)
+        if (m_state.m_block[*it] == b)
+            return true;
+    return false;
+}
+
+void Board::AddStoneToBlock(int p, int border, Block* b)
+{
+    b->UpdateAnchor(p);
+    b->m_border |= border;
+    b->m_stones.PushBack(p);
+    for (CellNbrIterator it(Const(), p); it; ++it)
+        if (m_state.m_color[*it] == SG_EMPTY && !IsAdjacent(*it, b))
+            b->m_liberties.PushBack(*it);
+    m_state.m_block[p] = b;
+}
+
+void Board::MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks)
+{
+    Block* largestBlock = 0;
+    int largestBlockStones = 0;
+    for (SgArrayList<Block*,3>::Iterator it(adjBlocks); it; ++it)
+    {
+        Block* adjBlock = *it;
+        int numStones = adjBlock->m_stones.Length();
+        if (numStones > largestBlockStones)
+        {
+            largestBlockStones = numStones;
+            largestBlock = adjBlock;
+        }
+    }
+    m_state.m_block[p] = largestBlock;
+    largestBlock->m_border |= border;
+    largestBlock->m_stones.PushBack(p);
+
+    bool seen[Y_MAX_CELL];
+    memset(seen, 0, sizeof(seen));
+    for (Block::LibertyIterator lib(largestBlock->m_liberties); lib; ++lib)
+        seen[*lib] = true;
+    for (SgArrayList<Block*,3>::Iterator it(adjBlocks); it; ++it)
+    {
+        Block* adjBlock = *it;
+        if (adjBlock == largestBlock)
+            continue;
+        largestBlock->m_border |= adjBlock->m_border;
+        for (Block::StoneIterator stn(adjBlock->m_stones); stn; ++stn)
+        {
+            largestBlock->m_stones.PushBack(*stn);
+            m_state.m_block[*stn] = largestBlock;
+        }
+        for (Block::LibertyIterator lib(adjBlock->m_liberties); lib; ++lib)
+            if (!seen[*lib]) {
+                seen[*lib] = true;
+                largestBlock->m_liberties.PushBack(*lib);
+            }
+    }
+    for (CellNbrIterator it(Const(), p); it; ++it)
+        if (m_state.m_color[*it] == SG_EMPTY && !seen[*it])
+            largestBlock->m_liberties.PushBack(*it);
+}
+
+void Board::Play(Move mv) 
+{
+    int p = mv.lcn; 
+    SgBlackWhite color = mv.s;
+
+    m_state.m_lastMove = p;    
+    m_state.m_toPlay = color;
+    m_state.m_color[p] = color;
+
+    int border = 0;
+    SgArrayList<Block*, 3> adjBlocks;
+    for (CellNbrIterator it(Const(), p); it; ++it) {
+        if (m_state.m_color[*it] == SG_BORDER) {
+            border |= m_state.m_block[*it]->m_border;
+        }
+        else if (m_state.m_color[*it] != SG_EMPTY) {
+            Block* b = m_state.m_block[*it];
+            b->m_liberties.Exclude(p);
+            if (b->m_color == color && !adjBlocks.Contains(b))
+                adjBlocks.PushBack(b);
+        }
+    }
+
+    if (adjBlocks.Length() == 0)
+        CreateSingleStoneBlock(p, color, border);
+    else if (adjBlocks.Length() == 1)
+        AddStoneToBlock(p, border, adjBlocks[0]);
+    else
+        MergeBlocks(p, border, adjBlocks);
+
+    if (m_state.m_block[p]->m_border == BORDER_ALL) {
+        m_state.m_winner = color;
+    }
+
+    FlipToPlay();
+}
+
+void Board::RemoveStone(int p)
+{
+    std::vector<SgBoardColor> m_oldColor(m_state.m_color);
+    m_oldColor[p] = SG_EMPTY;
+    SetSize(Size());
+    for (BoardIterator it(Const()); it; ++it)
+        if (m_oldColor[*it] != SG_EMPTY)
+            Play(Move(m_oldColor[*it],*it));
+}
+
+void Board::Swap()
+{
+    for (BoardIterator it(Const()); it; ++it) {
+	if(m_state.m_color[*it] != SG_EMPTY) {
+            m_state.m_color[*it] = SgOppBW(m_state.m_color[*it]);
+            if (*it == Anchor(*it)) {
+                Block* b = m_state.m_block[*it];
+                b->m_color = SgOppBW(b->m_color);
+            }
+        }
+    }
+}
+
+void Board::CopyState(Board::State& a, const Board::State& b)
+{
+    a = b;
+    // Fix pointers since they are now pointing into other
+    for (BoardIterator it(Const()); it; ++it) {
+        if (b.m_color[*it] != SG_EMPTY) {
+            a.m_block[*it] = &a.m_blockList[b.m_block[*it]->m_anchor];
+        }
+    }
+}
+
+void Board::CheckConsistency()
+{
+    // FIXME: ADD MORE CHECKS HERE!!
+    for (BoardIterator it(Const()); it; ++it) {
+        int color = m_state.m_color[*it];
+        if (color != SG_BLACK && color != SG_WHITE && color != SG_EMPTY)
+        {
+            std::cerr << ToString();
+            std::cerr << Const().ToString(*it) << " color = " 
+                      << m_state.m_color[*it] << '\n';
+            abort();
+        }
+    }
+}
+
+//----------------------------------------------------------------------
 
 std::string Board::ToString() const
 {
@@ -198,7 +339,7 @@ std::string Board::ToString() const
             os << ' ';
         os << (j+1<10?" ":"") << j+1 << "  "; 
         for (int k = 0; k <= j ; k++) 
-            os << ConstBoard::ColorToChar(board[Const().fatten(j,k)]) << "  ";
+            os << ConstBoard::ColorToChar(m_state.m_color[Const().fatten(j,k)]) << "  ";
         os << "\n";
     }
     os << "   ";
@@ -237,11 +378,14 @@ std::string Board::BorderToString() const
 	for (int k = 0; k < j; k++)
 	    os << ' ';
 	for (int k = 0; k < Np2G; k++) {
-	    int x = brdr[ConstFind(parent,psn++)];
-	    if (x != BRDR_NIL)
-		os << "  " << x;
-	    else
-		os << "  *";
+            char c = '*';
+	    if (m_state.m_block[psn] != 0) {
+                if (m_state.m_block[psn]->m_border != BORDER_NONE)
+                    c = '0' + m_state.m_block[psn]->m_border;
+            }
+            os << "  " << c;
+
+            psn++;
 	}
 	os << "\n";
     }
@@ -252,6 +396,7 @@ std::string Board::BorderToString() const
 std::string Board::ParentsToString() const
 {
     ostringstream os;
+#if 0
     const int N = Size();
     os << "\n" << "UF Parents (for non-captains only):\n\n";
     for (int j = 0; j < N; j++) {
@@ -267,122 +412,10 @@ std::string Board::ParentsToString() const
 	}
 	os << "\n";
     }
+#endif
     return os.str();
 }
 
-void Board::show() 
-{
-    printf("%s\n", ToString().c_str());
-}
-
-void Board::zero_connectivity(SgBlackWhite color, bool remS) 
-{ 
-  for (BoardIterator it(Const()); it; ++it) {
-        reply[color][*it] = *it;
-        if (board[*it]==color) {
-	    parent[*it] = *it;
-              brdr[*it] = BRDR_NIL;
-             board[*it] = TMP;
-            if (remS)
-                board[*it]= SG_EMPTY;
-        }
-    } 
-}
-
-void Board::RemoveStone(int lcn)
-{
-    int color = board[lcn];
-    this->zero_connectivity(color, false);
-    board[lcn] = SG_EMPTY;
-    for (BoardIterator it(Const()); it; ++it) {
-        if (board[*it] == TMP)
-	     move(Move(color, *it), false);
-    }     
-    m_lastMove = SG_NULLMOVE;
-}
-
-int  Board::TotalEmptyCells()
-{
-    int num_empty = 0;
-    for (BoardIterator it(Const()); it; ++it)
-	if (board[*it] == SG_EMPTY)
-	    num_empty++;
-    return num_empty;
-}
-
-void Board::init() 
-{ 
-    const int N = Size();
-    const int T = Const().TotalGBCells;
-
-    board.resize(T);
-    parent.resize(T);
-    brdr.resize(T);
-    reply[0].resize(T);
-    reply[1].resize(T);
-
-    for (int j=0; j<T; j++) {
-        board[j] = SG_BORDER; 
-        brdr[j]  = BRDR_NIL; 
-        parent[j]  = j;
-        for (int k=0; k<2; k++) 
-            reply[k][j] = j;
-    }
-    for (BoardIterator it(Const()); it; ++it)
-        board[*it] = SG_EMPTY;
-
-    for (int j=0; j<N; j++) { 
-        brdr[Const().fatten(j,0)-1] = BRDR_L;
-        brdr[Const().fatten(j,j)+1]   = BRDR_R;
-        brdr[Const().fatten(N,j)]   = BRDR_BOT;
-    }
-    brdr[Const().fatten(-1,0)-1] = BRDR_L;
-    brdr[Const().fatten(-1,-1)+1] = BRDR_R;
-    brdr[Const().fatten(N,N)] = BRDR_BOT;
- 
-    m_winner  = SG_EMPTY;
-    m_lastMove = SG_NULLMOVE;
-
-#if 0
-    const int Np2G = Const().Np2G;
-    printf("border values\n");
-    int psn = 0;
-    for (int j = 0; j < Np2G; j++) {
-        for (int k = 0; k < j; k++)
-            printf(" ");
-        for (int k = 0; k < Np2G; k++) {
-            int x = brdr[psn++];
-            if (x != BRDR_NIL)
-                printf(" %2d", x);
-            else
-                printf("  *");
-        }
-        printf("\n");
-    }
-    printf("\n"); 
-#endif
-}
-
-Board::Board()
-    : m_constBrd(10)
-{
-    init();
-}
-
-Board::Board(int size) 
-    : m_constBrd(size)
-{ 
-    init(); 
-}
-
-void Board::Swap()
-{
-    // FIXME: Needs to switch bridges later
-    for (BoardIterator it(Const()); it; ++it)
-	if(board[*it] != SG_EMPTY)
-	    board[*it] = SgOppBW(board[*it]);
-    return; 
-}
 //////////////////////////////////////////////////////////////////////
 
 int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay, 
@@ -403,7 +436,7 @@ int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay,
     {
         const int i = (j + start) % 6;
         const int p = lastMove + Const().Nbr_offsets[i];
-        const bool mine = board[p] == toPlay;
+        const bool mine = m_state.m_color[p] == toPlay;
         if (s == 0)
         {
             if (mine) s = 1;
@@ -411,7 +444,7 @@ int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay,
         else if (s == 1)
         {
             if (mine) s = 1;
-            else if (board[p] == !toPlay) s = 0;
+            else if (m_state.m_color[p] == !toPlay) s = 0;
             else
             {
                 s = 2;

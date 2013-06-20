@@ -32,7 +32,7 @@ int g_seed = 0;
 
 bool g_useGridCoords = false;
 
-int g_boardSize = 8;
+int g_boardSize = 13;
 
 void Usage()
 {
@@ -59,7 +59,7 @@ void AddCommandLineArguments()
          po::value<int>(&g_seed)->default_value(0), 
          "RNG seed (0=use system time).")
         ("boardsize", 
-         po::value<int>(&g_boardSize)->default_value(8),
+         po::value<int>(&g_boardSize)->default_value(13),
          "Boardsize to use at startup.")
         ("config", 
          po::value<std::string>(&g_config_file)->default_value(""),
