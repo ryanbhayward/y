@@ -64,12 +64,12 @@ SgUctValue YUctThreadState::Evaluate()
 
 void YUctThreadState::Execute(SgMove move)
 {
-    m_brd.Play(Move(m_brd.ToPlay(), move));
+    m_brd.Play(m_brd.ToPlay(), move);
 }
 
 void YUctThreadState::ExecutePlayout(SgMove move)
 {
-    m_brd.Play(Move(m_brd.ToPlay(), move));
+    m_brd.Play(m_brd.ToPlay(), move);
 }
 
 bool YUctThreadState::GenerateAllMoves(SgUctValue count, 

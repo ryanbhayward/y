@@ -114,7 +114,7 @@ bool YSearch::Execute(SgMove move, int* delta, int depth)
     SG_UNUSED(depth);
     *delta = DEPTH_UNIT;
     int cell = static_cast<int>(move);
-    m_brd.Play(Move(m_toPlay, cell));
+    m_brd.Play(m_toPlay, cell);
     m_history.push_back(cell);
     m_toPlay = SgOppBW(m_toPlay);
     return true;

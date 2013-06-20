@@ -9,7 +9,6 @@
 #include "SgHash.h"
 #include "SgBoardColor.h"
 #include "SgMove.h"
-#include "move.h"
 #include "VectorIterator.h"
 
 static const int Y_INFINITY = 9999;
@@ -37,13 +36,6 @@ static const int TMP = 4;
 static const int Y_SWAP = -2;  // SG_NULLMOVE == -1
  
 static const int NumNbrs = 6;              // num nbrs of each cell
-
-struct Move {
-  int s;
-  int lcn;
-  Move(int x, int y) : s(x), lcn(y) {}
-  Move() {}
-} ;
 
 class ConstBoard 
 {
@@ -145,7 +137,7 @@ struct Board
     void RemoveStone(int lcn);
     int LastMove() const { return m_state.m_lastMove; }
     void SetLastMove(int lcn) { m_state.m_lastMove = lcn; } // used after undo
-    void Play(Move mv);
+    void Play(SgBlackWhite color, int p);
 
     // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
     // a move to reestablish the connection.

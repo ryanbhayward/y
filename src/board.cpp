@@ -6,8 +6,6 @@
 #include <string>
 
 #include "board.h"
-#include "move.h"
-#include "connect.h"
 
 using namespace std;
 
@@ -159,7 +157,7 @@ void Board::SetPosition(const Board& other)
     for (BoardIterator it(Const()); it; ++it) {
         SgBlackWhite c = other.m_state.m_color[*it];
         if (c != SG_EMPTY)
-            Play(Move(c, *it));
+            Play(c, *it);
     }
     m_state.m_toPlay = other.m_state.m_toPlay;
 }
@@ -241,11 +239,8 @@ void Board::MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks)
             largestBlock->m_liberties.PushBack(*it);
 }
 
-void Board::Play(Move mv) 
+void Board::Play(SgBlackWhite color, int p) 
 {
-    int p = mv.lcn; 
-    SgBlackWhite color = mv.s;
-
     m_state.m_lastMove = p;    
     m_state.m_toPlay = color;
     m_state.m_color[p] = color;
@@ -285,7 +280,7 @@ void Board::RemoveStone(int p)
     SetSize(Size());
     for (BoardIterator it(Const()); it; ++it)
         if (m_oldColor[*it] != SG_EMPTY)
-            Play(Move(m_oldColor[*it],*it));
+            Play(m_oldColor[*it],*it);
 }
 
 void Board::Swap()
