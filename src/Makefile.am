@@ -10,6 +10,7 @@ YUctSearchUtil.cpp
 
 noinst_HEADERS = \
 board.h \
+BoardIterator.h \
 YGtpEngine.h \
 YSearch.h \
 YUctSearch.h \
