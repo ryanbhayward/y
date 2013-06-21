@@ -388,26 +388,27 @@ std::string Board::BorderToString() const
     return os.str();
 }
 
-std::string Board::ParentsToString() const
+std::string Board::AnchorsToString() const
 {
     ostringstream os;
-#if 0
     const int N = Size();
-    os << "\n" << "UF Parents (for non-captains only):\n\n";
+    os << "\n" << "Block Anchors for cells:\n\n";
     for (int j = 0; j < N; j++) {
 	int psn = Const().fatten(j,0);
 	for (int k = 0; k < N-j; k++) 
 	    os << ' ';
 	for (int k = 0; k <= j; k++) {
-	    int x = ConstFind(parent, psn++);
-	    if (x!=psn-1)
-		os << ' ' << Const().ToString(x);
+	    if(m_state.m_block[psn] != 0) {
+		if(Const().board_row(psn)+1 < 10)
+		    os << ' ';
+		os << Const().ToString(Anchor(psn));
+	    }
 	    else
-		os << "  *";
+		os << " * ";
+	    psn++;
 	}
 	os << "\n";
     }
-#endif
     return os.str();
 }
 

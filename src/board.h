@@ -111,7 +111,7 @@ struct Board
 
     std::string ToString() const;
     std::string BorderToString() const;
-    std::string ParentsToString() const;
+    std::string AnchorsToString() const;
 
     SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };
 
