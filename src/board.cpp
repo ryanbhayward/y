@@ -192,7 +192,6 @@ bool Board::IsAdjacent(int p, const Block* b)
 
 void Board::AddStoneToBlock(int p, int border, Block* b)
 {
-    //b->UpdateAnchor(p);
     b->m_border |= border;
     b->m_stones.PushBack(p);
     for (CellNbrIterator it(Const(), p); it; ++it) {
@@ -204,8 +203,6 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
                         && GetColor(*it2) == GetColor(p) 
                         && m_state.m_block[*it2] != b) 
                     {
-                        //std::cout << "\n" << Const().ToString(p) << "\n" 
-                        //          << Const().ToString(*it2) << "\n";
                         AddSharedLiberty(b, m_state.m_block[*it2], *it);
                     }
                 }
@@ -266,7 +263,6 @@ void Board::MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks)
 		}
 	}
 }
-
 
 void Board::RemoveSharedLiberty(int p, Block* a, Block* b)
 {
@@ -360,13 +356,8 @@ void Board::AddSharedLiberty(Block* b1, Block* b2, int p)
         b2->m_shared[j].Include(p);
     }
     else {
-	// b1->m_shared.push_back(SharedLiberties(b2->m_anchor, p));
-	// b2->m_shared.push_back(SharedLiberties(b1->m_anchor, p));
-        SharedLiberties s1(b2->m_anchor, p);
-        b1->m_shared.push_back(s1);
-
-        SharedLiberties s2(b1->m_anchor, p);
-        b2->m_shared.push_back(s2);
+	b1->m_shared.push_back(SharedLiberties(b2->m_anchor, p));
+	b2->m_shared.push_back(SharedLiberties(b1->m_anchor, p));
     }
 }
 
@@ -377,7 +368,6 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
         const int otherAnchor = b1->m_shared[i].m_other;
 	if (otherAnchor == b2->m_anchor)
             continue;
-
         Block* otherBlock = m_state.m_block[otherAnchor];
         assert(otherBlock);     
         int index = b2->GetSharedLibertiesIndex(otherBlock);
@@ -393,17 +383,12 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
                     otherBlock->m_shared[index2].PushBack(lib);
                 }
             }
-            // remove mention of b1 from other's list
+            // remove mention of b1 from other's list.
             const int j = otherBlock->GetSharedLibertiesIndex(b1);
             otherBlock->RemoveSharedLiberties(j);
         }
         else {
-            {
-                SharedLiberties s1(b1->m_shared[i].m_other,
-                                   b1->m_shared[i].m_liberties);
-                b2->m_shared.push_back(s1);
-            }
-
+            b2->m_shared.push_back(b1->m_shared[i]);
             const int j = otherBlock->GetSharedLibertiesIndex(b1);
             otherBlock->m_shared[j].m_other = b2->m_anchor;
         }

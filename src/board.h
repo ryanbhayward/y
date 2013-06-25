@@ -256,9 +256,6 @@ private:
             , m_color(color)
         { }
 
-        void UpdateAnchor(int other)
-        { m_anchor = std::min(m_anchor, other); }
-
 	Block* Smaller(Block* b1, Block* b2)
 	{ return b1->m_anchor < b2->m_anchor ? b1 : b2; }
 
