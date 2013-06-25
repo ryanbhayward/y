@@ -107,7 +107,7 @@ void Board::SetSize(int size)
     // Create block for left edge
     {
         Block& b = m_state.m_blockList[T+0];
-        b.m_anchor = -1;  // never used for edge blocks
+        b.m_anchor = T;  // never used for edge blocks
         b.m_border = BORDER_LEFT;
         b.m_color = SG_BORDER;
         b.m_stones.Clear();
@@ -117,7 +117,7 @@ void Board::SetSize(int size)
     // Create block for right edge
     {
         Block& b = m_state.m_blockList[T+1];
-        b.m_anchor = -1;  // never used for edge blocks
+        b.m_anchor = T+1;  // never used for edge blocks
         b.m_border = BORDER_RIGHT;
         b.m_color = SG_BORDER;
         b.m_stones.Clear();
@@ -127,7 +127,7 @@ void Board::SetSize(int size)
     // Create block for bottom edge
     {
         Block& b = m_state.m_blockList[T+2];
-        b.m_anchor = -1;  // never used for edge blocks
+        b.m_anchor = T+2;  // never used for edge blocks
         b.m_border = BORDER_BOTTOM;
         b.m_color = SG_BORDER;
         b.m_stones.Clear();
@@ -170,9 +170,15 @@ void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
     b->m_border = border;
     b->m_stones.SetTo(p);
     b->m_liberties.Clear();
+    b->m_shared.clear();
     for (CellNbrIterator it(Const(), p); it; ++it) {
-        if (m_state.m_color[*it] == SG_EMPTY)
+        if (m_state.m_color[*it] == SG_EMPTY){
             b->m_liberties.PushBack(*it);
+	    for (CellNbrIterator it2(Const(), *it); it2; ++it2)
+		if (GetColor(*it2) == color && *it2 != p){
+		    AddSharedLiberty(b, m_state.m_block[*it2], *it);
+		}
+	}
     }
 }
 
@@ -186,12 +192,26 @@ bool Board::IsAdjacent(int p, const Block* b)
 
 void Board::AddStoneToBlock(int p, int border, Block* b)
 {
-    b->UpdateAnchor(p);
+    //b->UpdateAnchor(p);
     b->m_border |= border;
     b->m_stones.PushBack(p);
-    for (CellNbrIterator it(Const(), p); it; ++it)
-        if (m_state.m_color[*it] == SG_EMPTY && !IsAdjacent(*it, b))
-            b->m_liberties.PushBack(*it);
+    for (CellNbrIterator it(Const(), p); it; ++it) {
+        if (m_state.m_color[*it] == SG_EMPTY) {
+            if (!IsAdjacent(*it, b)) {
+                b->m_liberties.PushBack(*it);
+                for (CellNbrIterator it2(Const(), *it); it2; ++it2) {
+                    if (*it2 != p 
+                        && GetColor(*it2) == GetColor(p) 
+                        && m_state.m_block[*it2] != b) 
+                    {
+                        //std::cout << "\n" << Const().ToString(p) << "\n" 
+                        //          << Const().ToString(*it2) << "\n";
+                        AddSharedLiberty(b, m_state.m_block[*it2], *it);
+                    }
+                }
+            }
+        }
+    }
     m_state.m_block[p] = b;
 }
 
@@ -222,6 +242,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks)
         Block* adjBlock = *it;
         if (adjBlock == largestBlock)
             continue;
+	MergeSharedLiberty(adjBlock, largestBlock);
         largestBlock->m_border |= adjBlock->m_border;
         for (Block::StoneIterator stn(adjBlock->m_stones); stn; ++stn)
         {
@@ -235,8 +256,51 @@ void Board::MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks)
             }
     }
     for (CellNbrIterator it(Const(), p); it; ++it)
-        if (m_state.m_color[*it] == SG_EMPTY && !seen[*it])
+        if (m_state.m_color[*it] == SG_EMPTY && !seen[*it]) {
             largestBlock->m_liberties.PushBack(*it);
+	    for (CellNbrIterator it2(Const(), *it); it2; ++it2)
+		if (*it2 != p 
+                    && GetColor(*it2) == GetColor(p) 
+                    && m_state.m_block[*it2] != largestBlock) {
+		    AddSharedLiberty(largestBlock, m_state.m_block[*it2], *it);
+		}
+	}
+}
+
+
+void Board::RemoveSharedLiberty(int p, Block* a, Block* b)
+{
+    int i = a->GetSharedLibertiesIndex(b);
+    a->m_shared[i].Exclude(p);
+    if (a->m_shared[i].m_liberties.empty()) {
+        a->RemoveSharedLiberties(i);
+    }
+
+    i = b->GetSharedLibertiesIndex(a);
+    b->m_shared[i].Exclude(p);
+    if (b->m_shared[i].m_liberties.empty()) {
+        b->RemoveSharedLiberties(i);
+    }
+}
+
+void Board::RemoveSharedLiberty(int p, SgArrayList<Block*, 3>& adjBlocks)
+{
+    switch(adjBlocks.Length())
+    {
+    case 0:
+    case 1:
+        return;
+    case 2:
+        RemoveSharedLiberty(p, adjBlocks[0], adjBlocks[1]);
+        return;
+    case 3:
+        RemoveSharedLiberty(p, adjBlocks[0], adjBlocks[1]);
+        RemoveSharedLiberty(p, adjBlocks[0], adjBlocks[2]);
+        RemoveSharedLiberty(p, adjBlocks[1], adjBlocks[2]);
+        return;
+    default:
+        return;
+    }
 }
 
 void Board::Play(SgBlackWhite color, int p) 
@@ -244,9 +308,9 @@ void Board::Play(SgBlackWhite color, int p)
     m_state.m_lastMove = p;    
     m_state.m_toPlay = color;
     m_state.m_color[p] = color;
-
     int border = 0;
     SgArrayList<Block*, 3> adjBlocks;
+    SgArrayList<Block*, 3> oppBlocks;
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (m_state.m_color[*it] == SG_BORDER) {
             border |= m_state.m_block[*it]->m_border;
@@ -256,21 +320,100 @@ void Board::Play(SgBlackWhite color, int p)
             b->m_liberties.Exclude(p);
             if (b->m_color == color && !adjBlocks.Contains(b))
                 adjBlocks.PushBack(b);
+            else if (b->m_color == SgOppBW(color) && !oppBlocks.Contains(b))
+                oppBlocks.PushBack(b);
         }
     }
-
+    RemoveSharedLiberty(p, adjBlocks);
+    RemoveSharedLiberty(p, oppBlocks);
     if (adjBlocks.Length() == 0)
         CreateSingleStoneBlock(p, color, border);
     else if (adjBlocks.Length() == 1)
         AddStoneToBlock(p, border, adjBlocks[0]);
     else
         MergeBlocks(p, border, adjBlocks);
-
     if (m_state.m_block[p]->m_border == BORDER_ALL) {
         m_state.m_winner = color;
     }
-
     FlipToPlay();
+}
+
+std::vector<int> Board::GetSharedLiberties(Block* b1, Block* b2) const
+{
+    std::vector<int> ret;
+    if(b1 == b2 || b1 == 0 || b2 == 0)
+	return ret;
+    for(size_t i = 0; i != b1->m_shared.size(); ++i) {
+	if(b1->m_shared[i].m_other == b2->m_anchor)
+            return b1->m_shared[i].m_liberties;
+    }
+    return ret;
+}
+
+void Board::AddSharedLiberty(Block* b1, Block* b2, int p)
+{
+    int i = b1->GetSharedLibertiesIndex(b2);
+    if(i != -1) {
+        int j = b2->GetSharedLibertiesIndex(b1);
+        assert(j != -1);
+        b1->m_shared[i].Include(p);
+        b2->m_shared[j].Include(p);
+    }
+    else {
+	// b1->m_shared.push_back(SharedLiberties(b2->m_anchor, p));
+	// b2->m_shared.push_back(SharedLiberties(b1->m_anchor, p));
+        SharedLiberties s1(b2->m_anchor, p);
+        b1->m_shared.push_back(s1);
+
+        SharedLiberties s2(b1->m_anchor, p);
+        b2->m_shared.push_back(s2);
+    }
+}
+
+// Merge b1 into b2
+void Board::MergeSharedLiberty(Block* b1, Block* b2)
+{
+    for (size_t i = 0; i < b1->m_shared.size(); ++i) {
+        const int otherAnchor = b1->m_shared[i].m_other;
+	if (otherAnchor == b2->m_anchor)
+            continue;
+
+        Block* otherBlock = m_state.m_block[otherAnchor];
+        assert(otherBlock);     
+        int index = b2->GetSharedLibertiesIndex(otherBlock);
+        if (index != -1) {
+            int index2 = otherBlock->GetSharedLibertiesIndex(b2);
+            assert(index2 != -1);
+            // transfer any new liberties from b1 to b2
+            for (size_t j = 0; j < b1->m_shared[i].m_liberties.size(); ++j)
+            {
+                const int lib = b1->m_shared[i].m_liberties[j];
+                if(!(b2->m_shared[index]).Contains(lib)) {
+                    b2->m_shared[index].PushBack(lib);
+                    otherBlock->m_shared[index2].PushBack(lib);
+                }
+            }
+            // remove mention of b1 from other's list
+            const int j = otherBlock->GetSharedLibertiesIndex(b1);
+            otherBlock->RemoveSharedLiberties(j);
+        }
+        else {
+            {
+                SharedLiberties s1(b1->m_shared[i].m_other,
+                                   b1->m_shared[i].m_liberties);
+                b2->m_shared.push_back(s1);
+            }
+
+            const int j = otherBlock->GetSharedLibertiesIndex(b1);
+            otherBlock->m_shared[j].m_other = b2->m_anchor;
+        }
+    }
+    // Remove mention of any connections from b2->b1, since b1 is now
+    // part of b2. Index could be -1 if there was only a single shared
+    // liberty between them.
+    int index = b2->GetSharedLibertiesIndex(b1);
+    if (index != -1)
+        b2->RemoveSharedLiberties(index);
 }
 
 void Board::RemoveStone(int p)
@@ -310,6 +453,7 @@ void Board::CopyState(Board::State& a, const Board::State& b)
 void Board::CheckConsistency()
 {
     // FIXME: ADD MORE CHECKS HERE!!
+    DumpBlocks();
     for (BoardIterator it(Const()); it; ++it) {
         int color = m_state.m_color[*it];
         if (color != SG_BLACK && color != SG_WHITE && color != SG_EMPTY)
@@ -318,6 +462,36 @@ void Board::CheckConsistency()
             std::cerr << Const().ToString(*it) << " color = " 
                       << m_state.m_color[*it] << '\n';
             abort();
+        }
+        
+        if ((color == SG_BLACK || color == SG_WHITE) 
+            && m_state.m_block[*it]->m_anchor == *it) 
+        {
+            Block* b = m_state.m_block[*it];
+            for (size_t i = 0; i < b->m_shared.size(); ++i) {
+                if (!Const().IsOnBoard(b->m_shared[i].m_other)
+                    || GetColor(b->m_shared[i].m_other) == SG_EMPTY)
+                {
+                    std::cerr << ToString()
+                              << "SOMETHING WRONG WITH SHARED LIBS!\n";
+                    std::cerr << "Blocks: \n";
+                    DumpBlocks();
+                    abort();
+                }
+                    
+            }            
+        }
+    }
+}
+
+void Board::DumpBlocks() 
+{
+    for(size_t i = 0; i < m_state.m_block.size(); ++i) {
+        if(m_state.m_block[i] != NULL) {
+            const Block * b = m_state.m_block[i];
+            if (b->m_color == 3)
+                continue;
+            std::cerr << "id=" << Const().ToString(i)  << " " << b->ToString(Const()) << '\n';
         }
     }
 }
@@ -340,25 +514,6 @@ std::string Board::ToString() const
     os << "   ";
     for (char ch='a'; ch < 'a'+N; ch++) 
         os << ' ' << ch << ' '; 
-
-#if 0
-    const int Np2G = Const().Np2G;
-    printf("border values\n");
-    int psn = 0;
-    for (int j = 0; j < Np2G; j++) {
-        for (int k = 0; k < j; k++)
-            printf(" ");
-        for (int k = 0; k < Np2G; k++) {
-            int x = brdr[ConstFind(parent,psn++)];
-            if (x != BRDR_NIL)
-                printf(" %2d", x);
-            else
-                printf("  *");
-        }
-        printf("\n");
-    }
-    printf("\n"); 
-#endif
 
     return os.str();
 }

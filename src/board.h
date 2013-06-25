@@ -153,12 +153,24 @@ struct Board
     bool IsLibertyOfBlock(int p, int anchor) const
     { return m_state.m_block[anchor]->m_liberties.Contains(p); }
 
+    std::vector<int> GetSharedLiberties(int p1, int p2) const
+    { return GetSharedLiberties(m_state.m_block[p1], m_state.m_block[p2]); }
+
+    std::vector<int> GetLibertiesWith(int p1) const
+    {
+        std::vector<int> ret;
+        for (size_t i = 0; i < m_state.m_block[p1]->m_shared.size(); ++i)
+            ret.push_back(m_state.m_block[p1]->m_shared[i].m_other);
+        return ret;
+    }
+
     void SetSavePoint1()      { CopyState(m_savePoint1, m_state); }
     void SetSavePoint2()      { CopyState(m_savePoint2, m_state); }
     void RestoreSavePoint1()  { CopyState(m_state, m_savePoint1); }
     void RestoreSavePoint2()  { CopyState(m_state, m_savePoint2); }
 
     void CheckConsistency();
+    void DumpBlocks() ;
 private:
 
     static const int BORDER_NONE  = 0; // 000   border values, used bitwise
@@ -167,6 +179,58 @@ private:
     static const int BORDER_RIGHT = 4; // 100
     static const int BORDER_ALL   = 7; // 111
 
+    struct SharedLiberties
+    {
+	int m_other;
+        std::vector<int> m_liberties;
+
+	SharedLiberties()
+            : m_other(-1)
+	{ }
+
+        SharedLiberties(int anchor, int liberty)
+	    : m_other(anchor)
+            , m_liberties(1, liberty)
+	{ }
+
+	SharedLiberties(int anchor, const std::vector<int>& liberties)
+	    : m_other(anchor)
+            , m_liberties(liberties)
+	{ }
+
+        ~SharedLiberties()
+        { }
+
+        bool Contains(int p) const
+        {
+            for (size_t i = 0; i < m_liberties.size(); ++i)
+                if (m_liberties[i] == p)
+                    return true;
+            return false;
+        }
+
+        void PushBack(int p)
+        { m_liberties.push_back(p); }
+
+        void Include(int p)
+        {
+            if (!Contains(p))
+                PushBack(p);
+        }
+
+        void Exclude(int p)
+        {
+            for (size_t j = 0; j < m_liberties.size(); ++j) {
+                if (m_liberties[j] == p) {
+                    std::swap(m_liberties[j], m_liberties.back());
+                    m_liberties.pop_back();
+                    return;
+                }
+            }
+        }
+
+    };
+
     struct Block
     {
         static const int MAX_STONES = Y_MAX_CELL;
@@ -174,7 +238,6 @@ private:
 
         typedef SgArrayList<int, MAX_LIBERTIES> LibertyList;
         typedef LibertyList::Iterator LibertyIterator;
-
         typedef SgArrayList<int, MAX_STONES> StoneList;
         typedef StoneList::Iterator StoneIterator;
 
@@ -183,6 +246,7 @@ private:
         SgBlackWhite m_color;
         LibertyList m_liberties;    
         StoneList m_stones;
+	std::vector<SharedLiberties> m_shared;
 
         Block()
         { }
@@ -194,6 +258,50 @@ private:
 
         void UpdateAnchor(int other)
         { m_anchor = std::min(m_anchor, other); }
+
+	Block* Smaller(Block* b1, Block* b2)
+	{ return b1->m_anchor < b2->m_anchor ? b1 : b2; }
+
+        int GetSharedLibertiesIndex(const Block* b2) const
+        {
+            for(size_t i = 0; i != m_shared.size(); ++i)
+                if (m_shared[i].m_other == b2->m_anchor)
+                    return i;
+            return -1;
+        }
+
+        void RemoveSharedLiberties(int i)
+        {
+            m_shared[i] = m_shared.back();
+            m_shared.pop_back();
+        }
+
+        std::string SharedLibertiesToString(const ConstBoard& cbrd) const
+        {
+            std::ostringstream os;
+            os << "[";
+            for (size_t i = 0; i < m_shared.size(); ++i) {
+                if (i) os << ",";
+                os << "[" << cbrd.ToString(m_shared[i].m_other) << " [";
+                for (size_t j=0; j < m_shared[i].m_liberties.size(); ++j)
+                {
+                    if (j) os << ",";
+                    os << cbrd.ToString(m_shared[i].m_liberties[j]);
+                }
+                os << "]]";
+            }
+            os << "]";
+            return os.str();
+        }
+        std::string ToString(const ConstBoard& cbrd) const
+        {
+            std::ostringstream os;
+            os << "[color=" <<  m_color
+               << " anchor=" << cbrd.ToString(m_anchor)
+               << " shared=" << SharedLibertiesToString(cbrd)
+               << "]\n";
+            return os.str();
+        }
     };
 
     class CellNbrIterator
@@ -250,6 +358,19 @@ private:
     void AddStoneToBlock(int p, int border, Block* b);
 
     void MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks);
+
+    int GetSharedLibertiesIndex(Block* b1, Block* b2) const;
+
+    std::vector<int> GetSharedLiberties(Block* b1, Block* b2) const;
+
+    void AddSharedLiberty(Block* b1, Block* b2, int p);
+
+    void MergeSharedLiberty(Block* b1, Block* b2);
+
+    void RemoveSharedLiberty(int p, Block* a, Block* b);
+
+    void RemoveSharedLiberty(int p, SgArrayList<Block*, 3>& adjBlocks);
+
 
     void FlipToPlay()
     { m_state.m_toPlay = SgOppBW(m_state.m_toPlay); }

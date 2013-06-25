@@ -55,6 +55,9 @@ public:
     void CmdBlockStones(GtpCommand& cmd);
     void CmdBlockLiberties(GtpCommand& cmd);
 
+    void CmdSharedLiberties(GtpCommand& cmd);
+    void CmdBlockLibertiesWith(GtpCommand& cmd);
+
     // @}
 
 #if GTPENGINE_INTERRUPT

@@ -58,6 +58,8 @@ YGtpEngine::YGtpEngine(int boardSize)
     
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
     RegisterCmd("block_liberties", &YGtpEngine::CmdBlockLiberties);
+    RegisterCmd("block_liberties_with", &YGtpEngine::CmdBlockLibertiesWith);
+    RegisterCmd("shared_liberties", &YGtpEngine::CmdSharedLiberties);
     
     NewGame();
 }
@@ -82,6 +84,8 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "plist/All Legal Moves/all_legal_moves %c\n"
         "group/Block Stones/block_stones %p\n"
         "plist/Block Liberties/block_liberties %p\n"
+        "plist/Block Liberties With/block_liberties_with %p\n"
+        "plist/Shared Liberties/shared_liberties %P\n"
         "string/ShowBoard/showboard\n"
         "string/Final Score/final_score\n"
         "varc/Reg GenMove/reg_genmove %c\n";
@@ -487,7 +491,7 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
         else if (name == "num_threads")
             m_uctSearch.SetNumberThreads(cmd.IntArg(1, 1));
         else if (name == "max_games")
-            m_uctMaxGames = cmd.SizeTypeArg(1, 2);
+            m_uctMaxGames = cmd.SizeTypeArg(1, 1);
         else if (name == "max_memory")
             m_uctSearch.SetMaxNodes(cmd.ArgMin<std::size_t>(1, 1) 
                                  / sizeof(SgUctNode) / 2);
@@ -620,4 +624,23 @@ void YGtpEngine::CmdBlockLiberties(GtpCommand& cmd)
             && m_brd.IsLibertyOfBlock(*it, anchor))
             cmd << ' ' << m_brd.Const().ToString(*it);
     }
+}
+
+void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p1 = CellArg(cmd, 0);
+    std::vector<int> liberties = m_brd.GetLibertiesWith(p1);
+    for(std::vector<int>::size_type i = 0; i != liberties.size(); ++i)
+	cmd << ' ' << m_brd.Const().ToString(liberties[i]);
+}
+
+void YGtpEngine::CmdSharedLiberties(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(2);
+    int p1 = CellArg(cmd, 0);
+    int p2 = CellArg(cmd, 1);
+    std::vector<int> liberties = m_brd.GetSharedLiberties(p1, p2);
+    for(std::vector<int>::size_type i = 0; i != liberties.size(); ++i)
+	cmd << ' ' << m_brd.Const().ToString(liberties[i]);
 }
