@@ -9,6 +9,12 @@
 
 using namespace std;
 
+namespace {
+
+    std::vector<int> EMPTY_VECTOR;
+
+}
+
 char ConstBoard::ColorToChar(SgBoardColor color) 
 {
     switch(color) {
@@ -203,7 +209,7 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
                     if (*it2 != p 
                         && GetColor(*it2) == GetColor(p) 
                         && m_state.m_block[*it2] != b) 
-                    {
+                   {
                         AddSharedLiberty(b, m_state.m_block[*it2], *it);
                     }
                 }
@@ -213,13 +219,13 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
     m_state.m_block[p] = b;
 }
 
-void Board::MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks)
+void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
 {
     Block* largestBlock = 0;
     int largestBlockStones = 0;
-    for (SgArrayList<Block*,3>::Iterator it(adjBlocks); it; ++it)
+    for (SgArrayList<int,3>::Iterator it(adjBlocks); it; ++it)
     {
-        Block* adjBlock = *it;
+        Block* adjBlock = GetBlock(*it);
         int numStones = adjBlock->m_stones.Length();
         if (numStones > largestBlockStones)
         {
@@ -235,9 +241,9 @@ void Board::MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks)
     memset(seen, 0, sizeof(seen));
     for (Block::LibertyIterator lib(largestBlock->m_liberties); lib; ++lib)
         seen[*lib] = true;
-    for (SgArrayList<Block*,3>::Iterator it(adjBlocks); it; ++it)
+    for (SgArrayList<int,3>::Iterator it(adjBlocks); it; ++it)
     {
-        Block* adjBlock = *it;
+        Block* adjBlock = GetBlock(*it);
         if (adjBlock == largestBlock)
             continue;
 	MergeSharedLiberty(adjBlock, largestBlock);
@@ -280,7 +286,7 @@ void Board::RemoveSharedLiberty(int p, Block* a, Block* b)
     }
 }
 
-void Board::RemoveSharedLiberty(int p, SgArrayList<Block*, 3>& adjBlocks)
+void Board::RemoveSharedLiberty(int p, SgArrayList<int, 3>& adjBlocks)
 {
     switch(adjBlocks.Length())
     {
@@ -288,12 +294,12 @@ void Board::RemoveSharedLiberty(int p, SgArrayList<Block*, 3>& adjBlocks)
     case 1:
         return;
     case 2:
-        RemoveSharedLiberty(p, adjBlocks[0], adjBlocks[1]);
+        RemoveSharedLiberty(p, GetBlock(adjBlocks[0]), GetBlock(adjBlocks[1]));
         return;
     case 3:
-        RemoveSharedLiberty(p, adjBlocks[0], adjBlocks[1]);
-        RemoveSharedLiberty(p, adjBlocks[0], adjBlocks[2]);
-        RemoveSharedLiberty(p, adjBlocks[1], adjBlocks[2]);
+        RemoveSharedLiberty(p, GetBlock(adjBlocks[0]), GetBlock(adjBlocks[1]));
+        RemoveSharedLiberty(p, GetBlock(adjBlocks[0]), GetBlock(adjBlocks[2]));
+        RemoveSharedLiberty(p, GetBlock(adjBlocks[1]), GetBlock(adjBlocks[2]));
         return;
     default:
         return;
@@ -306,19 +312,22 @@ void Board::Play(SgBlackWhite color, int p)
     m_state.m_toPlay = color;
     m_state.m_color[p] = color;
     int border = 0;
-    SgArrayList<Block*, 3> adjBlocks;
-    SgArrayList<Block*, 3> oppBlocks;
+    SgArrayList<int, 3>& adjBlocks = m_state.m_adjBlocks;
+    SgArrayList<int, 3>& oppBlocks = m_state.m_oppBlocks;
+    adjBlocks.Clear();
+    oppBlocks.Clear();
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (m_state.m_color[*it] == SG_BORDER) {
-            border |= m_state.m_block[*it]->m_border;
+            border |= GetBlock(*it)->m_border;
         }
         else if (m_state.m_color[*it] != SG_EMPTY) {
-            Block* b = m_state.m_block[*it];
+            Block* b = GetBlock(*it);
             b->m_liberties.Exclude(p);
-            if (b->m_color == color && !adjBlocks.Contains(b))
-                adjBlocks.PushBack(b);
-            else if (b->m_color == SgOppBW(color) && !oppBlocks.Contains(b))
-                oppBlocks.PushBack(b);
+            if (b->m_color == color && !adjBlocks.Contains(b->m_anchor))
+                adjBlocks.PushBack(b->m_anchor);
+            else if (b->m_color == SgOppBW(color) 
+                     && !oppBlocks.Contains(b->m_anchor))
+                oppBlocks.PushBack(b->m_anchor);
         }
     }
     RemoveSharedLiberty(p, adjBlocks);
@@ -326,7 +335,7 @@ void Board::Play(SgBlackWhite color, int p)
     if (adjBlocks.Length() == 0)
         CreateSingleStoneBlock(p, color, border);
     else if (adjBlocks.Length() == 1)
-        AddStoneToBlock(p, border, adjBlocks[0]);
+        AddStoneToBlock(p, border, GetBlock(adjBlocks[0]));
     else
         MergeBlocks(p, border, adjBlocks);
     if (m_state.m_block[p]->m_border == BORDER_ALL) {
@@ -335,16 +344,15 @@ void Board::Play(SgBlackWhite color, int p)
     FlipToPlay();
 }
 
-std::vector<int> Board::GetSharedLiberties(Block* b1, Block* b2) const
+const std::vector<int>& Board::GetSharedLiberties(Block* b1, Block* b2) const
 {
-    std::vector<int> ret;
     if(b1 == b2 || b1 == 0 || b2 == 0)
-	return ret;
-    for(size_t i = 0; i != b1->m_shared.size(); ++i) {
+	return EMPTY_VECTOR;
+    for(size_t i = 0; i < b1->m_shared.size(); ++i) {
 	if(b1->m_shared[i].m_other == b2->m_anchor)
             return b1->m_shared[i].m_liberties;
     }
-    return ret;
+    return EMPTY_VECTOR;
 }
 
 void Board::AddSharedLiberty(Block* b1, Block* b2, int p)
@@ -554,6 +562,43 @@ std::string Board::AnchorsToString() const
 }
 
 //////////////////////////////////////////////////////////////////////
+
+int Board::GeneralSaveBridge(SgRandom& random) const
+{
+    int ret = SG_NULLMOVE;
+    int num = 0;
+    
+    const SgArrayList<int, 3>& opp = m_state.m_oppBlocks;
+    switch(opp.Length())
+    {
+    case 0:
+    case 1:
+        return SG_NULLMOVE;
+    case 2:
+        {
+            const vector<int>& libs = GetSharedLiberties(opp[0], opp[1]);
+            if (libs.size() == 1)
+                return libs[0];
+            return SG_NULLMOVE;
+        }
+    case 3:
+        for (int i = 0; i < 2; ++i)
+        {
+            for (int j = i + 1; j < 3; ++j) {
+                const vector<int>& libs = GetSharedLiberties(opp[i], opp[j]);
+                if (libs.size() == 1) {
+                    ++num;
+                    if (num==1 || random.Int(num)==0)
+                        ret = libs[0];
+                }
+            }    
+        }
+        return ret;
+    default:
+        return SG_NULLMOVE;
+    }
+    return SG_NULLMOVE;
+}
 
 int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay, 
                       SgRandom& random) const

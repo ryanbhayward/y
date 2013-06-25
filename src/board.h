@@ -145,6 +145,9 @@ struct Board
     int SaveBridge(int lastMove, const SgBlackWhite toPlay, 
                    SgRandom& random) const;
 
+    // Returns SG_NULLMOVE if no savebridge pattern matches last move played
+    int GeneralSaveBridge(SgRandom& random) const;
+
     int Anchor(int p) const 
     { return m_state.m_block[p]->m_anchor; }
 
@@ -154,7 +157,7 @@ struct Board
     bool IsLibertyOfBlock(int p, int anchor) const
     { return m_state.m_block[anchor]->m_liberties.Contains(p); }
 
-    std::vector<int> GetSharedLiberties(int p1, int p2) const
+    const std::vector<int>& GetSharedLiberties(int p1, int p2) const
     { return GetSharedLiberties(m_state.m_block[p1], m_state.m_block[p2]); }
 
     std::vector<int> GetLibertiesWith(int p1) const
@@ -341,6 +344,9 @@ private:
         std::vector<Block*> m_block;
         std::vector<Block> m_blockList;
         
+        SgArrayList<int, 3> m_adjBlocks;
+        SgArrayList<int, 3> m_oppBlocks;
+                
         SgBlackWhite m_toPlay;
         SgBoardColor m_winner;
         int          m_lastMove;
@@ -359,11 +365,11 @@ private:
 
     void AddStoneToBlock(int p, int border, Block* b);
 
-    void MergeBlocks(int p, int border, SgArrayList<Block*, 3>& adjBlocks);
+    void MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks);
 
     int GetSharedLibertiesIndex(Block* b1, Block* b2) const;
 
-    std::vector<int> GetSharedLiberties(Block* b1, Block* b2) const;
+    const std::vector<int>& GetSharedLiberties(Block* b1, Block* b2) const;
 
     void AddSharedLiberty(Block* b1, Block* b2, int p);
 
@@ -371,9 +377,12 @@ private:
 
     void RemoveSharedLiberty(int p, Block* a, Block* b);
 
-    void RemoveSharedLiberty(int p, SgArrayList<Block*, 3>& adjBlocks);
+    void RemoveSharedLiberty(int p, SgArrayList<int, 3>& adjBlocks);
 
     void CopyState(Board::State& a, const Board::State& b);
+
+    Block* GetBlock(int p) 
+    { return m_state.m_block[p]; }
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented

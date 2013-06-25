@@ -110,7 +110,8 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
     SgMove move = SG_NULLMOVE;
     if (m_search.UseSaveBridge()) 
     {
-        move = m_brd.SaveBridge(m_brd.LastMove(), m_brd.ToPlay(), m_random);
+        //move = m_brd.SaveBridge(m_brd.LastMove(), m_brd.ToPlay(), m_random);
+        move = m_brd.GeneralSaveBridge(m_random);
     } 
     if (move == SG_NULLMOVE)
     {
@@ -164,8 +165,12 @@ void YUctThreadState::StartPlayout()
 void YUctThreadState::StartPlayout(const Board& other)
 {
     m_brd.SetPosition(other);
-    std::cerr << m_brd.Const().ToString(m_brd.LastMove()) << '\n'
-              << "toPlay=" << m_brd.ToPlay() << '\n';
+    int lastMove = m_brd.LastMove();
+    SgBlackWhite color = m_brd.GetColor(lastMove);
+    m_brd.RemoveStone(m_brd.LastMove());
+    m_brd.Play(color, lastMove);
+    // std::cerr << m_brd.Const().ToString(m_brd.LastMove()) << '\n'
+    //           << "toPlay=" << m_brd.ToPlay() << '\n';
     m_emptyCells.clear();
     for (BoardIterator it(m_brd); it; ++it)
         if (SG_EMPTY == m_brd.GetColor(*it))
