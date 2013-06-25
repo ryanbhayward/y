@@ -1,6 +1,5 @@
 //----------------------------------------------------------------------------
-/** @file YGtpEngine.cpp
- */
+/** @file YGtpEngine.cpp */
 //----------------------------------------------------------------------------
 
 #include "SgSystem.h"
@@ -56,10 +55,11 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
     RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
     
+    RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
     RegisterCmd("block_liberties", &YGtpEngine::CmdBlockLiberties);
     RegisterCmd("block_liberties_with", &YGtpEngine::CmdBlockLibertiesWith);
-    RegisterCmd("shared_liberties", &YGtpEngine::CmdSharedLiberties);
+    RegisterCmd("block_shared_liberties", &YGtpEngine::CmdSharedLiberties);
     
     NewGame();
 }
@@ -82,10 +82,11 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
     cmd <<
         "param/Search Parameters/y_param\n"
         "plist/All Legal Moves/all_legal_moves %c\n"
+        "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
         "plist/Block Liberties/block_liberties %p\n"
         "plist/Block Liberties With/block_liberties_with %p\n"
-        "plist/Shared Liberties/shared_liberties %P\n"
+        "plist/Shared Liberties/block_shared_liberties %P\n"
         "string/ShowBoard/showboard\n"
         "string/Final Score/final_score\n"
         "varc/Reg GenMove/reg_genmove %c\n";
@@ -594,6 +595,15 @@ void YGtpEngine::CmdRaveScores(GtpCommand& cmd)
 }
 
 //----------------------------------------------------------------------------
+
+void YGtpEngine::CmdBlockInfo(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    if (!m_brd.IsOccupied(p))
+        throw GtpFailure("Invalid block");
+    cmd << m_brd.BlockInfo(p);
+}
 
 void YGtpEngine::CmdBlockStones(GtpCommand& cmd)
 {

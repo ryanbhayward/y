@@ -164,6 +164,9 @@ struct Board
         return ret;
     }
 
+    std::string BlockInfo(int p) const
+    { return m_state.m_block[p]->ToString(Const()); }
+
     void SetSavePoint1()      { CopyState(m_savePoint1, m_state); }
     void SetSavePoint2()      { CopyState(m_savePoint2, m_state); }
     void RestoreSavePoint1()  { CopyState(m_state, m_savePoint1); }
@@ -295,6 +298,7 @@ private:
             std::ostringstream os;
             os << "[color=" <<  m_color
                << " anchor=" << cbrd.ToString(m_anchor)
+               << " border=" << m_border
                << " shared=" << SharedLibertiesToString(cbrd)
                << "]\n";
             return os.str();
