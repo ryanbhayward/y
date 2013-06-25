@@ -133,6 +133,7 @@ struct Board
 
     int ToPlay() const         { return m_state.m_toPlay; }
     void SetToPlay(int toPlay) { m_state.m_toPlay = toPlay; }
+    void FlipToPlay()          { m_state.m_toPlay = SgOppBW(m_state.m_toPlay); }
 
     void RemoveStone(int lcn);
     int LastMove() const { return m_state.m_lastMove; }
@@ -371,10 +372,6 @@ private:
     void RemoveSharedLiberty(int p, Block* a, Block* b);
 
     void RemoveSharedLiberty(int p, SgArrayList<Block*, 3>& adjBlocks);
-
-
-    void FlipToPlay()
-    { m_state.m_toPlay = SgOppBW(m_state.m_toPlay); }
 
     void CopyState(Board::State& a, const Board::State& b);
 

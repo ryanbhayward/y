@@ -59,6 +59,8 @@ public:
 
     // @} // name
 
+    void StartPlayout(const Board& other);
+
  private:
 
     const YUctSearch& m_search;

@@ -161,6 +161,18 @@ void YUctThreadState::StartPlayout()
     ShuffleVector(m_emptyCells, m_random);
 }
 
+void YUctThreadState::StartPlayout(const Board& other)
+{
+    m_brd.SetPosition(other);
+    std::cerr << m_brd.Const().ToString(m_brd.LastMove()) << '\n'
+              << "toPlay=" << m_brd.ToPlay() << '\n';
+    m_emptyCells.clear();
+    for (BoardIterator it(m_brd); it; ++it)
+        if (SG_EMPTY == m_brd.GetColor(*it))
+            m_emptyCells.push_back(*it);
+    ShuffleVector(m_emptyCells, m_random);
+}
+
 void YUctThreadState::EndPlayout()
 {
 }

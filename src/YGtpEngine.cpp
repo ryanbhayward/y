@@ -54,6 +54,7 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("uct_proven_nodes", &YGtpEngine::CmdUctProvenNodes);
     RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
     RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
+    RegisterCmd("playout_move", &YGtpEngine::CmdPlayoutMove);
     
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
@@ -89,6 +90,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "plist/Shared Liberties/block_shared_liberties %P\n"
         "string/ShowBoard/showboard\n"
         "string/Final Score/final_score\n"
+        "move/Playout Move/playout_move\n"
         "varc/Reg GenMove/reg_genmove %c\n";
 }
 
@@ -156,10 +158,16 @@ void YGtpEngine::Undo()
 {
     SG_ASSERT(! m_history.empty());
     int cell = m_history.back();
-    if (cell == Y_SWAP)
+    if (cell == Y_SWAP) {
     	m_brd.Swap();
+        m_brd.FlipToPlay();
+    }
     else if (cell != SG_RESIGN)
+    {
+        int color = m_brd.GetColor(cell);
     	m_brd.RemoveStone(cell);
+        m_brd.SetToPlay(color);
+    }
     m_history.pop_back();
     if (!m_history.empty())
         m_brd.SetLastMove(m_history.back());
@@ -654,3 +662,23 @@ void YGtpEngine::CmdSharedLiberties(GtpCommand& cmd)
     for(std::vector<int>::size_type i = 0; i != liberties.size(); ++i)
 	cmd << ' ' << m_brd.Const().ToString(liberties[i]);
 }
+
+//----------------------------------------------------------------------
+
+void YGtpEngine::CmdPlayoutMove(GtpCommand& cmd)
+{
+    if (m_brd.IsGameOver())
+        throw GtpFailure("Game over!");
+    if (!m_uctSearch.ThreadsCreated())
+        m_uctSearch.CreateThreads();
+    YUctThreadState* thread 
+        = dynamic_cast<YUctThreadState*>(&m_uctSearch.ThreadState(0));
+    if (!thread)
+        throw GtpFailure() << "Thread not a YUctThreadState!";
+    thread->StartPlayout(m_brd);
+    bool skipRaveUpdate;
+    int move = thread->GeneratePlayoutMove(skipRaveUpdate);
+    Play(m_brd.ToPlay(), move);
+    cmd << m_brd.Const().ToString(move);
+}
+

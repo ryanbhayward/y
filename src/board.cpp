@@ -160,6 +160,7 @@ void Board::SetPosition(const Board& other)
             Play(c, *it);
     }
     m_state.m_toPlay = other.m_state.m_toPlay;
+    m_state.m_lastMove = other.m_state.m_lastMove;
 }
 
 void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)

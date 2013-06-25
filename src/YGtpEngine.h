@@ -49,6 +49,8 @@ public:
     void CmdUctProvenNodes(GtpCommand& cmd);
     void CmdUctScores(GtpCommand& cmd);
     void CmdRaveScores(GtpCommand& cmd);
+    void CmdPlayoutMove(GtpCommand& cmd);
+
     void CmdFinalScore(GtpCommand& cmd);
     void CmdVersion(GtpCommand& cmd);
 
