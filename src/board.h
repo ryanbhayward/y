@@ -380,14 +380,14 @@ private:
 
         void Init(int T);
         void CopyState(const State& other);
-	// Move into board: J
+
 	bool IsActive(const Block* b) const
 	{
 	    SgBlackWhite color = b->m_color;
 	    for (size_t i = 0; i < m_activeBlocks[color].size(); ++i)
-                if (m_activeBlocks[color][i]->m_anchor == b->m_anchor)
-                    return true;
-            return false;
+		if (m_activeBlocks[color][i]->m_anchor == b->m_anchor)
+		    return true;
+	    return false;
 	}
 	void RemoveActiveBlock(Block* b)
 	{
@@ -396,17 +396,17 @@ private:
 		if(m_activeBlocks[color][i] == b) {
 		    std::swap(m_activeBlocks[color][i], 
 			      m_activeBlocks[color].back());
-                    m_activeBlocks[color].pop_back();
-                    return;
+		    m_activeBlocks[color].pop_back();
+		    return;
 		}
 	}
 	int GetActiveIndex(const Block* b) const
-        {
-            for(size_t i = 0; i != m_activeBlocks[b->m_color].size(); ++i)
-                if (m_activeBlocks[b->m_color][i]->m_anchor == b->m_anchor)
-                    return i;
-            return -1;
-        }
+	{
+	    for(size_t i = 0; i != m_activeBlocks[b->m_color].size(); ++i)
+		if (m_activeBlocks[b->m_color][i]->m_anchor == b->m_anchor)
+		    return i;
+	    return -1;
+	}
     };
 
     State m_state;
