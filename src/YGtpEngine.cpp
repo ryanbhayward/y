@@ -63,6 +63,8 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("block_shared_liberties", &YGtpEngine::CmdSharedLiberties);
 
     RegisterCmd("active_blocks", &YGtpEngine::CmdActiveBlocks);
+    RegisterCmd("group", &YGtpEngine::CmdGroup);
+    RegisterCmd("group_blocks", &YGtpEngine::CmdGroupBlocks);
     
     NewGame();
 }
@@ -87,6 +89,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "plist/All Legal Moves/all_legal_moves %c\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
+	"group/Group Blocks/group_blocks %p\n"
         "plist/Block Liberties/block_liberties %p\n"
         "plist/Block Liberties With/block_liberties_with %p\n"
         "plist/Shared Liberties/block_shared_liberties %P\n"
@@ -650,9 +653,29 @@ void YGtpEngine::CmdActiveBlocks(GtpCommand& cmd)
 {
     cmd.CheckNuArg(1);
     int color = ColorArg(cmd, 0);
-    if (color != SG_BLACK && color != SG_WHITE)
+    if (color == SG_BLACK || color == SG_WHITE)	
+	cmd << m_brd.ActiveBlocksToString(color);
+}
+
+void YGtpEngine::CmdGroup(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    cmd << m_brd.ActiveBlocksToString(color);
+    cmd << m_brd.Const().ToString(m_brd.Group(p)) << '\n';
+}
+
+void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    if (m_brd.GetColor(p) == SG_EMPTY)
+	return;
+    int group = m_brd.Group(p);
+    std::vector<int> blocks = m_brd.GetBlocksInGroup(group);
+    for(size_t i = 0; i < blocks.size(); ++i)
+	cmd << ' ' << m_brd.Const().ToString(blocks[i]);
 }
 
 void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)
@@ -670,7 +693,7 @@ void YGtpEngine::CmdSharedLiberties(GtpCommand& cmd)
     int p1 = CellArg(cmd, 0);
     int p2 = CellArg(cmd, 1);
     const std::vector<int>& liberties = m_brd.GetSharedLiberties(p1, p2);
-    for(std::vector<int>::size_type i = 0; i != liberties.size(); ++i)
+    for(size_t i = 0; i < liberties.size(); ++i)
 	cmd << ' ' << m_brd.Const().ToString(liberties[i]);
 }
 

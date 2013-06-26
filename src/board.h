@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <bitset>
 
 #include "SgSystem.h"
 #include "SgArrayList.h"
@@ -152,8 +153,14 @@ struct Board
     int Anchor(int p) const 
     { return m_state.m_block[p]->m_anchor; }
 
+    int Group(int p) const
+    { return m_state.m_block[p]->m_group; }
+
     bool IsInBlock(int p, int anchor) const
     { return m_state.m_block[p]->m_anchor == anchor; }
+
+    bool IsinGroup(int p, int group) const
+    { return m_state.m_block[p]->m_group == group; }
 
     bool IsLibertyOfBlock(int p, int anchor) const
     { return m_state.m_block[anchor]->m_liberties.Contains(p); }
@@ -167,6 +174,16 @@ struct Board
         for (size_t i = 0; i < m_state.m_block[p1]->m_shared.size(); ++i)
             ret.push_back(m_state.m_block[p1]->m_shared[i].m_other);
         return ret;
+    }
+
+    std::vector<int> GetBlocksInGroup(int group) const
+    {
+	std::vector<int> ret;
+	SgBlackWhite color = GetColor(group);
+	for (size_t i = 0; i < m_state.m_activeBlocks[color].size(); ++i)
+	    if(m_state.m_activeBlocks[color][i]->m_group == group)
+		ret.push_back(m_state.m_activeBlocks[color][i]->m_anchor);
+	return ret;
     }
 
     std::string BlockInfo(int p) const
@@ -251,6 +268,7 @@ private:
 
         int m_anchor;
         int m_border;
+	int m_group;
         SgBlackWhite m_color;
         LibertyList m_liberties;    
         StoneList m_stones;
@@ -310,6 +328,13 @@ private:
         }
     };
 
+    struct Group
+    {
+	int anchor;
+	int border;
+	std::vector<int> blocks;
+    };
+
     class CellNbrIterator
     {
     public:
@@ -355,11 +380,12 @@ private:
 
         void Init(int T);
         void CopyState(const State& other);
+	// Move into board: J
 	bool IsActive(const Block* b) const
 	{
 	    SgBlackWhite color = b->m_color;
 	    for (size_t i = 0; i < m_activeBlocks[color].size(); ++i)
-                if (m_activeBlocks[color][i] == b)
+                if (m_activeBlocks[color][i]->m_anchor == b->m_anchor)
                     return true;
             return false;
 	}
@@ -374,6 +400,13 @@ private:
                     return;
 		}
 	}
+	int GetActiveIndex(const Block* b) const
+        {
+            for(size_t i = 0; i != m_activeBlocks[b->m_color].size(); ++i)
+                if (m_activeBlocks[b->m_color][i]->m_anchor == b->m_anchor)
+                    return i;
+            return -1;
+        }
     };
 
     State m_state;
@@ -395,6 +428,8 @@ private:
     void AddSharedLiberty(Block* b1, Block* b2, int p);
 
     void MergeSharedLiberty(Block* b1, Block* b2);
+
+    void GroupSearch(bool* seen, Block* b);
 
     void RemoveSharedLiberty(int p, Block* a, Block* b);
 
