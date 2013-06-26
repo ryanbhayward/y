@@ -61,6 +61,8 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("block_liberties", &YGtpEngine::CmdBlockLiberties);
     RegisterCmd("block_liberties_with", &YGtpEngine::CmdBlockLibertiesWith);
     RegisterCmd("block_shared_liberties", &YGtpEngine::CmdSharedLiberties);
+
+    RegisterCmd("active_blocks", &YGtpEngine::CmdActiveBlocks);
     
     NewGame();
 }
@@ -642,6 +644,15 @@ void YGtpEngine::CmdBlockLiberties(GtpCommand& cmd)
             && m_brd.IsLibertyOfBlock(*it, anchor))
             cmd << ' ' << m_brd.Const().ToString(*it);
     }
+}
+
+void YGtpEngine::CmdActiveBlocks(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int color = ColorArg(cmd, 0);
+    if (color != SG_BLACK && color != SG_WHITE)
+	return;
+    cmd << m_brd.ActiveBlocksToString(color);
 }
 
 void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)

@@ -60,6 +60,8 @@ public:
     void CmdSharedLiberties(GtpCommand& cmd);
     void CmdBlockLibertiesWith(GtpCommand& cmd);
 
+    void CmdActiveBlocks(GtpCommand& cmd);
+
     // @}
 
 #if GTPENGINE_INTERRUPT

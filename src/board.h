@@ -112,6 +112,7 @@ struct Board
     std::string ToString() const;
     std::string BorderToString() const;
     std::string AnchorsToString() const;
+    std::string ActiveBlocksToString(SgBlackWhite color) const;
 
     SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };
 
@@ -343,6 +344,7 @@ private:
         std::vector<SgBoardColor> m_color;
         std::vector<Block*> m_block;
         std::vector<Block> m_blockList;
+	std::vector< std::vector<Block*> > m_activeBlocks;
         
         SgArrayList<int, 3> m_adjBlocks;
         SgArrayList<int, 3> m_oppBlocks;
@@ -353,6 +355,25 @@ private:
 
         void Init(int T);
         void CopyState(const State& other);
+	bool IsActive(const Block* b) const
+	{
+	    SgBlackWhite color = b->m_color;
+	    for (size_t i = 0; i < m_activeBlocks[color].size(); ++i)
+                if (m_activeBlocks[color][i] == b)
+                    return true;
+            return false;
+	}
+	void RemoveActiveBlock(Block* b)
+	{
+	    SgBlackWhite color = b->m_color;
+	    for (size_t i = 0; i < m_activeBlocks[color].size(); ++i)
+		if(m_activeBlocks[color][i] == b) {
+		    std::swap(m_activeBlocks[color][i], 
+			      m_activeBlocks[color].back());
+                    m_activeBlocks[color].pop_back();
+                    return;
+		}
+	}
     };
 
     State m_state;

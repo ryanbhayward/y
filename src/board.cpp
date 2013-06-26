@@ -100,6 +100,10 @@ void Board::State::Init(int T)
     std::fill(m_block.begin(), m_block.end(), (Block*)0);
 
     m_blockList.resize(T+3);
+
+    m_activeBlocks.resize(2);
+    m_activeBlocks[SG_BLACK].resize(0);
+    m_activeBlocks[SG_WHITE].resize(0);
 }
 
 void Board::SetSize(int size)
@@ -187,6 +191,7 @@ void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
 		}
 	}
     }
+    m_state.m_activeBlocks[color].push_back(b);
 }
 
 bool Board::IsAdjacent(int p, const Block* b)
@@ -258,6 +263,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
                 seen[*lib] = true;
                 largestBlock->m_liberties.PushBack(*lib);
             }
+	m_state.RemoveActiveBlock(adjBlock);
     }
     for (CellNbrIterator it(Const(), p); it; ++it)
         if (m_state.m_color[*it] == SG_EMPTY && !seen[*it]) {
@@ -438,9 +444,12 @@ void Board::CopyState(Board::State& a, const Board::State& b)
     a = b;
     // Fix pointers since they are now pointing into other
     for (BoardIterator it(Const()); it; ++it) {
-        if (b.m_color[*it] != SG_EMPTY) {
+	SgBlackWhite color = b.m_color[*it];
+        if (color != SG_EMPTY) {
             a.m_block[*it] = &a.m_blockList[b.m_block[*it]->m_anchor];
-        }
+	    if (!a.IsActive(a.m_block[*it]))
+		a.m_activeBlocks[color].push_back(a.m_block[*it]);
+	}
     }
 }
 
@@ -488,6 +497,16 @@ void Board::DumpBlocks()
             std::cerr << "id=" << Const().ToString(i)  << " " << b->ToString(Const()) << '\n';
         }
     }
+}
+
+std::string Board::ActiveBlocksToString(SgBlackWhite color) const
+{
+    ostringstream os;
+    for (size_t i = 0; i < m_state.m_activeBlocks[color].size(); ++i)
+	os << ' ' 
+	   << Const().ToString(m_state.m_activeBlocks[color][i]->m_anchor);
+    os << '\n';
+    return os.str();
 }
 
 //----------------------------------------------------------------------
