@@ -111,6 +111,7 @@ struct Board
     void SetPosition(const Board& other);
 
     std::string ToString() const;
+    std::string ToString(int p) const { return Const().ToString(p); }
     std::string BorderToString() const;
     std::string AnchorsToString() const;
     std::string ActiveBlocksToString(SgBlackWhite color) const;

@@ -215,7 +215,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
         m_uctSearch.WriteStatistics(std::cerr);
         std::cerr << "Score          " << std::setprecision(2) << score << '\n';
         for (std::size_t i = 0; i < sequence.size(); i++) 
-            std::cerr << ' ' << m_brd.Const().ToString(sequence[i]);
+            std::cerr << ' ' << m_brd.ToString(sequence[i]);
         std::cerr << '\n';
 	
         if (m_allowSwap && m_history.size()==1 && score < 0.5)
@@ -366,7 +366,7 @@ void YGtpEngine::CmdGenMove(GtpCommand& cmd)
         if (move == Y_SWAP)
             cmd << "swap";
         else
-            cmd << m_brd.Const().ToString(move);
+            cmd << m_brd.ToString(move);
     }
 }
 
@@ -376,7 +376,7 @@ std::string PrintPV(const SgVector<SgMove>& pv, const Board& brd)
     for (int i = 0; i < pv.Length(); ++i)
     {
         if (i) os << ' ';
-        os << brd.Const().ToString(pv[i]);
+        os << brd.ToString(pv[i]);
     }
     return os.str();
 }
@@ -448,13 +448,12 @@ void YGtpEngine::CmdSolve(GtpCommand& cmd)
         cmd << "unknown none";
     else if (value == -1 || value == 1)
     {
-        cmd << "draw " << (pv.IsEmpty() ? "none" 
-                           : m_brd.Const().ToString(pv[0]));
+        cmd << "draw " << (pv.IsEmpty() ? "none" : m_brd.ToString(pv[0]));
     }
     else if (value == 10)
     {
         cmd << (toPlay == SG_BLACK ? "black" : "white") << ' ' 
-            << (pv.IsEmpty() ? "none" : m_brd.Const().ToString(pv[0]));
+            << (pv.IsEmpty() ? "none" : m_brd.ToString(pv[0]));
         std::cerr << "PV: " << PrintPV(pv, m_brd) << '\n';
     }
     else if (value == -10)
@@ -571,7 +570,7 @@ void YGtpEngine::CmdUctProvenNodes(GtpCommand& cmd)
             pt = "loss";
         else if (type == SG_PROVEN_LOSS)
             pt = "win";
-        cmd << ' ' << m_brd.Const().ToString(p) << ' ' << pt;
+        cmd << ' ' << m_brd.ToString(p) << ' ' << pt;
     }
 }
 
@@ -586,7 +585,7 @@ void YGtpEngine::CmdUctScores(GtpCommand& cmd)
         float mean = 0.0;
         if (count > 0)
             mean = child.Mean();
-        cmd << ' ' << m_brd.Const().ToString(p)
+        cmd << ' ' << m_brd.ToString(p)
             << ' ' << std::fixed << std::setprecision(3) << mean
             << '@' << count;
     }
@@ -601,7 +600,7 @@ void YGtpEngine::CmdRaveScores(GtpCommand& cmd)
         SgPoint p = child.Move();
         if (p == SG_PASS || ! child.HasRaveValue())
             continue;
-        cmd << ' ' << m_brd.Const().ToString(p)
+        cmd << ' ' << m_brd.ToString(p)
             << ' ' << std::fixed << std::setprecision(3) << child.RaveValue()
             << '@' << child.RaveCount();
     }
@@ -626,12 +625,12 @@ void YGtpEngine::CmdBlockStones(GtpCommand& cmd)
         return;
     int anchor = m_brd.Anchor(p);
     SgBlackWhite color = m_brd.GetColor(anchor);
-    cmd << m_brd.Const().ToString(anchor);
+    cmd << m_brd.ToString(anchor);
     for (BoardIterator it(m_brd.Const()); it; ++it) {
         if (*it != anchor
             && m_brd.GetColor(*it) == color 
             && m_brd.IsInBlock(*it, anchor))
-            cmd << ' ' << m_brd.Const().ToString(*it);
+            cmd << ' ' << m_brd.ToString(*it);
     }
 }
 
@@ -645,7 +644,7 @@ void YGtpEngine::CmdBlockLiberties(GtpCommand& cmd)
     for (BoardIterator it(m_brd.Const()); it; ++it) {
         if (m_brd.GetColor(*it) == SG_EMPTY 
             && m_brd.IsLibertyOfBlock(*it, anchor))
-            cmd << ' ' << m_brd.Const().ToString(*it);
+            cmd << ' ' << m_brd.ToString(*it);
     }
 }
 
@@ -663,7 +662,7 @@ void YGtpEngine::CmdGroup(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    cmd << m_brd.Const().ToString(m_brd.Group(p)) << '\n';
+    cmd << m_brd.ToString(m_brd.Group(p)) << '\n';
 }
 
 void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
@@ -675,7 +674,7 @@ void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
     int group = m_brd.Group(p);
     std::vector<int> blocks = m_brd.GetBlocksInGroup(group);
     for(size_t i = 0; i < blocks.size(); ++i)
-	cmd << ' ' << m_brd.Const().ToString(blocks[i]);
+	cmd << ' ' << m_brd.ToString(blocks[i]);
 }
 
 void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)
@@ -684,7 +683,7 @@ void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)
     int p1 = CellArg(cmd, 0);
     std::vector<int> liberties = m_brd.GetLibertiesWith(p1);
     for(std::vector<int>::size_type i = 0; i != liberties.size(); ++i)
-	cmd << ' ' << m_brd.Const().ToString(liberties[i]);
+	cmd << ' ' << m_brd.ToString(liberties[i]);
 }
 
 void YGtpEngine::CmdSharedLiberties(GtpCommand& cmd)
@@ -694,7 +693,7 @@ void YGtpEngine::CmdSharedLiberties(GtpCommand& cmd)
     int p2 = CellArg(cmd, 1);
     const std::vector<int>& liberties = m_brd.GetSharedLiberties(p1, p2);
     for(size_t i = 0; i < liberties.size(); ++i)
-	cmd << ' ' << m_brd.Const().ToString(liberties[i]);
+	cmd << ' ' << m_brd.ToString(liberties[i]);
 }
 
 //----------------------------------------------------------------------
@@ -713,6 +712,6 @@ void YGtpEngine::CmdPlayoutMove(GtpCommand& cmd)
     bool skipRaveUpdate;
     int move = thread->GeneratePlayoutMove(skipRaveUpdate);
     Play(m_brd.ToPlay(), move);
-    cmd << m_brd.Const().ToString(move);
+    cmd << m_brd.ToString(move);
 }
 

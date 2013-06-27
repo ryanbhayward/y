@@ -468,10 +468,10 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
 void Board::GroupSearch(bool* seen, Block* b)
 {
     seen[m_state.GetActiveIndex(b)] = true;
-    //std::cout << "b: " << Const().ToString(b->m_anchor) << '\n';
+    //std::cout << "b: " << ToString(b->m_anchor) << '\n';
     for (size_t i = 0; i < b->m_shared.size(); ++i)
     {
-	//std::cout << "Considering: " << Const().ToString(b->m_shared[i].m_other) << '\n';
+	//std::cout << "Considering: " << ToString(b->m_shared[i].m_other) << '\n';
 	if(seen[m_state.GetActiveIndex(m_state.m_block[b->m_shared[i].m_other])] == false 
 	    && b->m_shared[i].m_liberties.size() > 1)
 	{
@@ -528,7 +528,7 @@ void Board::CheckConsistency()
         if (color != SG_BLACK && color != SG_WHITE && color != SG_EMPTY)
         {
             std::cerr << ToString();
-            std::cerr << Const().ToString(*it) << " color = " 
+            std::cerr << ToString(*it) << " color = " 
                       << m_state.m_color[*it] << '\n';
             abort();
         }
@@ -560,7 +560,7 @@ void Board::DumpBlocks()
             const Block * b = m_state.m_block[i];
             if (b->m_color == 3)
                 continue;
-            std::cerr << "id=" << Const().ToString(i)  << " " << b->ToString(Const()) << '\n';
+            std::cerr << "id=" << ToString(i)  << " " << b->ToString(Const()) << '\n';
         }
     }
 }
@@ -569,8 +569,7 @@ std::string Board::ActiveBlocksToString(SgBlackWhite color) const
 {
     ostringstream os;
     for (size_t i = 0; i < m_state.m_activeBlocks[color].size(); ++i)
-	os << ' ' 
-	   << Const().ToString(m_state.m_activeBlocks[color][i]->m_anchor);
+	os << ' ' << ToString(m_state.m_activeBlocks[color][i]->m_anchor);
     os << '\n';
     return os.str();
 }
@@ -635,7 +634,7 @@ std::string Board::AnchorsToString() const
 	    if(m_state.m_block[psn] != 0) {
 		if(Const().board_row(psn)+1 < 10)
 		    os << ' ';
-		os << Const().ToString(Anchor(psn));
+		os << ToString(Anchor(psn));
 	    }
 	    else
 		os << " * ";

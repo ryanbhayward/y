@@ -65,14 +65,14 @@ SgUctValue YUctThreadState::Evaluate()
 void YUctThreadState::Execute(SgMove move)
 {
     // std::cerr << m_brd.ToString() << '\n'
-    //           << "move=" << m_brd.Const().ToString(move) << '\n';
+    //           << "move=" << m_brd.ToString(move) << '\n';
     m_brd.Play(m_brd.ToPlay(), move);
 }
 
 void YUctThreadState::ExecutePlayout(SgMove move)
 {
     // std::cerr << m_brd.ToString() << '\n'
-    //           << "move=" << m_brd.Const().ToString(move) << '\n';
+    //           << "move=" << m_brd.ToString(move) << '\n';
     m_brd.Play(m_brd.ToPlay(), move);
 }
 
@@ -169,7 +169,7 @@ void YUctThreadState::StartPlayout(const Board& other)
     SgBlackWhite color = m_brd.GetColor(lastMove);
     m_brd.RemoveStone(m_brd.LastMove());
     m_brd.Play(color, lastMove);
-    // std::cerr << m_brd.Const().ToString(m_brd.LastMove()) << '\n'
+    // std::cerr << m_brd.ToString(m_brd.LastMove()) << '\n'
     //           << "toPlay=" << m_brd.ToPlay() << '\n';
     m_emptyCells.clear();
     for (BoardIterator it(m_brd); it; ++it)
@@ -208,7 +208,7 @@ YUctSearch::~YUctSearch()
 
 std::string YUctSearch::MoveString(SgMove move) const
 {
-    return m_brd.Const().ToString(move);
+    return m_brd.ToString(move);
 }
 
 SgUctValue YUctSearch::UnknownEval() const
