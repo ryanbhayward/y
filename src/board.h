@@ -49,6 +49,10 @@ public:
     int TotalCells;
     int TotalGBCells;
 
+    int WEST;
+    int EAST;
+    int SOUTH;
+
     int Nbr_offsets[NumNbrs+1];
     int Bridge_offsets[NumNbrs];
 

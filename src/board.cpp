@@ -37,6 +37,12 @@ std::string ConstBoard::ColorToString(SgBoardColor color)
 
 std::string ConstBoard::ToString(int cell) const
 {
+    if (cell == WEST)
+        return "west";
+    else if (cell == EAST)
+        return "east";
+    else if (cell == SOUTH)
+        return "south";
     char str[16];
     sprintf(str, "%c%1d",board_col(cell)+'a',board_row(cell)+1); 
     return str;
@@ -62,6 +68,9 @@ ConstBoard::ConstBoard(int size)
     , Np2G(m_size+2*GUARDS)
     , TotalCells(m_size*(m_size+1)/2)
     , TotalGBCells(Np2G*Np2G)
+    , WEST(TotalGBCells+0)
+    , EAST(TotalGBCells+1)
+    , SOUTH(TotalGBCells+2)
 {
     Nbr_offsets[0] =  -Np2G;
     Nbr_offsets[1] = 1-Np2G;
@@ -116,43 +125,45 @@ void Board::SetSize(int size)
  
     // Create block for left edge
     {
-        Block& b = m_state.m_blockList[T+0];
-        b.m_anchor = T;  // never used for edge blocks
-        b.m_border = BORDER_LEFT;
+        Block& b = m_state.m_blockList[Const().WEST];
         b.m_color = SG_BORDER;
+        b.m_anchor = Const().WEST;
+        b.m_border = BORDER_LEFT;
         b.m_stones.Clear();
         for (int i = 0; i < N; ++i)
             b.m_liberties.PushBack(Const().fatten(i,0));
     }
     // Create block for right edge
     {
-        Block& b = m_state.m_blockList[T+1];
-        b.m_anchor = T+1;  // never used for edge blocks
-        b.m_border = BORDER_RIGHT;
+        Block& b = m_state.m_blockList[Const().EAST];
         b.m_color = SG_BORDER;
+        b.m_anchor = Const().EAST;
+        b.m_border = BORDER_RIGHT;
         b.m_stones.Clear();
         for (int i = 0; i < N; ++i)
             b.m_liberties.PushBack(Const().fatten(i,i));
     }
     // Create block for bottom edge
     {
-        Block& b = m_state.m_blockList[T+2];
-        b.m_anchor = T+2;  // never used for edge blocks
-        b.m_border = BORDER_BOTTOM;
+        Block& b = m_state.m_blockList[Const().SOUTH];
         b.m_color = SG_BORDER;
+        b.m_anchor = Const().SOUTH;
+        b.m_border = BORDER_BOTTOM;
         b.m_stones.Clear();
         for (int i = 0; i < N; ++i)
             b.m_liberties.PushBack(Const().fatten(N,i-1));
     }
     // set guards to point to their border block
-    for (int i=0; i<N; i++) { 
-        m_state.m_block[Const().fatten(i,0)-1] = &m_state.m_blockList[T+0];
-        m_state.m_block[Const().fatten(i,i)+1] = &m_state.m_blockList[T+1];
-        m_state.m_block[Const().fatten(N,i)] = &m_state.m_blockList[T+2];
+    std::vector<Block*>& bptr = m_state.m_block;
+    std::vector<Block>& blst = m_state.m_blockList;
+    for (int i = 0; i < N; ++i) { 
+        bptr[Const().fatten(i,0)-1] = &blst[Const().WEST];
+        bptr[Const().fatten(i,i)+1] = &blst[Const().EAST];
+        bptr[Const().fatten(N,i)] = &blst[Const().SOUTH];
     }
-    m_state.m_block[Const().fatten(-1,0)-1] = &m_state.m_blockList[T+0];
-    m_state.m_block[Const().fatten(-1,-1)+1] = &m_state.m_blockList[T+1];
-    m_state.m_block[Const().fatten(N,N)] = &m_state.m_blockList[T+2];
+    bptr[Const().fatten(-1,0)-1] = &blst[Const().WEST];
+    bptr[Const().fatten(-1,-1)+1] = &blst[Const().EAST];
+    bptr[Const().fatten(N,N)] = &blst[Const().SOUTH];
    
     for (BoardIterator it(Const()); it; ++it)
         m_state.m_color[*it] = SG_EMPTY;
