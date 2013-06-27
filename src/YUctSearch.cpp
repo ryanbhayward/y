@@ -112,6 +112,8 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
     {
         //move = m_brd.SaveBridge(m_brd.LastMove(), m_brd.ToPlay(), m_random);
         move = m_brd.GeneralSaveBridge(m_random);
+        // if (move != SG_NULLMOVE)
+        //     std::cerr << "SAVEBRIDGE=" << m_brd.ToString(move) << '\n';
     } 
     if (move == SG_NULLMOVE)
     {

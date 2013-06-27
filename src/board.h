@@ -171,7 +171,7 @@ struct Board
     { return m_state.m_block[anchor]->m_liberties.Contains(p); }
 
     const std::vector<int>& GetSharedLiberties(int p1, int p2) const
-    { return GetSharedLiberties(m_state.m_block[p1], m_state.m_block[p2]); }
+    { return GetSharedLiberties(GetBlock(p1), GetBlock(p2)); }
 
     std::vector<int> GetLibertiesWith(int p1) const
     {
@@ -380,7 +380,6 @@ private:
         std::vector<Block> m_blockList;
 	std::vector< std::vector<Block*> > m_activeBlocks;
         
-        SgArrayList<int, 3> m_adjBlocks;
         SgArrayList<int, 3> m_oppBlocks;
                 
         SgBlackWhite m_toPlay;
@@ -432,7 +431,8 @@ private:
 
     int GetSharedLibertiesIndex(Block* b1, Block* b2) const;
 
-    const std::vector<int>& GetSharedLiberties(Block* b1, Block* b2) const;
+    const std::vector<int>& 
+    GetSharedLiberties(const Block* b1, const Block* b2) const;
 
     void AddSharedLiberty(Block* b1, Block* b2, int p);
 
@@ -454,6 +454,9 @@ private:
     void CopyState(Board::State& a, const Board::State& b);
 
     Block* GetBlock(int p) 
+    { return m_state.m_block[p]; }
+
+    const Block* GetBlock(int p) const
     { return m_state.m_block[p]; }
 
     Board(const Board& other);          // not implemented

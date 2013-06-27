@@ -702,6 +702,8 @@ void YGtpEngine::CmdPlayoutMove(GtpCommand& cmd)
 {
     if (m_brd.IsGameOver())
         throw GtpFailure("Game over!");
+    if (m_history.empty())
+        throw GtpFailure("Must play at least one move first!");
     if (!m_uctSearch.ThreadsCreated())
         m_uctSearch.CreateThreads();
     YUctThreadState* thread 
