@@ -203,25 +203,7 @@ void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
 	}
     }
     m_state.m_activeBlocks[color].push_back(b);
-    b->m_group = p;
-    switch(b->m_shared.size())
-    {
-    case 0:
-	break;
-    case 1:
-    {
-	if(b->m_shared[0].m_liberties.size() > 1)
-	    b->m_group = m_state.m_block[b->m_shared[0].m_other]->m_group;
-        break;
-    }
-    default:
-    {
-	bool seen[m_state.m_activeBlocks[color].size()];
-	memset(seen, 0, sizeof(seen));
-	GroupSearch(seen, b);
-	break;
-    }
-    }
+    ComputeGroupForBlock(b);
 }
 
 bool Board::IsAdjacent(int p, const Block* b)
@@ -246,22 +228,13 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
                         && m_state.m_block[*it2] != b) 
                    {
                         AddSharedLiberty(b, m_state.m_block[*it2], *it);
-                    }
+                   }
                 }
             }
         }
     }
     m_state.m_block[p] = b;
-    for(size_t i = 0; i < b->m_shared.size(); ++i) {
-	if(b->m_group != m_state.m_block[b->m_shared[i].m_other]->m_group 
-	   && b->m_shared[i].m_liberties.size() > 1)
-	{
-	    bool seen[m_state.m_activeBlocks[b->m_color].size()];
-	    memset(seen, 0, sizeof(seen));
-	    GroupSearch(seen, b);
-	    break;
-	}
-    }
+    ComputeGroupForBlock(b);
 }
 
 void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
@@ -305,7 +278,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
             }
 	m_state.RemoveActiveBlock(adjBlock);
     }
-    for (CellNbrIterator it(Const(), p); it; ++it)
+    for (CellNbrIterator it(Const(), p); it; ++it) {
         if (m_state.m_color[*it] == SG_EMPTY && !seen[*it]) {
             largestBlock->m_liberties.PushBack(*it);
 	    for (CellNbrIterator it2(Const(), *it); it2; ++it2)
@@ -315,16 +288,9 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
 		    AddSharedLiberty(largestBlock, m_state.m_block[*it2], *it);
 		}
 	}
-    for(size_t i = 0; i < largestBlock->m_shared.size(); ++i) {
-	if(largestBlock->m_group != m_state.m_block[largestBlock->m_shared[i].m_other]->m_group 
-	   && largestBlock->m_shared[i].m_liberties.size() > 1)
-	    {
-		bool seen[m_state.m_activeBlocks[largestBlock->m_color].size()];
-		memset(seen, 0, sizeof(seen));
-		GroupSearch(seen, largestBlock);
-		break;
-	    }
     }
+    
+    ComputeGroupForBlock(largestBlock);
 }
 
 void Board::RemoveSharedLiberty(int p, Block* a, Block* b)
@@ -394,16 +360,16 @@ void Board::Play(SgBlackWhite color, int p)
         AddStoneToBlock(p, border, GetBlock(adjBlocks[0]));
     else
         MergeBlocks(p, border, adjBlocks);
+
     if (oppBlocks.Length() > 1) {
-	bool seen[m_state.m_activeBlocks[color].size()];
+	bool seen[Const().TotalGBCells+10];
 	memset(seen, 0, sizeof(seen));
 	for(int i = 0; i < oppBlocks.Length(); ++i) 
-	    if(oppBlocks[i] != 0) 
-		m_state.m_block[oppBlocks[i]]->m_group = oppBlocks[i];
+            GetBlock(oppBlocks[i])->m_group = oppBlocks[i];
 	for(int i = 0; i < oppBlocks.Length(); ++i) 
-	    if(oppBlocks[i] != 0)
-		GroupSearch(seen, m_state.m_block[oppBlocks[i]]);
+            GroupSearch(seen, m_state.m_block[oppBlocks[i]]);
     }
+
     if (m_state.m_block[p]->m_border == BORDER_ALL) {
         m_state.m_winner = color;
     }
@@ -476,21 +442,44 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
         b2->RemoveSharedLiberties(index);
 }
 
+bool Board::BlocksVirtuallyConnected(const std::vector<int>& lib, bool* seen)
+{
+    int count = 0;
+    for (size_t i = 0; i < lib.size(); ++i)
+        if (!seen[lib[i]])
+            ++count;
+    return count > 1;
+}
+
+void Board::MarkLibertiesAsSeen(const std::vector<int>& lib, bool* seen)
+{
+    for (size_t j = 0; j < lib.size(); ++j)
+        seen[lib[j]] = true;
+}
+
+void Board::ComputeGroupForBlock(Block* b)
+{
+    bool seen[Const().TotalGBCells+10];
+    memset(seen, 0, sizeof(seen));
+    b->m_group = b->m_anchor;
+    GroupSearch(seen, b);
+}
+
 void Board::GroupSearch(bool* seen, Block* b)
 {
-    seen[m_state.GetActiveIndex(b)] = true;
-    //std::cout << "b: " << ToString(b->m_anchor) << '\n';
+    seen[b->m_anchor] = true;
+    //std::cerr << "b: " << ToString(b->m_anchor) << '\n';
     for (size_t i = 0; i < b->m_shared.size(); ++i)
     {
-	//std::cout << "Considering: " << ToString(b->m_shared[i].m_other) << '\n';
-	if(seen[m_state.GetActiveIndex(m_state.m_block[b->m_shared[i].m_other])] == false 
-	    && b->m_shared[i].m_liberties.size() > 1)
+        SharedLiberties& sl = b->m_shared[i];
+	//std::cerr << "Considering: " << ToString(sl.m_other) << '\n';
+	if(!seen[sl.m_other] && BlocksVirtuallyConnected(sl.m_liberties, seen))
 	{
-	    m_state.m_block[b->m_shared[i].m_other]->m_group = b->m_group;
-	    GroupSearch(seen, m_state.m_block[b->m_shared[i].m_other]);
+	    GetBlock(sl.m_other)->m_group = b->m_group;
+            MarkLibertiesAsSeen(sl.m_liberties, seen);
+	    GroupSearch(seen, GetBlock(sl.m_other));
 	}
     }
-    return;
 }
 
 void Board::RemoveStone(int p)

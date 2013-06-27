@@ -186,8 +186,12 @@ struct Board
 	std::vector<int> ret;
 	SgBlackWhite color = GetColor(group);
 	for (size_t i = 0; i < m_state.m_activeBlocks[color].size(); ++i)
-	    if(m_state.m_activeBlocks[color][i]->m_group == group)
+	    if(m_state.m_activeBlocks[color][i]->m_group == group) {
 		ret.push_back(m_state.m_activeBlocks[color][i]->m_anchor);
+                // if group captain: move to front for gui
+                if (m_state.m_activeBlocks[color][i]->m_anchor == group)
+                    std::swap(ret.back(), ret[0]);
+            }
 	return ret;
     }
 
@@ -433,6 +437,13 @@ private:
     void AddSharedLiberty(Block* b1, Block* b2, int p);
 
     void MergeSharedLiberty(Block* b1, Block* b2);
+
+    static bool 
+    BlocksVirtuallyConnected(const std::vector<int>& lib, bool* seen);
+
+    static void MarkLibertiesAsSeen(const std::vector<int>& lib, bool* seen);
+
+    void ComputeGroupForBlock(Block* b);
 
     void GroupSearch(bool* seen, Block* b);
 
