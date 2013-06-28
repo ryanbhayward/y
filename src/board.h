@@ -158,14 +158,17 @@ struct Board
     int Anchor(int p) const 
     { return m_state.m_block[p]->m_anchor; }
 
-    int Group(int p) const
-    { return m_state.m_block[p]->m_group; }
+    int GetGroup(int p) const
+    { return m_state.m_group[p]->m_anchor; }
+
+    int GetGroupBorder(int p) const
+    { return m_state.m_group[p]->m_border; }
 
     bool IsInBlock(int p, int anchor) const
     { return m_state.m_block[p]->m_anchor == anchor; }
 
     bool IsinGroup(int p, int group) const
-    { return m_state.m_block[p]->m_group == group; }
+    { return m_state.m_group[p]->m_anchor == group; }
 
     bool IsLibertyOfBlock(int p, int anchor) const
     { return m_state.m_block[anchor]->m_liberties.Contains(p); }
@@ -186,7 +189,9 @@ struct Board
 	std::vector<int> ret;
 	SgBlackWhite color = GetColor(group);
 	for (size_t i = 0; i < m_state.m_activeBlocks[color].size(); ++i)
-	    if(m_state.m_activeBlocks[color][i]->m_group == group) {
+	    if(GetGroup(m_state.m_activeBlocks[color][i]->m_anchor)
+	       == group) 
+	    {
 		ret.push_back(m_state.m_activeBlocks[color][i]->m_anchor);
                 // if group captain: move to front for gui
                 if (m_state.m_activeBlocks[color][i]->m_anchor == group)
@@ -277,7 +282,6 @@ private:
 
         int m_anchor;
         int m_border;
-	int m_group;
         SgBlackWhite m_color;
         LibertyList m_liberties;    
         StoneList m_stones;
@@ -339,9 +343,18 @@ private:
 
     struct Group
     {
-	int anchor;
-	int border;
-	std::vector<int> blocks;
+	int m_anchor;
+	int m_border;
+	std::vector<int> m_blocks;
+
+	Group()
+	{ }
+
+	Group(int anchor, int border)
+	    : m_anchor(anchor)
+	    , m_border(border)
+	    , m_blocks(anchor)
+	{ }
     };
 
     class CellNbrIterator
@@ -379,6 +392,8 @@ private:
         std::vector<Block*> m_block;
         std::vector<Block> m_blockList;
 	std::vector< std::vector<Block*> > m_activeBlocks;
+	std::vector<Group*> m_group;
+	std::vector<Group> m_groupList;
         
         SgArrayList<int, 3> m_oppBlocks;
                 
@@ -450,6 +465,10 @@ private:
     void RemoveSharedLiberty(int p, Block* a, Block* b);
 
     void RemoveSharedLiberty(int p, SgArrayList<int, 3>& adjBlocks);
+
+    void CleanUpEdgeSharedLiberties(SgBlackWhite color);
+
+    void RemoveEdgeSharedLiberties(Block* b);
 
     void CopyState(Board::State& a, const Board::State& b);
 

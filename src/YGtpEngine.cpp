@@ -662,7 +662,7 @@ void YGtpEngine::CmdGroup(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    cmd << m_brd.ToString(m_brd.Group(p)) << '\n';
+    cmd << m_brd.ToString(m_brd.GetGroup(p)) << '\n';
 }
 
 void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
@@ -671,7 +671,7 @@ void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    int group = m_brd.Group(p);
+    int group = m_brd.GetGroup(p);
     std::vector<int> blocks = m_brd.GetBlocksInGroup(group);
     for(size_t i = 0; i < blocks.size(); ++i)
 	cmd << ' ' << m_brd.ToString(blocks[i]);
