@@ -105,6 +105,36 @@ private:
 
 struct Board 
 {
+    struct Statistics
+    {
+        size_t m_maxSharedLiberties;
+
+        Statistics()
+        { 
+            Clear(); 
+        }
+
+        void Clear()
+        {
+            m_maxSharedLiberties = 0;
+        }
+
+        std::string ToString() const
+        {
+            std::ostringstream os;
+            os << '['
+               << "max_shared_liberties=" << m_maxSharedLiberties
+               << ']';
+            return os.str();
+        }
+
+        static Statistics& Get()
+        {
+            static Statistics s_stats;
+            return s_stats;
+        }
+    };
+
     explicit Board(int size);
 
     const ConstBoard& Const() const { return m_constBrd; }
@@ -420,7 +450,7 @@ private:
     State m_state;
     State m_savePoint1;
     State m_savePoint2;
-        
+
     void CreateSingleStoneBlock(int p, SgBlackWhite color, int border);
 
     bool IsAdjacent(int p, const Block* b);

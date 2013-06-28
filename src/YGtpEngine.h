@@ -54,6 +54,8 @@ public:
     void CmdFinalScore(GtpCommand& cmd);
     void CmdVersion(GtpCommand& cmd);
 
+    void CmdBoardStatistics(GtpCommand& cmd);
+
     void CmdBlockInfo(GtpCommand& cmd);
     void CmdBlockStones(GtpCommand& cmd);
     void CmdBlockLiberties(GtpCommand& cmd);

@@ -101,7 +101,7 @@ ConstBoard::ConstBoard(int size)
 
 //----------------------------------------------------------------------
 
-Board::Board(int size) 
+Board::Board(int size)
 { 
     SetSize(size);
 }
@@ -445,6 +445,10 @@ void Board::AddSharedLiberty(Block* b1, Block* b2, int p)
         assert(j != -1);
         b1->m_shared[i].Include(p);
         b2->m_shared[j].Include(p);
+        Statistics& stats = Statistics::Get();
+        stats.m_maxSharedLiberties 
+            = std::max(stats.m_maxSharedLiberties,
+                       b1->m_shared[i].m_liberties.size());
     }
     else {
 	b1->m_shared.push_back(SharedLiberties(b2->m_anchor, p));
