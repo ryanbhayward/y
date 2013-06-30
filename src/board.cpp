@@ -243,17 +243,15 @@ void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
         if (m_state.m_color[*it] == SG_EMPTY){
             b->m_liberties.PushBack(*it);
 	    for (CellNbrIterator it2(Const(), *it); it2; ++it2)
-		// Don't want to add shared liberties when directly adjacent to
-		// border.
-		if (*it2 != p && (     GetColor(*it2) == color 
-				   || (GetColor(*it2) == SG_BORDER
-				       && border == 0)))
+		if (*it2 != p && (GetColor(*it2) == color 
+				  || GetColor(*it2) == SG_BORDER))
                 {
 		    AddSharedLiberty(b, GetBlock(*it2), *it);
 		}
 	}
     }
     m_state.m_activeBlocks[color].push_back(b);
+    CleanUpEdgeSharedLiberties(GetColor(p));
     ComputeGroupForBlock(b);
 }
 
@@ -287,6 +285,7 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
     }
     m_state.m_block[p] = b;
     m_state.m_group[p] = m_state.m_group[b->m_anchor];
+    CleanUpEdgeSharedLiberties(GetColor(p));
     ComputeGroupForBlock(b);
 }
 
@@ -347,7 +346,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
             }
 	}
     }
-    
+    CleanUpEdgeSharedLiberties(GetColor(p));
     ComputeGroupForBlock(largestBlock);
 }
 
@@ -445,7 +444,6 @@ void Board::Play(SgBlackWhite color, int p)
         else
             MergeBlocks(p, border, realAdjBlocks);
     }
-    CleanUpEdgeSharedLiberties(GetColor(p));
 
     // Recompute groups for adjacent opponent blocks
     if (oppBlocks.Length() > 1) {
@@ -608,12 +606,14 @@ void Board::GroupSearch(bool* seen, Block* b)
 	//std::cerr << "Considering: " << ToString(sl.m_other) << '\n';
 	if(!seen[sl.m_other] && BlocksVirtuallyConnected(sl.m_liberties, seen))
 	{
+	    //std::cerr << "Inside!\n";
 	    Group* g = m_state.m_group[b->m_anchor];
 	    m_state.m_group[sl.m_other] = g;
 	    g->m_blocks.push_back(sl.m_other);
 	    g->m_border |= GetBlock(sl.m_other)->m_border;
             MarkLibertiesAsSeen(sl.m_liberties, seen);
-	    GroupSearch(seen, GetBlock(sl.m_other));
+	    if(GetColor(sl.m_other) != SG_BORDER)
+		GroupSearch(seen, GetBlock(sl.m_other));
             //std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
 	}
     }

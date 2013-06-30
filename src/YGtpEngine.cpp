@@ -65,6 +65,7 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("active_blocks", &YGtpEngine::CmdActiveBlocks);
     RegisterCmd("group", &YGtpEngine::CmdGroup);
     RegisterCmd("group_blocks", &YGtpEngine::CmdGroupBlocks);
+    RegisterCmd("group_value", &YGtpEngine::CmdGroupValue);
     
     NewGame();
 }
@@ -675,6 +676,15 @@ void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
     std::vector<int> blocks = m_brd.GetBlocksInGroup(group);
     for(size_t i = 0; i < blocks.size(); ++i)
 	cmd << ' ' << m_brd.ToString(blocks[i]);
+}
+
+void YGtpEngine::CmdGroupValue(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    if (m_brd.GetColor(p) == SG_EMPTY)
+	return;
+    cmd << ' ' << m_brd.GetGroupBorder(p);
 }
 
 void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)
