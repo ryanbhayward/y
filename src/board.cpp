@@ -113,9 +113,13 @@ void Board::State::Init(int T)
 
     m_block.resize(T+3);
     std::fill(m_block.begin(), m_block.end(), (Block*)0);
+    m_group.resize(T+3);
+    std::fill(m_group.begin(), m_group.end(), (Group*)0); 
 
     m_blockList.resize(T+3);
     std::fill(m_blockList.begin(), m_blockList.end(), Block());
+    m_groupList.resize(T+3);
+    std::fill(m_groupList.begin(), m_groupList.end(), Group());
 
     m_activeBlocks.resize(2);
     m_activeBlocks[SG_BLACK].resize(0);
@@ -130,39 +134,51 @@ void Board::SetSize(int size)
     const int T = Const().TotalGBCells;
     m_state.Init(T);
 
-    // Create block for left edge
+    // Create block/group for left edge
     {
         Block& b = m_state.m_blockList[Const().WEST];
         b.m_color = SG_BORDER;
         b.m_anchor = Const().WEST;
-        b.m_group = b.m_anchor;
         b.m_border = BORDER_LEFT;
         b.m_stones.Clear();
         b.m_shared.clear();
+	Group& g = m_state.m_groupList[Const().WEST];
+	g.m_anchor = b.m_anchor;
+	g.m_border = b.m_border;
+	g.m_blocks.clear();
+	g.m_blocks.push_back(b.m_anchor);
         for (int i = 0; i < N; ++i)
             b.m_liberties.PushBack(Const().fatten(i,0));
     }
-    // Create block for right edge
+    // Create block/group for right edge
     {
         Block& b = m_state.m_blockList[Const().EAST];
         b.m_color = SG_BORDER;
         b.m_anchor = Const().EAST;
-        b.m_group = b.m_anchor;
         b.m_border = BORDER_RIGHT;
         b.m_stones.Clear();
         b.m_shared.clear();
+	Group& g = m_state.m_groupList[Const().WEST];
+	g.m_anchor = b.m_anchor;
+	g.m_border = b.m_border;
+	g.m_blocks.clear();
+	g.m_blocks.push_back(b.m_anchor);
         for (int i = 0; i < N; ++i)
             b.m_liberties.PushBack(Const().fatten(i,i));
     }
-    // Create block for bottom edge
+    // Create block/group for bottom edge
     {
         Block& b = m_state.m_blockList[Const().SOUTH];
         b.m_color = SG_BORDER;
         b.m_anchor = Const().SOUTH;
-        b.m_group = b.m_anchor;
         b.m_border = BORDER_BOTTOM;
         b.m_stones.Clear();
         b.m_shared.clear();
+	Group& g = m_state.m_groupList[Const().WEST];
+	g.m_anchor = b.m_anchor;
+	g.m_border = b.m_border;
+	g.m_blocks.clear();
+	g.m_blocks.push_back(b.m_anchor);
         for (int i = 0; i < N; ++i)
             b.m_liberties.PushBack(Const().fatten(N,i-1));
     }
@@ -181,6 +197,20 @@ void Board::SetSize(int size)
     bptr[Const().fatten(-1,-1)+1] = &blst[Const().EAST];
     bptr[Const().fatten(N,N)] = &blst[Const().SOUTH];
    
+    std::vector<Group*>& gptr = m_state.m_group;
+    std::vector<Group>& glst = m_state.m_groupList;
+    gptr[Const().WEST] = &glst[Const().WEST];
+    gptr[Const().EAST] = &glst[Const().EAST];
+    gptr[Const().SOUTH] = &glst[Const().SOUTH];
+    for (int i = 0; i < N; ++i) { 
+        gptr[Const().fatten(i,0)-1] = &glst[Const().WEST];
+        gptr[Const().fatten(i,i)+1] = &glst[Const().EAST];
+        gptr[Const().fatten(N,i)] = &glst[Const().SOUTH];
+    }
+    gptr[Const().fatten(-1,0)-1] = &glst[Const().WEST];
+    gptr[Const().fatten(-1,-1)+1] = &glst[Const().EAST];
+    gptr[Const().fatten(N,N)] = &glst[Const().SOUTH];
+
     for (BoardIterator it(Const()); it; ++it)
         m_state.m_color[*it] = SG_EMPTY;
 
@@ -213,14 +243,15 @@ void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
         if (m_state.m_color[*it] == SG_EMPTY){
             b->m_liberties.PushBack(*it);
 	    for (CellNbrIterator it2(Const(), *it); it2; ++it2)
-		if (*it2 != p && (   GetColor(*it2) == color 
-                                  || GetColor(*it2) == SG_BORDER))
+		if (*it2 != p && (GetColor(*it2) == color 
+				  || GetColor(*it2) == SG_BORDER))
                 {
 		    AddSharedLiberty(b, GetBlock(*it2), *it);
 		}
 	}
     }
     m_state.m_activeBlocks[color].push_back(b);
+    CleanUpEdgeSharedLiberties(GetColor(p));
     ComputeGroupForBlock(b);
 }
 
@@ -253,6 +284,8 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
         }
     }
     m_state.m_block[p] = b;
+    m_state.m_group[p] = m_state.m_group[b->m_anchor];
+    CleanUpEdgeSharedLiberties(GetColor(p));
     ComputeGroupForBlock(b);
 }
 
@@ -271,6 +304,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
         }
     }
     m_state.m_block[p] = largestBlock;
+    m_state.m_group[p] = m_state.m_group[largestBlock->m_anchor];
     largestBlock->m_border |= border;
     largestBlock->m_stones.PushBack(p);
 
@@ -289,6 +323,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
         {
             largestBlock->m_stones.PushBack(*stn);
             m_state.m_block[*stn] = largestBlock;
+	    m_state.m_group[*stn] = m_state.m_group[largestBlock->m_anchor];
         }
         for (Block::LibertyIterator lib(adjBlock->m_liberties); lib; ++lib)
             if (!seen[*lib]) {
@@ -311,7 +346,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
             }
 	}
     }
-    
+    CleanUpEdgeSharedLiberties(GetColor(p));
     ComputeGroupForBlock(largestBlock);
 }
 
@@ -325,6 +360,8 @@ void Board::RemoveSharedLiberty(int p, Block* a, Block* b)
         return;
 
     int i = a->GetSharedLibertiesIndex(b);
+    if (i == -1)
+	return;
     a->m_shared[i].Exclude(p);
     if (a->m_shared[i].m_liberties.empty()) {
         a->RemoveSharedLiberties(i);
@@ -412,17 +449,20 @@ void Board::Play(SgBlackWhite color, int p)
     if (oppBlocks.Length() > 1) {
 	bool seen[Const().TotalGBCells+10];
 	memset(seen, 0, sizeof(seen));
+	//for(int i = 0; i < oppBlocks.Length(); ++i) 
+        //    GetBlock(oppBlocks[i])->m_group = oppBlocks[i];
 	for(int i = 0; i < oppBlocks.Length(); ++i) 
-            GetBlock(oppBlocks[i])->m_group = oppBlocks[i];
-	for(int i = 0; i < oppBlocks.Length(); ++i) 
-            GroupSearch(seen, m_state.m_block[oppBlocks[i]]);
+            ComputeGroupForBlock(GetBlock(oppBlocks[i]));
     }
 
     // Check for a win
-    if (m_state.m_block[p]->m_border == BORDER_ALL) {
+    if (m_state.m_group[p]->m_border == BORDER_ALL || m_state.m_block[p]->m_border == BORDER_ALL) {
         m_state.m_winner = color;
     }
+
+    //std::cerr << m_state.m_group[p]->m_border << '\n';
     FlipToPlay();
+    //std::cerr << ToString();
 }
 
 const std::vector<int>& 
@@ -496,6 +536,43 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
         b2->RemoveSharedLiberties(index);
 }
 
+void Board::CleanUpEdgeSharedLiberties(SgBlackWhite color)
+{
+    for (size_t i = 0; i < m_state.m_activeBlocks[color].size(); ++i)
+	if (m_state.m_activeBlocks[color][i]->m_border != 0)
+	    RemoveEdgeSharedLiberties(m_state.m_activeBlocks[color][i]);
+}
+
+void Board::RemoveEdgeSharedLiberties(Block* b)
+{
+    int i;
+    if ((b->m_border & BORDER_LEFT) == BORDER_LEFT) {
+	i = b->GetSharedLibertiesIndex(GetBlock(Const().WEST));
+	if (i != -1) {
+	     while(b->GetSharedLibertiesIndex(GetBlock(Const().WEST)) != -1)
+		RemoveSharedLiberty(b->m_shared[i].m_liberties[0], 
+				    b, GetBlock(Const().WEST));
+	}
+    }
+    if ((b->m_border & BORDER_RIGHT) == BORDER_RIGHT) {
+	i = b->GetSharedLibertiesIndex(GetBlock(Const().EAST));
+	if (i != -1) {
+	    while(b->GetSharedLibertiesIndex(GetBlock(Const().EAST)) != -1) {
+		RemoveSharedLiberty(b->m_shared[i].m_liberties[0], 
+				    b, GetBlock(Const().EAST));
+	    }
+	}
+    }
+    if ((b->m_border & BORDER_BOTTOM) == BORDER_BOTTOM) {
+	i = b->GetSharedLibertiesIndex(GetBlock(Const().SOUTH));
+	if (i != -1) {
+	     while(b->GetSharedLibertiesIndex(GetBlock(Const().SOUTH)) != -1)
+		RemoveSharedLiberty(b->m_shared[i].m_liberties[0], 
+				    b, GetBlock(Const().SOUTH));
+	}
+    }
+}
+
 bool Board::BlocksVirtuallyConnected(const std::vector<int>& lib, bool* seen)
 {
     int count = 0;
@@ -515,7 +592,11 @@ void Board::ComputeGroupForBlock(Block* b)
 {
     bool seen[Const().TotalGBCells+10];
     memset(seen, 0, sizeof(seen));
-    b->m_group = b->m_anchor;
+    Group* g = m_state.m_group[b->m_anchor] = &m_state.m_groupList[b->m_anchor];
+    g->m_anchor = b->m_anchor;
+    g->m_border = b->m_border;
+    g->m_blocks.clear();
+    g->m_blocks.push_back(g->m_anchor);
     GroupSearch(seen, b);
 }
 
@@ -526,13 +607,18 @@ void Board::GroupSearch(bool* seen, Block* b)
     for (size_t i = 0; i < b->m_shared.size(); ++i)
     {
         SharedLiberties& sl = b->m_shared[i];
-	// std::cerr << "Considering: " << ToString(sl.m_other) << '\n';
+	//std::cerr << "Considering: " << ToString(sl.m_other) << '\n';
 	if(!seen[sl.m_other] && BlocksVirtuallyConnected(sl.m_liberties, seen))
 	{
-	    GetBlock(sl.m_other)->m_group = b->m_group;
+	    //std::cerr << "Inside!\n";
+	    Group* g = m_state.m_group[b->m_anchor];
+	    m_state.m_group[sl.m_other] = g;
+	    g->m_blocks.push_back(sl.m_other);
+	    g->m_border |= GetBlock(sl.m_other)->m_border;
             MarkLibertiesAsSeen(sl.m_liberties, seen);
-	    GroupSearch(seen, GetBlock(sl.m_other));
-            // std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
+	    if(GetColor(sl.m_other) != SG_BORDER)
+		GroupSearch(seen, GetBlock(sl.m_other));
+            //std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
 	}
     }
 }
@@ -567,10 +653,14 @@ void Board::CopyState(Board::State& a, const Board::State& b)
     a.m_block[Const().WEST] = &a.m_blockList[Const().WEST];
     a.m_block[Const().EAST] = &a.m_blockList[Const().EAST];
     a.m_block[Const().SOUTH]= &a.m_blockList[Const().SOUTH];
+    a.m_group[Const().WEST] = &a.m_groupList[Const().WEST];
+    a.m_group[Const().EAST] = &a.m_groupList[Const().EAST];
+    a.m_group[Const().SOUTH]= &a.m_groupList[Const().SOUTH];
     for (BoardIterator it(Const()); it; ++it) {
 	SgBlackWhite color = b.m_color[*it];
         if (color != SG_EMPTY) {
             a.m_block[*it] = &a.m_blockList[b.m_block[*it]->m_anchor];
+	    a.m_group[*it] = &a.m_groupList[b.m_group[*it]->m_anchor];
 	    if (!a.IsActive(a.m_block[*it]))
 		a.m_activeBlocks[color].push_back(a.m_block[*it]);
 	}
