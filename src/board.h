@@ -203,8 +203,8 @@ struct Board
     bool IsLibertyOfBlock(int p, int anchor) const
     { return m_state.m_block[anchor]->m_liberties.Contains(p); }
 
-    const std::vector<int>& GetSharedLiberties(int p1, int p2) const
-    { return GetSharedLiberties(GetBlock(p1), GetBlock(p2)); }
+    bool IsSharedLiberty(int p1, int p2, int p) const
+    { return GetSharedLiberties(p1, p2).Contains(p); }
 
     std::vector<int> GetLibertiesWith(int p1) const
     {
@@ -250,8 +250,11 @@ private:
 
     struct SharedLiberties
     {
+        static const size_t MAX_LIBERTIES = 8;
+
 	int m_other;
-        std::vector<int> m_liberties;
+        SgArrayList<int, MAX_LIBERTIES> m_liberties;
+        //std::vector<int> m_liberties;
 
 	SharedLiberties()
             : m_other(-1)
@@ -259,27 +262,23 @@ private:
 
         SharedLiberties(int anchor, int liberty)
 	    : m_other(anchor)
-            , m_liberties(1, liberty)
+            , m_liberties(liberty)
 	{ }
 
-	SharedLiberties(int anchor, const std::vector<int>& liberties)
-	    : m_other(anchor)
-            , m_liberties(liberties)
-	{ }
+        bool Empty() const
+        { return m_liberties.IsEmpty(); }
 
-        ~SharedLiberties()
-        { }
+        size_t Size() const
+        { return m_liberties.Length(); }
 
         bool Contains(int p) const
-        {
-            for (size_t i = 0; i < m_liberties.size(); ++i)
-                if (m_liberties[i] == p)
-                    return true;
-            return false;
-        }
+        { return m_liberties.Contains(p); }
 
         void PushBack(int p)
-        { m_liberties.push_back(p); }
+        { 
+            if (Size() < MAX_LIBERTIES)
+                m_liberties.PushBack(p); 
+        }
 
         void Include(int p)
         {
@@ -289,13 +288,7 @@ private:
 
         void Exclude(int p)
         {
-            for (size_t j = 0; j < m_liberties.size(); ++j) {
-                if (m_liberties[j] == p) {
-                    std::swap(m_liberties[j], m_liberties.back());
-                    m_liberties.pop_back();
-                    return;
-                }
-            }
+            m_liberties.Exclude(p);
         }
 
     };
@@ -349,7 +342,7 @@ private:
             for (size_t i = 0; i < m_shared.size(); ++i) {
                 if (i) os << ",";
                 os << "[" << cbrd.ToString(m_shared[i].m_other) << " [";
-                for (size_t j=0; j < m_shared[i].m_liberties.size(); ++j)
+                for (size_t j = 0; j < m_shared[i].Size(); ++j)
                 {
                     if (j) os << ",";
                     os << cbrd.ToString(m_shared[i].m_liberties[j]);
@@ -476,17 +469,14 @@ private:
 
     int GetSharedLibertiesIndex(Block* b1, Block* b2) const;
 
-    const std::vector<int>& 
-    GetSharedLiberties(const Block* b1, const Block* b2) const;
-
     void AddSharedLiberty(Block* b1, Block* b2, int p);
 
     void MergeSharedLiberty(Block* b1, Block* b2);
 
     static bool 
-    BlocksVirtuallyConnected(const std::vector<int>& lib, bool* seen);
+    BlocksVirtuallyConnected(const SharedLiberties& lib, bool* seen);
 
-    static void MarkLibertiesAsSeen(const std::vector<int>& lib, bool* seen);
+    static void MarkLibertiesAsSeen(const SharedLiberties& lib, bool* seen);
 
     void ComputeGroupForBlock(Block* b);
 
@@ -499,6 +489,12 @@ private:
     void CleanUpEdgeSharedLiberties(SgBlackWhite color);
 
     void RemoveEdgeSharedLiberties(Block* b);
+
+    const SharedLiberties&
+    GetSharedLiberties(const Block* b1, const Block* b2) const;
+
+    const SharedLiberties& GetSharedLiberties(int p1, int p2) const
+    { return GetSharedLiberties(GetBlock(p1), GetBlock(p2)); }
 
     void CopyState(Board::State& a, const Board::State& b);
 

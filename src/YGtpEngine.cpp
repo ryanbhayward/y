@@ -711,9 +711,9 @@ void YGtpEngine::CmdSharedLiberties(GtpCommand& cmd)
     cmd.CheckNuArg(2);
     int p1 = CellArg(cmd, 0);
     int p2 = CellArg(cmd, 1);
-    const std::vector<int>& liberties = m_brd.GetSharedLiberties(p1, p2);
-    for(size_t i = 0; i < liberties.size(); ++i)
-	cmd << ' ' << m_brd.ToString(liberties[i]);
+    for (BoardIterator p(m_brd.Const()); p; ++p)
+        if (m_brd.IsSharedLiberty(p1, p2, *p))
+            cmd << ' ' << m_brd.ToString(*p);
 }
 
 //----------------------------------------------------------------------

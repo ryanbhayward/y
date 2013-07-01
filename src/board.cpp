@@ -9,12 +9,6 @@
 
 using namespace std;
 
-namespace {
-
-    std::vector<int> EMPTY_VECTOR;
-
-}
-
 char ConstBoard::ColorToChar(SgBoardColor color) 
 {
     switch(color) {
@@ -363,13 +357,13 @@ void Board::RemoveSharedLiberty(int p, Block* a, Block* b)
     if (i == -1)
 	return;
     a->m_shared[i].Exclude(p);
-    if (a->m_shared[i].m_liberties.empty()) {
+    if (a->m_shared[i].Empty()) {
         a->RemoveSharedLiberties(i);
     }
 
     i = b->GetSharedLibertiesIndex(a);
     b->m_shared[i].Exclude(p);
-    if (b->m_shared[i].m_liberties.empty()) {
+    if (b->m_shared[i].Empty()) {
         b->RemoveSharedLiberties(i);
     }
 }
@@ -456,7 +450,9 @@ void Board::Play(SgBlackWhite color, int p)
     }
 
     // Check for a win
-    if (m_state.m_group[p]->m_border == BORDER_ALL || m_state.m_block[p]->m_border == BORDER_ALL) {
+    if (   m_state.m_group[p]->m_border == BORDER_ALL 
+        || m_state.m_block[p]->m_border == BORDER_ALL) 
+    {
         m_state.m_winner = color;
     }
 
@@ -465,16 +461,19 @@ void Board::Play(SgBlackWhite color, int p)
     //std::cerr << ToString();
 }
 
-const std::vector<int>& 
+const Board::SharedLiberties& 
 Board::GetSharedLiberties(const Block* b1, const Block* b2) const
 {
+    // FIXME:: IS THIS THREADSAFE!?
+    static SharedLiberties EMPTY_SHARED_LIBERTIES;
+
     if(b1 == b2 || b1 == 0 || b2 == 0)
-	return EMPTY_VECTOR;
+	return EMPTY_SHARED_LIBERTIES;
     for(size_t i = 0; i < b1->m_shared.size(); ++i) {
 	if(b1->m_shared[i].m_other == b2->m_anchor)
-            return b1->m_shared[i].m_liberties;
+            return b1->m_shared[i];
     }
-    return EMPTY_VECTOR;
+    return EMPTY_SHARED_LIBERTIES;
 }
 
 void Board::AddSharedLiberty(Block* b1, Block* b2, int p)
@@ -487,8 +486,7 @@ void Board::AddSharedLiberty(Block* b1, Block* b2, int p)
         b2->m_shared[j].Include(p);
         Statistics& stats = Statistics::Get();
         stats.m_maxSharedLiberties 
-            = std::max(stats.m_maxSharedLiberties,
-                       b1->m_shared[i].m_liberties.size());
+            = std::max(stats.m_maxSharedLiberties, b1->m_shared[i].Size());
     }
     else {
 	b1->m_shared.push_back(SharedLiberties(b2->m_anchor, p));
@@ -510,7 +508,7 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
             int index2 = otherBlock->GetSharedLibertiesIndex(b2);
             assert(index2 != -1);
             // transfer any new liberties from b1 to b2
-            for (size_t j = 0; j < b1->m_shared[i].m_liberties.size(); ++j)
+            for (size_t j = 0; j < b1->m_shared[i].Size(); ++j)
             {
                 const int lib = b1->m_shared[i].m_liberties[j];
                 if(!(b2->m_shared[index]).Contains(lib)) {
@@ -573,19 +571,19 @@ void Board::RemoveEdgeSharedLiberties(Block* b)
     }
 }
 
-bool Board::BlocksVirtuallyConnected(const std::vector<int>& lib, bool* seen)
+bool Board::BlocksVirtuallyConnected(const SharedLiberties& lib, bool* seen)
 {
     int count = 0;
-    for (size_t i = 0; i < lib.size(); ++i)
-        if (!seen[lib[i]])
+    for (size_t i = 0; i < lib.Size(); ++i)
+        if (!seen[lib.m_liberties[i]])
             ++count;
     return count > 1;
 }
 
-void Board::MarkLibertiesAsSeen(const std::vector<int>& lib, bool* seen)
+void Board::MarkLibertiesAsSeen(const SharedLiberties& lib, bool* seen)
 {
-    for (size_t j = 0; j < lib.size(); ++j)
-        seen[lib[j]] = true;
+    for (size_t j = 0; j < lib.Size(); ++j)
+        seen[lib.m_liberties[j]] = true;
 }
 
 void Board::ComputeGroupForBlock(Block* b)
@@ -608,14 +606,14 @@ void Board::GroupSearch(bool* seen, Block* b)
     {
         SharedLiberties& sl = b->m_shared[i];
 	//std::cerr << "Considering: " << ToString(sl.m_other) << '\n';
-	if(!seen[sl.m_other] && BlocksVirtuallyConnected(sl.m_liberties, seen))
+	if(!seen[sl.m_other] && BlocksVirtuallyConnected(sl, seen))
 	{
 	    //std::cerr << "Inside!\n";
 	    Group* g = m_state.m_group[b->m_anchor];
 	    m_state.m_group[sl.m_other] = g;
 	    g->m_blocks.push_back(sl.m_other);
 	    g->m_border |= GetBlock(sl.m_other)->m_border;
-            MarkLibertiesAsSeen(sl.m_liberties, seen);
+            MarkLibertiesAsSeen(sl, seen);
 	    if(GetColor(sl.m_other) != SG_BORDER)
 		GroupSearch(seen, GetBlock(sl.m_other));
             //std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
@@ -808,20 +806,20 @@ int Board::GeneralSaveBridge(SgRandom& random) const
         return SG_NULLMOVE;
     case 2:
         {
-            const vector<int>& libs = GetSharedLiberties(opp[0], opp[1]);
-            if (libs.size() == 1)
-                return libs[0];
+            const SharedLiberties& libs = GetSharedLiberties(opp[0], opp[1]);
+            if (libs.Size() == 1)
+                return libs.m_liberties[0];
             return SG_NULLMOVE;
         }
     case 3:
         for (int i = 0; i < 2; ++i)
         {
             for (int j = i + 1; j < 3; ++j) {
-                const vector<int>& libs = GetSharedLiberties(opp[i], opp[j]);
-                if (libs.size() == 1) {
+                const SharedLiberties& libs=GetSharedLiberties(opp[i], opp[j]);
+                if (libs.Size() == 1) {
                     ++num;
                     if (num==1 || random.Int(num)==0)
-                        ret = libs[0];
+                        ret = libs.m_liberties[0];
                 }
             }    
         }
