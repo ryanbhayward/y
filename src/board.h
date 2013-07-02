@@ -165,6 +165,12 @@ struct Board
     bool IsWinner(SgBlackWhite player) const 
     { return player == m_state.m_winner; }
 
+    bool LastMoveHasWinningVC() const
+    {
+        return LastMove() != SG_NULLMOVE 
+            && m_state.m_group[LastMove()]->m_border == BORDER_ALL;
+    }
+
     void Swap();
 
     bool IsOccupied(int cell) const 
