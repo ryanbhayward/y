@@ -152,7 +152,7 @@ void Board::SetSize(int size)
         b.m_border = BORDER_RIGHT;
         b.m_stones.Clear();
         b.m_shared.clear();
-	Group& g = m_state.m_groupList[Const().WEST];
+	Group& g = m_state.m_groupList[Const().EAST];
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
 	g.m_blocks.clear();
@@ -168,7 +168,7 @@ void Board::SetSize(int size)
         b.m_border = BORDER_BOTTOM;
         b.m_stones.Clear();
         b.m_shared.clear();
-	Group& g = m_state.m_groupList[Const().WEST];
+	Group& g = m_state.m_groupList[Const().SOUTH];
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
 	g.m_blocks.clear();
@@ -586,12 +586,16 @@ void Board::GroupSearch(bool* seen, Block* b)
 	{
 	    //std::cerr << "Inside!\n";
 	    Group* g = m_state.m_group[b->m_anchor];
-	    m_state.m_group[sl.m_other] = g;
-	    g->m_blocks.push_back(sl.m_other);
 	    g->m_border |= GetBlock(sl.m_other)->m_border;
-            MarkLibertiesAsSeen(sl, seen);
-	    if(GetColor(sl.m_other) != SG_BORDER)
+	    if(GetColor(sl.m_other) != SG_BORDER) {
+                // Note that we are not marking liberties with an edge
+                // block: we claim these cannot conflict with group
+                // formation.
+                MarkLibertiesAsSeen(sl, seen);
+                g->m_blocks.push_back(sl.m_other);
+                m_state.m_group[sl.m_other] = g;
 		GroupSearch(seen, GetBlock(sl.m_other));
+            }
             //std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
 	}
     }
