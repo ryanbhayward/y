@@ -779,6 +779,22 @@ std::string Board::AnchorsToString() const
 
 //////////////////////////////////////////////////////////////////////
 
+int Board::MaintainConnection(int b1, int b2) const
+{
+    
+    const SharedLiberties& libs = GetSharedLiberties(b1, b2);
+    if (libs.Size() != 1)
+        return SG_NULLMOVE;
+    const Group* g1 = m_state.m_group[b1];
+    const Group* g2 = m_state.m_group[b2];
+    if (GetColor(b1) == SG_BORDER || GetColor(b2) == SG_BORDER) {
+        if ((g1->m_border & g2->m_border) == 0)
+            return libs.m_liberties[0];
+    } else if (g1 != g2)
+        return libs.m_liberties[0];
+    return SG_NULLMOVE;
+}
+
 int Board::GeneralSaveBridge(SgRandom& random) const
 {
     int ret = SG_NULLMOVE;
@@ -791,21 +807,17 @@ int Board::GeneralSaveBridge(SgRandom& random) const
     case 1:
         return SG_NULLMOVE;
     case 2:
-        {
-            const SharedLiberties& libs = GetSharedLiberties(opp[0], opp[1]);
-            if (libs.Size() == 1)
-                return libs.m_liberties[0];
-            return SG_NULLMOVE;
-        }
+        return MaintainConnection(opp[0], opp[1]);
     case 3:
         for (int i = 0; i < 2; ++i)
         {
             for (int j = i + 1; j < 3; ++j) {
-                const SharedLiberties& libs=GetSharedLiberties(opp[i], opp[j]);
-                if (libs.Size() == 1) {
+                int candidate = MaintainConnection(opp[i], opp[j]);
+                if (candidate != SG_NULLMOVE)
+                {
                     ++num;
                     if (num==1 || random.Int(num)==0)
-                        ret = libs.m_liberties[0];
+                        ret = candidate;
                 }
             }    
         }

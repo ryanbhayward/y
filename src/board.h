@@ -196,6 +196,7 @@ struct Board
     int SaveBridge(int lastMove, const SgBlackWhite toPlay, 
                    SgRandom& random) const;
 
+    int MaintainConnection(int b1, int b2) const;
     // Returns SG_NULLMOVE if no savebridge pattern matches last move played
     int GeneralSaveBridge(SgRandom& random) const;
 
