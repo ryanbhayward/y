@@ -254,7 +254,6 @@ private:
 
 	int m_other;
         SgArrayList<int, MAX_LIBERTIES> m_liberties;
-        //std::vector<int> m_liberties;
 
 	SharedLiberties()
             : m_other(-1)
@@ -333,6 +332,13 @@ private:
         {
             m_shared[i] = m_shared.back();
             m_shared.pop_back();
+        }
+
+        void RemoveSharedLibertiesWith(const Block* other)
+        {
+            int i = GetSharedLibertiesIndex(other);
+            if (i != -1)
+                RemoveSharedLiberties(i);
         }
 
         std::string SharedLibertiesToString(const ConstBoard& cbrd) const
@@ -471,6 +477,8 @@ private:
 
     void AddSharedLiberty(Block* b1, Block* b2, int p);
 
+    void AddSharedLibertiesAroundPoint(Block* b1, int p, int skip);
+
     void MergeSharedLiberty(Block* b1, Block* b2);
 
     static bool 
@@ -485,8 +493,6 @@ private:
     void RemoveSharedLiberty(int p, Block* a, Block* b);
 
     void RemoveSharedLiberty(int p, SgArrayList<int, 3>& adjBlocks);
-
-    void CleanUpEdgeSharedLiberties(SgBlackWhite color);
 
     void RemoveEdgeSharedLiberties(Block* b);
 

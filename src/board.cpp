@@ -224,6 +224,25 @@ void Board::SetPosition(const Board& other)
     m_state.m_lastMove = other.m_state.m_lastMove;
 }
 
+void Board::AddSharedLibertiesAroundPoint(Block* b1, int p, int skip)
+{
+    for (CellNbrIterator it(Const(), p); it; ++it) {
+        if (*it == skip)
+            continue;
+        if (GetColor(*it) == SG_EMPTY)
+            continue;
+        if (GetColor(*it) == SgOppBW(b1->m_color))
+            continue;
+        Block* b2 = GetBlock(*it);
+        if (b1 == b2)
+            continue;
+        if (b2->m_color == b1->m_color)
+            AddSharedLiberty(b1, b2, p);
+        else if (b2->m_color == SG_BORDER && ((b2->m_border&b1->m_border)==0))
+            AddSharedLiberty(b1, b2, p);
+    }
+}
+
 void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
 {
     Block* b = m_state.m_block[p] = &m_state.m_blockList[p];
@@ -234,18 +253,12 @@ void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
     b->m_liberties.Clear();
     b->m_shared.clear();
     for (CellNbrIterator it(Const(), p); it; ++it) {
-        if (m_state.m_color[*it] == SG_EMPTY){
+        if (GetColor(*it) == SG_EMPTY) {
             b->m_liberties.PushBack(*it);
-	    for (CellNbrIterator it2(Const(), *it); it2; ++it2)
-		if (*it2 != p && (GetColor(*it2) == color 
-				  || GetColor(*it2) == SG_BORDER))
-                {
-		    AddSharedLiberty(b, GetBlock(*it2), *it);
-		}
+            AddSharedLibertiesAroundPoint(b, *it, p);
 	}
     }
     m_state.m_activeBlocks[color].push_back(b);
-    CleanUpEdgeSharedLiberties(GetColor(p));
     ComputeGroupForBlock(b);
 }
 
@@ -262,24 +275,16 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
     b->m_border |= border;
     b->m_stones.PushBack(p);
     for (CellNbrIterator it(Const(), p); it; ++it) {
-        if (m_state.m_color[*it] == SG_EMPTY) {
+        if (GetColor(*it) == SG_EMPTY) {
             if (!IsAdjacent(*it, b)) {
                 b->m_liberties.PushBack(*it);
-                for (CellNbrIterator it2(Const(), *it); it2; ++it2) {
-                    if (*it2 != p 
-                        && (   GetColor(*it2) == GetColor(p)
-                            || GetColor(*it2) == SG_BORDER)
-                        && GetBlock(*it2) != b)
-                   {
-                       AddSharedLiberty(b, GetBlock(*it2), *it);
-                   }
-                }
+                AddSharedLibertiesAroundPoint(b, *it, p);
             }
         }
     }
     m_state.m_block[p] = b;
     m_state.m_group[p] = m_state.m_group[b->m_anchor];
-    CleanUpEdgeSharedLiberties(GetColor(p));
+    RemoveEdgeSharedLiberties(b);
     ComputeGroupForBlock(b);
 }
 
@@ -329,18 +334,10 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (m_state.m_color[*it] == SG_EMPTY && !seen[*it]) {
             largestBlock->m_liberties.PushBack(*it);
-	    for (CellNbrIterator it2(Const(), *it); it2; ++it2) {
-		if (*it2 != p 
-                    && (   GetColor(*it2) == GetColor(p) 
-                        || GetColor(*it2) == SG_BORDER)
-                    && GetBlock(*it2) != largestBlock) 
-                {
-		    AddSharedLiberty(largestBlock, GetBlock(*it2), *it);
-		}
-            }
+            AddSharedLibertiesAroundPoint(largestBlock, *it, p);
 	}
     }
-    CleanUpEdgeSharedLiberties(GetColor(p));
+    RemoveEdgeSharedLiberties(largestBlock);
     ComputeGroupForBlock(largestBlock);
 }
 
@@ -534,40 +531,19 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
         b2->RemoveSharedLiberties(index);
 }
 
-void Board::CleanUpEdgeSharedLiberties(SgBlackWhite color)
-{
-    for (size_t i = 0; i < m_state.m_activeBlocks[color].size(); ++i)
-	if (m_state.m_activeBlocks[color][i]->m_border != 0)
-	    RemoveEdgeSharedLiberties(m_state.m_activeBlocks[color][i]);
-}
-
 void Board::RemoveEdgeSharedLiberties(Block* b)
 {
-    int i;
-    if ((b->m_border & BORDER_LEFT) == BORDER_LEFT) {
-	i = b->GetSharedLibertiesIndex(GetBlock(Const().WEST));
-	if (i != -1) {
-	     while(b->GetSharedLibertiesIndex(GetBlock(Const().WEST)) != -1)
-		RemoveSharedLiberty(b->m_shared[i].m_liberties[0], 
-				    b, GetBlock(Const().WEST));
-	}
+    if (b->m_border & BORDER_LEFT) {
+        b->RemoveSharedLibertiesWith(GetBlock(Const().WEST));
+        GetBlock(Const().WEST)->RemoveSharedLibertiesWith(b);
     }
-    if ((b->m_border & BORDER_RIGHT) == BORDER_RIGHT) {
-	i = b->GetSharedLibertiesIndex(GetBlock(Const().EAST));
-	if (i != -1) {
-	    while(b->GetSharedLibertiesIndex(GetBlock(Const().EAST)) != -1) {
-		RemoveSharedLiberty(b->m_shared[i].m_liberties[0], 
-				    b, GetBlock(Const().EAST));
-	    }
-	}
+    if (b->m_border & BORDER_RIGHT) {
+        b->RemoveSharedLibertiesWith(GetBlock(Const().EAST));
+        GetBlock(Const().EAST)->RemoveSharedLibertiesWith(b);
     }
-    if ((b->m_border & BORDER_BOTTOM) == BORDER_BOTTOM) {
-	i = b->GetSharedLibertiesIndex(GetBlock(Const().SOUTH));
-	if (i != -1) {
-	     while(b->GetSharedLibertiesIndex(GetBlock(Const().SOUTH)) != -1)
-		RemoveSharedLiberty(b->m_shared[i].m_liberties[0], 
-				    b, GetBlock(Const().SOUTH));
-	}
+    if (b->m_border & BORDER_BOTTOM) {
+        b->RemoveSharedLibertiesWith(GetBlock(Const().SOUTH));
+        GetBlock(Const().SOUTH)->RemoveSharedLibertiesWith(b);
     }
 }
 
