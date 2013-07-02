@@ -447,8 +447,7 @@ void Board::Play(SgBlackWhite color, int p)
     }
 
     // Check for a win
-    if (   m_state.m_group[p]->m_border == BORDER_ALL 
-        || m_state.m_block[p]->m_border == BORDER_ALL) 
+    if (m_state.m_block[p]->m_border == BORDER_ALL) 
     {
         m_state.m_winner = color;
     }
