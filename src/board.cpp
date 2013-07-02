@@ -571,6 +571,13 @@ void Board::ComputeGroupForBlock(Block* b)
     g->m_blocks.clear();
     g->m_blocks.push_back(g->m_anchor);
     GroupSearch(seen, b);
+    // Add edge to group if we are touching
+    if ((g->m_border & BORDER_LEFT) && !Contains(g->m_blocks, Const().WEST))
+        g->m_blocks.push_back(Const().WEST);
+    if ((g->m_border & BORDER_RIGHT) && !Contains(g->m_blocks, Const().EAST))
+        g->m_blocks.push_back(Const().EAST);
+    if ((g->m_border & BORDER_BOTTOM) && !Contains(g->m_blocks, Const().SOUTH))
+        g->m_blocks.push_back(Const().SOUTH);
 }
 
 void Board::GroupSearch(bool* seen, Block* b)
@@ -586,12 +593,12 @@ void Board::GroupSearch(bool* seen, Block* b)
 	    //std::cerr << "Inside!\n";
 	    Group* g = m_state.m_group[b->m_anchor];
 	    g->m_border |= GetBlock(sl.m_other)->m_border;
+            g->m_blocks.push_back(sl.m_other);
 	    if(GetColor(sl.m_other) != SG_BORDER) {
                 // Note that we are not marking liberties with an edge
                 // block: we claim these cannot conflict with group
                 // formation.
                 MarkLibertiesAsSeen(sl, seen);
-                g->m_blocks.push_back(sl.m_other);
                 m_state.m_group[sl.m_other] = g;
 		GroupSearch(seen, GetBlock(sl.m_other));
             }

@@ -12,7 +12,15 @@
 #include "SgMove.h"
 #include "VectorIterator.h"
 
-static const int Y_INFINITY = 9999;
+template<typename T>
+bool Contains(const std::vector<T>& v, const T& val)
+{
+    for (size_t i = 0; i < v.size(); ++i)
+        if (v[i] == val)
+            return true;
+    return false;
+}
+
 
 //  Y-board       N cells per side    N(N+1)/2  total cells
 //  fat board, aka. guarded board with GUARDS extra rows/cols,
@@ -214,19 +222,15 @@ struct Board
         return ret;
     }
 
-    std::vector<int> GetBlocksInGroup(int group) const
+    std::vector<int> GetBlocksInGroup(int p) const
     {
 	std::vector<int> ret;
-	SgBlackWhite color = GetColor(group);
-	for (size_t i = 0; i < m_state.m_activeBlocks[color].size(); ++i)
-	    if(GetGroup(m_state.m_activeBlocks[color][i]->m_anchor)
-	       == group) 
-	    {
-		ret.push_back(m_state.m_activeBlocks[color][i]->m_anchor);
-                // if group captain: move to front for gui
-                if (m_state.m_activeBlocks[color][i]->m_anchor == group)
-                    std::swap(ret.back(), ret[0]);
-            }
+        Group* g = m_state.m_group[p];
+        for (size_t i = 0; i < g->m_blocks.size(); ++i) {
+            ret.push_back(g->m_blocks[i]);
+            if (g->m_blocks[i] == g->m_anchor)
+                std::swap(ret.back(), ret[0]);
+        }
 	return ret;
     }
 
