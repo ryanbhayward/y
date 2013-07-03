@@ -233,7 +233,7 @@ struct Board
     {
 	std::vector<int> ret;
         Group* g = m_state.m_group[p];
-        for (size_t i = 0; i < g->m_blocks.size(); ++i) {
+        for (int i = 0; i < g->m_blocks.Length(); ++i) {
             ret.push_back(g->m_blocks[i]);
             if (g->m_blocks[i] == g->m_anchor)
                 std::swap(ret.back(), ret[0]);
@@ -383,9 +383,11 @@ private:
 
     struct Group
     {
+	static const size_t MAX_BLOCKS = Y_MAX_CELL/4;
+
 	int m_anchor;
 	int m_border;
-	std::vector<int> m_blocks;
+	SgArrayList<int, MAX_BLOCKS> m_blocks;
 
 	Group()
 	{ }
