@@ -72,6 +72,8 @@ public:
 
     WeightedRandom* m_weights;
 
+    LocalMoves m_localMoves;
+
     void InitializeWeights();
     SgMove GenerateLocalMove();
     SgMove GenerateGlobalMove();

@@ -103,10 +103,16 @@ SgMove YUctThreadState::GenerateLocalMove()
     SgMove move = SG_NULLMOVE;
     if (m_search.UseSaveBridge()) 
     {
-        //move = m_brd.SaveBridge(m_brd.LastMove(), m_brd.ToPlay(), m_random);
-        move = m_brd.GeneralSaveBridge(m_random);
-        // if (move != SG_NULLMOVE)
-        //     std::cerr << "SAVEBRIDGE=" << m_brd.ToString(move) << '\n';
+        m_localMoves.Clear();
+        
+        m_brd.GeneralSaveBridge(m_localMoves);
+
+        float random = m_random.Float(m_weights[m_brd.ToPlay()].Total() + 
+                                      m_localMoves.Total());
+        if (random < m_localMoves.Total())
+        {
+            move = m_localMoves.Choose(random);
+        }
     } 
     return move;
 }

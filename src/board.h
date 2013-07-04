@@ -111,6 +111,55 @@ private:
     friend class Board;
 };
 
+
+struct LocalMoves
+{
+    static const float WEIGHT_SAVE_BRIDGE = 1000000.0;
+
+    std::vector<int> move;
+    std::vector<float> gamma;
+    float gammaTotal;
+    
+    void Clear()
+    {
+        move.clear();
+        gamma.clear();
+        gammaTotal = 0.0f;
+    }
+
+    float Total() const 
+    { return gammaTotal; }
+
+    void AddWeight(int p, float w)
+    {
+        for (size_t i = 0; i < move.size(); ++i) {
+            if (move[i] == p) {
+                gamma[i] += w;
+                gammaTotal += w;
+                return;
+            }
+        }
+        move.push_back(p);
+        gamma.push_back(w);
+        gammaTotal += w;
+    }
+
+    SgMove Choose(float random)
+    {
+        assert(!move.empty());
+
+        gamma.back() += 9999; // ensure it doesn't go past end
+
+        int i = -1;
+        do {
+            random -= gamma[++i];
+        } while (random > 0.0001f);
+        
+        return move[i];
+    }
+};
+
+
 struct Board 
 {
     struct Statistics
@@ -198,7 +247,7 @@ struct Board
 
     int MaintainConnection(int b1, int b2) const;
     // Returns SG_NULLMOVE if no savebridge pattern matches last move played
-    int GeneralSaveBridge(SgRandom& random) const;
+    void GeneralSaveBridge(LocalMoves& local) const;
 
     int Anchor(int p) const 
     { return m_state.m_block[p]->m_anchor; }

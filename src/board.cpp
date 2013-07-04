@@ -781,7 +781,6 @@ std::string Board::AnchorsToString() const
 
 int Board::MaintainConnection(int b1, int b2) const
 {
-    
     const SharedLiberties& libs = GetSharedLiberties(b1, b2);
     if (libs.Size() != 1)
         return SG_NULLMOVE;
@@ -795,37 +794,17 @@ int Board::MaintainConnection(int b1, int b2) const
     return SG_NULLMOVE;
 }
 
-int Board::GeneralSaveBridge(SgRandom& random) const
+void Board::GeneralSaveBridge(LocalMoves& local) const
 {
-    int ret = SG_NULLMOVE;
-    int num = 0;
-    
     const SgArrayList<int, 3>& opp = m_state.m_oppBlocks;
-    switch(opp.Length())
-    {
-    case 0:
-    case 1:
-        return SG_NULLMOVE;
-    case 2:
-        return MaintainConnection(opp[0], opp[1]);
-    case 3:
-        for (int i = 0; i < 2; ++i)
-        {
-            for (int j = i + 1; j < 3; ++j) {
-                int candidate = MaintainConnection(opp[i], opp[j]);
-                if (candidate != SG_NULLMOVE)
-                {
-                    ++num;
-                    if (num==1 || random.Int(num)==0)
-                        ret = candidate;
-                }
-            }    
-        }
-        return ret;
-    default:
-        return SG_NULLMOVE;
+    for (int i = 0; i < opp.Length() - 1; ++i) {
+        for (int j = i + 1; j < opp.Length(); ++j) {
+            int move = MaintainConnection(opp[i], opp[j]);
+            if (move != SG_NULLMOVE) {
+                local.AddWeight(move, LocalMoves::WEIGHT_SAVE_BRIDGE);
+            }
+        }    
     }
-    return SG_NULLMOVE;
 }
 
 int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay, 
