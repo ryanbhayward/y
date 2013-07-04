@@ -2,15 +2,18 @@ bin_PROGRAMS = y
 
 y_SOURCES = \
 board.cpp \
+WeightedRandom.cpp \
 YMain.cpp \
 YGtpEngine.cpp \
 YSearch.cpp \
 YUctSearch.cpp \
 YUctSearchUtil.cpp
 
+
 noinst_HEADERS = \
 board.h \
 BoardIterator.h \
+WeightedRandom.h \
 YGtpEngine.h \
 YSearch.h \
 YUctSearch.h \

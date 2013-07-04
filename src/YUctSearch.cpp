@@ -45,20 +45,17 @@ YUctThreadState::YUctThreadState(const YUctSearch& search,
       m_search(search),
       m_brd(search.GetBoard().Size())
 {
+    m_weights = new WeightedRandom[2];
 }
 
 YUctThreadState::~YUctThreadState()
 {
+    delete [] m_weights;
 }
 
 SgUctValue YUctThreadState::Evaluate()
 {
     SG_ASSERT(m_brd.IsGameOver());
-    // std::cerr << "GAME OVER" << m_brd.ToString() << '\n';
-    // if (m_brd.IsWinner(SG_BLACK))
-    //     std::cerr << "BLACK WINS!\n";
-    // if (m_brd.IsWinner(SG_WHITE))
-    //     std::cerr << "WHITE WINS!\n";
     return m_brd.IsWinner(m_brd.ToPlay()) ? 1.0 : 0.0;
 }
 
@@ -74,6 +71,8 @@ void YUctThreadState::ExecutePlayout(SgMove move)
     // std::cerr << m_brd.ToString() << '\n'
     //           << "move=" << m_brd.ToString(move) << '\n';
     m_brd.Play(m_brd.ToPlay(), move);
+    m_weights[SG_BLACK].SetWeight(move, 0.0f);
+    m_weights[SG_WHITE].SetWeight(move, 0.0f);
 }
 
 bool YUctThreadState::GenerateAllMoves(SgUctValue count, 
@@ -99,14 +98,8 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
     return false;
 }
 
-SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
+SgMove YUctThreadState::GenerateLocalMove()
 {
-    skipRaveUpdate = false;
-    //m_brd.CheckConsistency();
-    if (m_emptyCells.empty())
-        return SG_NULLMOVE;
-    if (m_brd.IsGameOver())
-        return SG_NULLMOVE;
     SgMove move = SG_NULLMOVE;
     if (m_search.UseSaveBridge()) 
     {
@@ -115,12 +108,38 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
         // if (move != SG_NULLMOVE)
         //     std::cerr << "SAVEBRIDGE=" << m_brd.ToString(move) << '\n';
     } 
+    return move;
+}
+
+SgMove YUctThreadState::GenerateGlobalMove()
+{
+    SgMove move = SG_NULLMOVE;
+
+    // m_weights[toPlay].Build();
+    // move = m_weights[toPlay].Choose(m_random);
+    move = m_weights[m_brd.ToPlay()].ChooseLinear(m_random);
+
+    if (!m_brd.IsEmpty(move)) {
+        //throw BenzeneException() << "Weighted move not empty!\n";
+        std::cerr << "Weighted move not empty!\n";
+        abort();
+    }
+    return move;
+}
+
+SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
+{
+    skipRaveUpdate = false;
+    //m_brd.CheckConsistency();
+    if (m_weights[m_brd.ToPlay()].Total() < 0.0001)
+        return SG_NULLMOVE;
+    if (m_brd.IsGameOver())
+        return SG_NULLMOVE;
+    SgMove move = SG_NULLMOVE;
+    move = GenerateLocalMove();
     if (move == SG_NULLMOVE)
     {
-        do {
-            move = m_emptyCells.back();
-            m_emptyCells.pop_back();
-        } while (m_brd.GetColor(move) != SG_EMPTY);
+        move = GenerateGlobalMove();
     }
     return move;
 }
@@ -146,22 +165,39 @@ void YUctThreadState::GameStart()
     m_brd.RestoreSavePoint1();
 }
 
+void YUctThreadState::InitializeWeights()
+{
+    m_weights[SG_BLACK].Clear();
+    m_weights[SG_WHITE].Clear();
+    for (BoardIterator it(m_brd.Const()); it; ++it)
+    {
+        if (m_brd.IsEmpty(*it)) {
+            m_weights[SG_BLACK][*it] = 1.0;
+            m_weights[SG_WHITE][*it] = 1.0;
+        }
+    }
+    m_weights[SG_BLACK].Build();
+    m_weights[SG_WHITE].Build();
+}
+
 void YUctThreadState::StartPlayouts()
 {
-    if (m_search.NumberPlayouts() > 1)
+    InitializeWeights();
+
+    if (m_search.NumberPlayouts() > 1) {
         m_brd.SetSavePoint2();
+        // TODO: copy the weights somewhere
+        std::cerr << "NumberPlayouts() > 1 NOT SUPPORTED!\n";
+        abort();
+    }
 }
 
 void YUctThreadState::StartPlayout()
 {
-    if (m_search.NumberPlayouts() > 1)
+    if (m_search.NumberPlayouts() > 1) {
         m_brd.RestoreSavePoint2();
-
-    m_emptyCells.clear();
-    for (BoardIterator it(m_brd); it; ++it)
-        if (SG_EMPTY == m_brd.GetColor(*it))
-            m_emptyCells.push_back(*it);
-    ShuffleVector(m_emptyCells, m_random);
+        // TODO: restore weights here
+    }
 }
 
 void YUctThreadState::StartPlayout(const Board& other)
@@ -173,11 +209,8 @@ void YUctThreadState::StartPlayout(const Board& other)
     m_brd.Play(color, lastMove);
     // std::cerr << m_brd.ToString(m_brd.LastMove()) << '\n'
     //           << "toPlay=" << m_brd.ToPlay() << '\n';
-    m_emptyCells.clear();
-    for (BoardIterator it(m_brd); it; ++it)
-        if (SG_EMPTY == m_brd.GetColor(*it))
-            m_emptyCells.push_back(*it);
-    ShuffleVector(m_emptyCells, m_random);
+
+    InitializeWeights();
 }
 
 void YUctThreadState::EndPlayout()

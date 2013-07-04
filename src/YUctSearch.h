@@ -10,6 +10,7 @@
 #include "SgUctTree.h"
 #include "SgRandom.h"
 #include "board.h"
+#include "WeightedRandom.h"
 
 //----------------------------------------------------------------------------
 
@@ -69,7 +70,12 @@ public:
 
     SgRandom m_random;
 
-    std::vector<SgMove> m_emptyCells;
+    WeightedRandom* m_weights;
+
+    void InitializeWeights();
+    SgMove GenerateLocalMove();
+    SgMove GenerateGlobalMove();
+
 };
 
 //----------------------------------------------------------------------------
