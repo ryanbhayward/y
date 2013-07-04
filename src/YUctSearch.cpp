@@ -112,6 +112,7 @@ SgMove YUctThreadState::GenerateLocalMove()
         if (random < m_localMoves.Total())
         {
             move = m_localMoves.Choose(random);
+            YUctSearch::PlayoutStatistics::Get().m_localMoves++;
         }
     } 
     return move;
@@ -124,6 +125,7 @@ SgMove YUctThreadState::GenerateGlobalMove()
     // m_weights[toPlay].Build();
     // move = m_weights[toPlay].Choose(m_random);
     move = m_weights[m_brd.ToPlay()].ChooseLinear(m_random);
+    YUctSearch::PlayoutStatistics::Get().m_globalMoves++;
 
     if (!m_brd.IsEmpty(move)) {
         //throw BenzeneException() << "Weighted move not empty!\n";
@@ -141,6 +143,9 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
         return SG_NULLMOVE;
     if (m_brd.IsGameOver())
         return SG_NULLMOVE;
+
+    YUctSearch::PlayoutStatistics::Get().m_totalMoves++;
+
     SgMove move = SG_NULLMOVE;
     move = GenerateLocalMove();
     if (move == SG_NULLMOVE)

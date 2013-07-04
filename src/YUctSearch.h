@@ -20,6 +20,7 @@ class YUctSearch;
 class YUctThreadState : public SgUctThreadState
 {
 public:
+
     YUctThreadState(const YUctSearch& search, const unsigned int threadId);
 
     ~YUctThreadState();
@@ -102,6 +103,42 @@ public:
 class YUctSearch : public SgUctSearch
 {
 public:
+    struct PlayoutStatistics
+    {
+        size_t m_localMoves;
+        size_t m_globalMoves;
+        size_t m_totalMoves;
+
+        PlayoutStatistics()
+        { 
+            Clear(); 
+        }
+
+        void Clear()
+        {
+            m_localMoves = 0;
+            m_globalMoves = 0;
+            m_totalMoves = 0;
+        }
+
+        std::string ToString() const
+        {
+            std::ostringstream os;
+            os << '['
+               << "local_moves=" << m_localMoves << ' '
+               << "global_moves=" << m_globalMoves << ' '
+               << "total_moves=" << m_totalMoves
+               << ']';
+            return os.str();
+        }
+
+        static PlayoutStatistics& Get()
+        {
+            static PlayoutStatistics s_stats;
+            return s_stats;
+        }
+    };
+
     YUctSearch(YUctThreadStateFactory* threadStateFactory);
 
     virtual ~YUctSearch();

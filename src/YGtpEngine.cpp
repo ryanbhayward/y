@@ -55,6 +55,7 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
     RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
     RegisterCmd("playout_move", &YGtpEngine::CmdPlayoutMove);
+    RegisterCmd("playout_statistics", &YGtpEngine::CmdPlayoutStatistics);
 
     RegisterCmd("board_statistics", &YGtpEngine::CmdBoardStatistics);
     
@@ -91,6 +92,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "param/Search Parameters/y_param\n"
         "plist/All Legal Moves/all_legal_moves %c\n"
         "string/Board Statistics/board_statistics\n"
+        "string/Playout Statistics/playout_statistics\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
 	"group/Group Blocks/group_blocks %p\n"
@@ -608,6 +610,11 @@ void YGtpEngine::CmdRaveScores(GtpCommand& cmd)
             << ' ' << std::fixed << std::setprecision(3) << child.RaveValue()
             << '@' << child.RaveCount();
     }
+}
+
+void YGtpEngine::CmdPlayoutStatistics(GtpCommand& cmd)
+{
+    cmd << YUctSearch::PlayoutStatistics::Get().ToString();
 }
 
 //----------------------------------------------------------------------------
