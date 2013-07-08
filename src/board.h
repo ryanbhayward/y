@@ -11,6 +11,7 @@
 #include "SgBoardColor.h"
 #include "SgMove.h"
 #include "VectorIterator.h"
+#include "WeightedRandom.h"
 
 template<typename T>
 bool Contains(const std::vector<T>& v, const T& val)
@@ -115,6 +116,7 @@ private:
 struct LocalMoves
 {
     static const float WEIGHT_SAVE_BRIDGE = 1000000.0;
+    static const float WEIGHT_DEAD_CELL   = 1e-6;
 
     std::vector<int> move;
     std::vector<float> gamma;
@@ -248,6 +250,9 @@ struct Board
     int MaintainConnection(int b1, int b2) const;
     // Returns SG_NULLMOVE if no savebridge pattern matches last move played
     void GeneralSaveBridge(LocalMoves& local) const;
+
+    void WeightDeadCellsForMove(int p, WeightedRandom* w);
+    bool IsCellDead(int p) const;
 
     int Anchor(int p) const 
     { return m_state.m_block[p]->m_anchor; }

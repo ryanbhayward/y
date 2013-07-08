@@ -848,3 +848,67 @@ int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay,
     }
     return SG_NULLMOVE;
 }
+
+// Need to switch color of point temporarily as it has not been played
+// yet. Switch it back at the end. TODO: Find better way to do that.
+void Board::WeightDeadCellsForMove(int p, WeightedRandom* w)
+{
+    m_state.m_color[p] = ToPlay();
+    for (CellNbrIterator it(Const(), p); it; ++it){
+	//std::cerr << "Looking at cell: " << ToString(*it) << '\n';
+	if(IsEmpty(*it) && IsCellDead(*it)) {
+	    //std::cerr << "Cell is dead: " << ToString(*it) << '\n';
+	    w[SG_BLACK].SetWeight(*it, LocalMoves::WEIGHT_DEAD_CELL);
+	    w[SG_WHITE].SetWeight(*it, LocalMoves::WEIGHT_DEAD_CELL);
+	}
+    }
+    m_state.m_color[p] = SG_EMPTY;
+}
+
+// TODO: If used, should be sped up
+bool Board::IsCellDead(int p) const
+{
+    int count = 0;
+    for (CellNbrIterator it(Const(), p); it; ++it)
+	if(GetColor(*it) == SG_BLACK || GetColor(*it) == SG_WHITE)
+	    ++count;
+    if (count < 4) return false;
+
+    SgBlackWhite lastColor = -1;
+    int s = 0;
+    for (int j = 0; j < 12; ++j)
+    {
+	const int i = j % 6;
+	const SgBlackWhite color = GetColor(p + Const().Nbr_offsets[i]);
+	if (s == 0)
+	{
+	    if (color == SG_BLACK || color == SG_WHITE) s = 1;
+	}
+	else if (s == 1)
+	{
+	    if (color == lastColor) s = 2;
+	    else if (color == SgOppBW(lastColor)) s = 1;
+	    else s = 0;
+	}
+	else if (s == 2)
+	{
+	    if (color == lastColor) s = 3;
+	    else if(GetColor(p + Const().Nbr_offsets[i+1]) 
+		    == SgOppBW(lastColor) && 
+		    GetColor(p + Const().Nbr_offsets[(i+2)%6]) 
+		    == SgOppBW(lastColor))
+		return true;
+	    else s = 0;
+	}
+	else if (s == 3)
+	{
+	    if (color == lastColor) return true;
+	    else if(GetColor(p + Const().Nbr_offsets[i+1]) 
+		    == SgOppBW(lastColor))
+		return true;
+	    else s = 0;
+	}
+	lastColor = color;
+    }
+    return false;
+}

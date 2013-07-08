@@ -152,6 +152,11 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
     {
         move = GenerateGlobalMove();
     }
+    if(move != SG_NULLMOVE){
+	//std::cerr << "Finding dead weights!\n";
+	m_brd.WeightDeadCellsForMove(move, m_weights);
+    }
+    //std::cerr << "Move: " << m_brd.ToString(move) << " Weight: " << m_weights[m_brd.ToPlay()][move] << '\n';
     return move;
 }
 
