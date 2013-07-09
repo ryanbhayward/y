@@ -208,7 +208,8 @@ void Board::SetSize(int size)
     for (BoardIterator it(Const()); it; ++it)
         m_state.m_color[*it] = SG_EMPTY;
 
-    m_state.m_winner  = SG_EMPTY;
+    m_state.m_winner   = SG_EMPTY;
+    m_state.m_vcWinner = SG_EMPTY;
     m_state.m_lastMove = SG_NULLMOVE;
 }
 
@@ -445,13 +446,26 @@ void Board::Play(SgBlackWhite color, int p)
 	for(int i = 0; i < oppBlocks.Length(); ++i) 
             ComputeGroupForBlock(GetBlock(oppBlocks[i]));
     }
+    
+    // Break old win if necessary
+    if (HasWinningVC() && GroupBorder(m_state.m_vcGroupAnchor) != BORDER_ALL)
+    {
+        m_state.m_vcWinner = SG_EMPTY;
+    }
 
-    // Check for a win
-    if (m_state.m_block[p]->m_border == BORDER_ALL) 
+    // Check for a new vc win
+    if (GroupBorder(p) == BORDER_ALL)
+    {
+        m_state.m_vcWinner = color;
+        m_state.m_vcGroupAnchor = GroupAnchor(p);
+    }
+
+    // Check for a solid win
+    if (GetBlock(p)->m_border == BORDER_ALL) 
     {
         m_state.m_winner = color;
     }
-
+    
     //std::cerr << m_state.m_group[p]->m_border << '\n';
     FlipToPlay();
     //std::cerr << ToString();
@@ -622,7 +636,7 @@ void Board::Swap()
     for (BoardIterator it(Const()); it; ++it) {
 	if(m_state.m_color[*it] != SG_EMPTY) {
             m_state.m_color[*it] = SgOppBW(m_state.m_color[*it]);
-            if (*it == Anchor(*it)) {
+            if (*it == BlockAnchor(*it)) {
                 Block* b = m_state.m_block[*it];
                 b->m_color = SgOppBW(b->m_color);
             }
@@ -766,7 +780,7 @@ std::string Board::AnchorsToString() const
 	    if(m_state.m_block[psn] != 0) {
 		if(Const().board_row(psn)+1 < 10)
 		    os << ' ';
-		os << ToString(Anchor(psn));
+		os << ToString(BlockAnchor(psn));
 	    }
 	    else
 		os << " * ";

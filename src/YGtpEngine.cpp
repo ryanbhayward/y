@@ -69,7 +69,8 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("group", &YGtpEngine::CmdGroup);
     RegisterCmd("group_blocks", &YGtpEngine::CmdGroupBlocks);
     RegisterCmd("group_value", &YGtpEngine::CmdGroupValue);
-    
+    RegisterCmd("group_carrier", &YGtpEngine::CmdGroupCarrier);
+
     NewGame();
 }
 
@@ -96,6 +97,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
 	"group/Group Blocks/group_blocks %p\n"
+        "plist/Group Carrier/group_carrier %p\n"
         "plist/Block Liberties/block_liberties %p\n"
         "plist/Block Liberties With/block_liberties_with %p\n"
         "plist/Shared Liberties/block_shared_liberties %P\n"
@@ -197,6 +199,12 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
 
     if (m_playerName == "uct")
     {
+        if (m_brd.HasWinningVC()) {
+            std::cerr << "VC Win Detected! Playing into carrier...\n";
+            vector<int> carrier = m_brd.GroupCarrier(m_brd.WinningVCGroup());
+            return carrier[SgRandom::Global().Int(carrier.size())];
+        }
+
         m_brd.SetToPlay(toPlay);        
         m_uctSearch.SetPosition(m_brd);
         std::vector<SgMove> sequence;
@@ -641,7 +649,7 @@ void YGtpEngine::CmdBlockStones(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
         return;
-    int anchor = m_brd.Anchor(p);
+    int anchor = m_brd.BlockAnchor(p);
     SgBlackWhite color = m_brd.GetColor(anchor);
     cmd << m_brd.ToString(anchor);
     for (BoardIterator it(m_brd.Const()); it; ++it) {
@@ -658,7 +666,7 @@ void YGtpEngine::CmdBlockLiberties(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
         return;
-    int anchor = m_brd.Anchor(p);
+    int anchor = m_brd.BlockAnchor(p);
     for (BoardIterator it(m_brd.Const()); it; ++it) {
         if (m_brd.GetColor(*it) == SG_EMPTY 
             && m_brd.IsLibertyOfBlock(*it, anchor))
@@ -680,7 +688,7 @@ void YGtpEngine::CmdGroup(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    cmd << m_brd.ToString(m_brd.GetGroup(p)) << '\n';
+    cmd << m_brd.ToString(m_brd.GroupAnchor(p)) << '\n';
 }
 
 void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
@@ -689,8 +697,7 @@ void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    int group = m_brd.GetGroup(p);
-    std::vector<int> blocks = m_brd.GetBlocksInGroup(group);
+    std::vector<int> blocks = m_brd.GetBlocksInGroup(p);
     for(size_t i = 0; i < blocks.size(); ++i)
 	cmd << ' ' << m_brd.ToString(blocks[i]);
 }
@@ -701,7 +708,18 @@ void YGtpEngine::CmdGroupValue(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    cmd << ' ' << m_brd.GetGroupBorder(p);
+    cmd << ' ' << m_brd.GroupBorder(p);
+}
+
+void YGtpEngine::CmdGroupCarrier(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    if (m_brd.GetColor(p) == SG_EMPTY)
+	return;
+    std::vector<int> carrier = m_brd.GroupCarrier(p);
+    for(size_t i = 0; i < carrier.size(); ++i)
+	cmd << ' ' << m_brd.ToString(carrier[i]);
 }
 
 void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)

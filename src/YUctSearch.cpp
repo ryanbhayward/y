@@ -80,6 +80,15 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
                                        SgUctProvenType& provenType)
 {
     moves.clear();
+    if (m_brd.HasWinningVC()) 
+    {
+        if (m_brd.IsVCWinner(m_brd.ToPlay()))
+            provenType = SG_PROVEN_WIN;
+        else
+            provenType = SG_PROVEN_LOSS;
+        return false;
+    }
+    // TODO: NEED THIS CHECK IN ADDITION TO ABOVE CHECK?
     if (m_brd.IsGameOver())
     {
         if (m_brd.IsWinner(m_brd.ToPlay()))

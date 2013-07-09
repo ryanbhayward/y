@@ -216,10 +216,27 @@ struct Board
     bool IsWinner(SgBlackWhite player) const 
     { return player == m_state.m_winner; }
 
-    bool LastMoveHasWinningVC() const
+    bool HasWinningVC() const   { return m_state.m_vcWinner != SG_EMPTY; }
+    SgBoardColor GetVCWinner() const { return m_state.m_vcWinner; }
+    bool IsVCWinner(SgBlackWhite player) const
+    { return player == m_state.m_vcWinner; }
+    int WinningVCGroup() const { return m_state.m_vcGroupAnchor; }
+
+    std::vector<int> GroupCarrier(int p) const
     {
-        return LastMove() != SG_NULLMOVE 
-            && m_state.m_group[LastMove()]->m_border == BORDER_ALL;
+        std::vector<int> ret;
+        const Group* g = GetGroup(GroupAnchor(p));
+        for (int i = 0; i < g->m_blocks.Length(); ++i) {
+            for (int j = i + 1; j < g->m_blocks.Length(); ++j) {
+                const SharedLiberties& sl 
+                    = GetSharedLiberties(g->m_blocks[i], g->m_blocks[j]);
+                for (size_t k = 0; k < sl.Size(); ++k) {
+                    if (!Contains(ret, sl.m_liberties[k]))
+                        ret.push_back(sl.m_liberties[k]);
+                }
+            }
+        }
+        return ret;
     }
 
     void Swap();
@@ -254,20 +271,17 @@ struct Board
     void WeightDeadCellsForMove(int p, WeightedRandom* w);
     bool IsCellDead(int p) const;
 
-    int Anchor(int p) const 
+    int BlockAnchor(int p) const 
     { return m_state.m_block[p]->m_anchor; }
 
-    int GetGroup(int p) const
-    { return m_state.m_group[p]->m_anchor; }
+    int GroupAnchor(int p) const
+    { return GetGroup(BlockAnchor(p))->m_anchor; }
 
-    int GetGroupBorder(int p) const
-    { return m_state.m_group[p]->m_border; }
+    int GroupBorder(int p) const
+    { return GetGroup(BlockAnchor(p))->m_border; }
 
     bool IsInBlock(int p, int anchor) const
     { return m_state.m_block[p]->m_anchor == anchor; }
-
-    bool IsinGroup(int p, int group) const
-    { return m_state.m_group[p]->m_anchor == group; }
 
     bool IsLibertyOfBlock(int p, int anchor) const
     { return m_state.m_block[anchor]->m_liberties.Contains(p); }
@@ -286,7 +300,7 @@ struct Board
     std::vector<int> GetBlocksInGroup(int p) const
     {
 	std::vector<int> ret;
-        Group* g = m_state.m_group[p];
+        const Group* g = GetGroup(BlockAnchor(p));
         for (int i = 0; i < g->m_blocks.Length(); ++i) {
             ret.push_back(g->m_blocks[i]);
             if (g->m_blocks[i] == g->m_anchor)
@@ -495,6 +509,8 @@ private:
                 
         SgBlackWhite m_toPlay;
         SgBoardColor m_winner;
+        SgBoardColor m_vcWinner;
+        int          m_vcGroupAnchor;
         int          m_lastMove;
 
         void Init(int T);
@@ -576,6 +592,12 @@ private:
 
     const Block* GetBlock(int p) const
     { return m_state.m_block[p]; }
+
+    Group* GetGroup(int p)
+    { return m_state.m_group[p]; }
+
+    const Group* GetGroup(int p) const
+    { return m_state.m_group[p]; }
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented
