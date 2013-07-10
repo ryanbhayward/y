@@ -441,8 +441,11 @@ void Board::Play(SgBlackWhite color, int p)
     if (oppBlocks.Length() > 1) {
 	int seen[Const().TotalGBCells+10];
 	memset(seen, 0, sizeof(seen));
-	for(int i = 0; i < oppBlocks.Length(); ++i) 
-            ComputeGroupForBlock(GetBlock(oppBlocks[i]), seen, 100 + i);
+	for(int i = 0; i < oppBlocks.Length(); ++i) {
+            Block* b = GetBlock(oppBlocks[i]);
+            if (!IsBorder(b->m_anchor))
+                ComputeGroupForBlock(b, seen, 100 + i);
+        }
     }
     
     // Break old win if necessary
@@ -581,7 +584,7 @@ void Board::ComputeGroupForBlock(Block* b)
 
     SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
     blocks.PushBack(b->m_anchor);
-    
+
     for (size_t i = 0; i < b->m_shared.size(); ++i)
     {
         SharedLiberties& sl = b->m_shared[i];
