@@ -113,6 +113,38 @@ private:
 };
 
 
+
+//----------------------------------------------------------------------
+
+class CellNbrIterator
+{
+public:
+    CellNbrIterator(const ConstBoard& cbrd, int p)
+        : m_cbrd(cbrd)
+        , m_point(p)
+        , m_index(0)
+    { }
+    
+    /** Advance the state of the iteration to the next liberty. */
+    void operator++()
+    { ++m_index; }
+    
+    /** Return the current liberty. */
+    int operator*() const
+    { return m_point + m_cbrd.Nbr_offsets[m_index]; }
+    
+    /** Return true if iteration is valid, otherwise false. */
+    operator bool() const
+    { return m_index < 6; }
+    
+private:
+    const ConstBoard& m_cbrd;
+    int m_point;
+    int m_index;
+};
+
+//----------------------------------------------------------------------
+
 struct LocalMoves
 {
     static const float WEIGHT_SAVE_BRIDGE = 1000000.0;
@@ -150,13 +182,15 @@ struct LocalMoves
     {
         assert(!move.empty());
 
-        gamma.back() += 9999; // ensure it doesn't go past end
+        gamma.back() += 1.0; // ensure it doesn't go past end
 
         int i = -1;
         do {
             random -= gamma[++i];
         } while (random > 0.0001f);
         
+        gamma.back() -= 1.0;
+
         return move[i];
     }
 };
@@ -271,7 +305,6 @@ struct Board
     // Returns SG_NULLMOVE if no savebridge pattern matches last move played
     void GeneralSaveBridge(LocalMoves& local) const;
 
-    void WeightDeadCellsForMove(int p, WeightedRandom* w);
     bool IsCellDead(int p) const;
 
     int BlockAnchor(int p) const 
@@ -470,32 +503,6 @@ private:
 	{ }
     };
 
-    class CellNbrIterator
-    {
-    public:
-        CellNbrIterator(const ConstBoard& cbrd, int p)
-            : m_cbrd(cbrd)
-            , m_point(p)
-            , m_index(0)
-        { }
-
-        /** Advance the state of the iteration to the next liberty. */
-        void operator++()
-        { ++m_index; }
-
-        /** Return the current liberty. */
-        int operator*() const
-        { return m_point + m_cbrd.Nbr_offsets[m_index]; }
-
-        /** Return true if iteration is valid, otherwise false. */
-        operator bool() const
-        { return m_index < 6; }
-
-    private:
-        const ConstBoard& m_cbrd;
-        int m_point;
-        int m_index;
-    };
 
     ConstBoard m_constBrd;
 
@@ -629,7 +636,7 @@ inline BoardIterator::BoardIterator(const ConstBoard& brd)
     : VectorIterator<int>(brd.m_cells)
 {
 }
-
+    
 //----------------------------------------------------------------------
 
 extern const int Nbr_offsets[NumNbrs+1] ;  // last = 1st to avoid using %mod

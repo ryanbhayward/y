@@ -73,6 +73,14 @@ void YUctThreadState::ExecutePlayout(SgMove move)
     m_brd.Play(m_brd.ToPlay(), move);
     m_weights[SG_BLACK].SetWeight(move, 0.0f);
     m_weights[SG_WHITE].SetWeight(move, 0.0f);
+
+    // find dead cells
+    for (CellNbrIterator it(m_brd.Const(), move); it; ++it){
+	if(m_brd.IsEmpty(*it) && m_brd.IsCellDead(*it)) {
+	    m_weights[SG_BLACK].SetWeight(*it, LocalMoves::WEIGHT_DEAD_CELL);
+	    m_weights[SG_WHITE].SetWeight(*it, LocalMoves::WEIGHT_DEAD_CELL);
+	}
+    }
 }
 
 bool YUctThreadState::GenerateAllMoves(SgUctValue count, 
@@ -161,10 +169,6 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
     {
         move = GenerateGlobalMove();
     }
-    if(move != SG_NULLMOVE){
-	//std::cerr << "Finding dead weights!\n";
-	m_brd.WeightDeadCellsForMove(move, m_weights);
-    }
     //std::cerr << "Move: " << m_brd.ToString(move) << " Weight: " << m_weights[m_brd.ToPlay()][move] << '\n';
     return move;
 }
@@ -231,15 +235,26 @@ void YUctThreadState::StartPlayout(const Board& other)
     int lastMove = m_brd.LastMove();
     SgBlackWhite color = m_brd.GetColor(lastMove);
     m_brd.RemoveStone(m_brd.LastMove());
-    m_brd.Play(color, lastMove);
-    // std::cerr << m_brd.ToString(m_brd.LastMove()) << '\n'
-    //           << "toPlay=" << m_brd.ToPlay() << '\n';
 
     InitializeWeights();
+    m_brd.SetToPlay(color);
+    ExecutePlayout(lastMove);
 }
 
 void YUctThreadState::EndPlayout()
 {
+}
+
+//----------------------------------------------------------------------------
+
+void YUctThreadState::GetWeightsForLastMove
+(std::vector<float>& weights, SgBlackWhite toPlay) const
+{
+    weights.assign(Y_MAX_CELL, 0.0f);
+    for (BoardIterator i(m_brd.Const()); i; ++i)
+        weights[*i] = m_weights[toPlay][*i];
+    for (size_t i = 0; i < m_localMoves.move.size(); ++i)
+        weights[ m_localMoves.move[i] ] += m_localMoves.gamma[i];
 }
 
 //----------------------------------------------------------------------------
@@ -315,4 +330,3 @@ void YUctSearch::OnThreadEndSearch(YUctThreadState& state)
 }
 
 //----------------------------------------------------------------------------
-

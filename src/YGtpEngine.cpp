@@ -55,6 +55,7 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
     RegisterCmd("uct_rave_scores", &YGtpEngine::CmdRaveScores);
     RegisterCmd("playout_move", &YGtpEngine::CmdPlayoutMove);
+    RegisterCmd("playout_weights", &YGtpEngine::CmdPlayoutWeights);
     RegisterCmd("playout_statistics", &YGtpEngine::CmdPlayoutStatistics);
 
     RegisterCmd("board_statistics", &YGtpEngine::CmdBoardStatistics);
@@ -94,6 +95,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "plist/All Legal Moves/all_legal_moves %c\n"
         "string/Board Statistics/board_statistics\n"
         "string/Playout Statistics/playout_statistics\n"
+        "pspairs/Playout Weights/playout_weights\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
 	"group/Group Blocks/group_blocks %p\n"
@@ -760,5 +762,31 @@ void YGtpEngine::CmdPlayoutMove(GtpCommand& cmd)
     int move = thread->GeneratePlayoutMove(skipRaveUpdate);
     Play(m_brd.ToPlay(), move);
     cmd << m_brd.ToString(move);
+}
+
+void YGtpEngine::CmdPlayoutWeights(GtpCommand& cmd)
+{
+    if (m_brd.IsGameOver())
+        throw GtpFailure("Game over!");
+    if (m_history.empty())
+        throw GtpFailure("Must play at least one move first!");
+    if (!m_uctSearch.ThreadsCreated())
+        m_uctSearch.CreateThreads();
+    YUctThreadState* thread 
+        = dynamic_cast<YUctThreadState*>(&m_uctSearch.ThreadState(0));
+    if (!thread)
+        throw GtpFailure() << "Thread not a YUctThreadState!";
+    thread->StartPlayout(m_brd);
+    bool skipRaveUpdate;
+    thread->GeneratePlayoutMove(skipRaveUpdate);
+
+    std::vector<float> weights;
+    thread->GetWeightsForLastMove(weights, m_brd.ToPlay());
+    for (BoardIterator i(m_brd.Const()); i; ++i) {
+        if (weights[*i] > 0.0f)
+            cmd << ' ' << m_brd.ToString(*i)
+                << ' ' << weights[*i];
+        //<< ' ' << std::fixed << std::setprecision(3) << weights[*i];
+    }
 }
 

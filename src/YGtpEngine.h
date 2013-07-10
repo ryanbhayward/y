@@ -50,6 +50,7 @@ public:
     void CmdUctScores(GtpCommand& cmd);
     void CmdRaveScores(GtpCommand& cmd);
     void CmdPlayoutMove(GtpCommand& cmd);
+    void CmdPlayoutWeights(GtpCommand& cmd);
     void CmdPlayoutStatistics(GtpCommand& cmd);
 
     void CmdFinalScore(GtpCommand& cmd);

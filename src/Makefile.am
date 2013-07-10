@@ -12,7 +12,7 @@ YUctSearchUtil.cpp
 
 noinst_HEADERS = \
 board.h \
-BoardIterator.h \
+VectorIterator.h \
 WeightedRandom.h \
 YGtpEngine.h \
 YSearch.h \

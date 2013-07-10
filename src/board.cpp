@@ -910,22 +910,6 @@ int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay,
     return SG_NULLMOVE;
 }
 
-// Need to switch color of point temporarily as it has not been played
-// yet. Switch it back at the end. TODO: Find better way to do that.
-void Board::WeightDeadCellsForMove(int p, WeightedRandom* w)
-{
-    m_state.m_color[p] = ToPlay();
-    for (CellNbrIterator it(Const(), p); it; ++it){
-	//std::cerr << "Looking at cell: " << ToString(*it) << '\n';
-	if(IsEmpty(*it) && IsCellDead(*it)) {
-	    //std::cerr << "Cell is dead: " << ToString(*it) << '\n';
-	    w[SG_BLACK].SetWeight(*it, LocalMoves::WEIGHT_DEAD_CELL);
-	    w[SG_WHITE].SetWeight(*it, LocalMoves::WEIGHT_DEAD_CELL);
-	}
-    }
-    m_state.m_color[p] = SG_EMPTY;
-}
-
 // TODO: If used, should be sped up
 bool Board::IsCellDead(int p) const
 {

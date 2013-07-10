@@ -63,6 +63,12 @@ public:
 
     void StartPlayout(const Board& other);
 
+    /** Fills weights with weight for each move.
+        Call after GenerateMove(). */
+    void GetWeightsForLastMove(std::vector<float>& weights, 
+                               SgBlackWhite toPlay) const;
+
+
  private:
 
     const YUctSearch& m_search;
