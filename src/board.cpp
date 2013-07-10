@@ -437,14 +437,12 @@ void Board::Play(SgBlackWhite color, int p)
             MergeBlocks(p, border, realAdjBlocks);
     }
 
-    // Recompute groups for adjacent opponent blocks
+    // Recompute groups for adjacent opponent blocks.
     if (oppBlocks.Length() > 1) {
-	bool seen[Const().TotalGBCells+10];
+	int seen[Const().TotalGBCells+10];
 	memset(seen, 0, sizeof(seen));
-	//for(int i = 0; i < oppBlocks.Length(); ++i) 
-        //    GetBlock(oppBlocks[i])->m_group = oppBlocks[i];
 	for(int i = 0; i < oppBlocks.Length(); ++i) 
-            ComputeGroupForBlock(GetBlock(oppBlocks[i]));
+            ComputeGroupForBlock(GetBlock(oppBlocks[i]), seen, 100 + i);
     }
     
     // Break old win if necessary
@@ -560,31 +558,60 @@ void Board::RemoveEdgeSharedLiberties(Block* b)
     }
 }
 
-bool Board::BlocksVirtuallyConnected(const SharedLiberties& lib, bool* seen)
+int Board::NumUnmarkedSharedLiberties(const SharedLiberties& lib, 
+                                      int* seen, int id)
 {
     int count = 0;
     for (size_t i = 0; i < lib.Size(); ++i)
-        if (!seen[lib.m_liberties[i]])
+        if (seen[lib.m_liberties[i]] != id)
             ++count;
-    return count > 1;
+    return count;
 }
 
-void Board::MarkLibertiesAsSeen(const SharedLiberties& lib, bool* seen)
+void Board::MarkLibertiesAsSeen(const SharedLiberties& lib, int* seen, int id)
 {
     for (size_t j = 0; j < lib.Size(); ++j)
-        seen[lib.m_liberties[j]] = true;
+        seen[lib.m_liberties[j]] = id;
 }
 
 void Board::ComputeGroupForBlock(Block* b)
 {
-    bool seen[Const().TotalGBCells+10];
+    int seen[Const().TotalGBCells+10];
     memset(seen, 0, sizeof(seen));
+
+    SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
+    blocks.PushBack(b->m_anchor);
+    
+    for (size_t i = 0; i < b->m_shared.size(); ++i)
+    {
+        SharedLiberties& sl = b->m_shared[i];
+        int gAnchor = GroupAnchor(sl.m_other);
+        if (!seenGroups.Contains(gAnchor)) {
+            seenGroups.PushBack(gAnchor);
+            Group* g = GetGroup(gAnchor);
+            for (int j = 0; j < g->m_blocks.Length(); ++j) {
+                if (!IsBorder(g->m_blocks[j]))
+                    blocks.PushBack(g->m_blocks[j]);
+            }
+        }
+    }    
+
+    for(int i = 0; i < blocks.Length(); ++i) {
+        if (seen[blocks[i]] != 1)
+            ComputeGroupForBlock(GetBlock(blocks[i]), seen, 100 + i);
+    }
+}
+
+void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
+{
     Group* g = m_state.m_group[b->m_anchor] = &m_state.m_groupList[b->m_anchor];
     g->m_anchor = b->m_anchor;
     g->m_border = b->m_border;
     g->m_blocks.Clear();
     g->m_blocks.PushBack(g->m_anchor);
-    GroupSearch(seen, b);
+
+    GroupSearch(seen, b, id);
+
     // Add edge to group if we are touching
     if ((g->m_border & BORDER_LEFT) && !g->m_blocks.Contains(Const().WEST))
         g->m_blocks.PushBack(Const().WEST);
@@ -594,15 +621,32 @@ void Board::ComputeGroupForBlock(Block* b)
         g->m_blocks.PushBack(Const().SOUTH);
 }
 
-void Board::GroupSearch(bool* seen, Block* b)
+void Board::GroupSearch(int* seen, Block* b, int id)
 {
-    seen[b->m_anchor] = true;
+    seen[b->m_anchor] = 1;
     //std::cerr << "Entered: " << ToString(b->m_anchor) << '\n';
     for (size_t i = 0; i < b->m_shared.size(); ++i)
     {
+        bool visit = false;
         SharedLiberties& sl = b->m_shared[i];
+
 	//std::cerr << "Considering: " << ToString(sl.m_other) << '\n';
-	if(!seen[sl.m_other] && BlocksVirtuallyConnected(sl, seen))
+        int count = NumUnmarkedSharedLiberties(sl, seen, id);
+	if (seen[sl.m_other] == 0) 
+        {
+            if (count > 1)
+                visit = true;
+            else if (count == 1) {
+                seen[sl.m_other] = id;
+                MarkLibertiesAsSeen(sl, seen, id);
+            }
+        }
+        else if (seen[sl.m_other] == id && count == 1)
+        {
+            visit = true;
+        }
+
+        if (visit)
 	{
 	    //std::cerr << "Inside!\n";
 	    Group* g = m_state.m_group[b->m_anchor];
@@ -612,9 +656,9 @@ void Board::GroupSearch(bool* seen, Block* b)
                 // Note that we are not marking liberties with an edge
                 // block: we claim these cannot conflict with group
                 // formation.
-                MarkLibertiesAsSeen(sl, seen);
+                MarkLibertiesAsSeen(sl, seen, id);
                 m_state.m_group[sl.m_other] = g;
-		GroupSearch(seen, GetBlock(sl.m_other));
+		GroupSearch(seen, GetBlock(sl.m_other), id);
             }
             //std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
 	}

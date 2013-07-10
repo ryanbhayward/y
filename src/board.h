@@ -247,6 +247,9 @@ struct Board
     bool IsEmpty(int cell) const 
     { return m_state.m_color[cell] == SG_EMPTY; }
 
+    bool IsBorder(int cell) const
+    { return m_state.m_color[cell] == SG_BORDER; }
+
     SgBoardColor GetColor(int cell) const
     { return m_state.m_color[cell]; }
 
@@ -564,14 +567,18 @@ private:
 
     void MergeSharedLiberty(Block* b1, Block* b2);
 
-    static bool 
-    BlocksVirtuallyConnected(const SharedLiberties& lib, bool* seen);
+    static int
+        NumUnmarkedSharedLiberties(const SharedLiberties& lib, 
+                                   int* seen, int id);
 
-    static void MarkLibertiesAsSeen(const SharedLiberties& lib, bool* seen);
+    static void MarkLibertiesAsSeen(const SharedLiberties& lib, 
+                                    int* seen, int id);
 
     void ComputeGroupForBlock(Block* b);
 
-    void GroupSearch(bool* seen, Block* b);
+    void ComputeGroupForBlock(Block* b, int* seen, int id);
+
+    void GroupSearch(int* seen, Block* b, int id);
 
     void RemoveSharedLiberty(int p, Block* a, Block* b);
 
