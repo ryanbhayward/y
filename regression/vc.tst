@@ -50,13 +50,13 @@ loadsgf sgf/vc/check-bridge-with-edge.sgf
 #? [h8 i9]
 
 27 group_blocks b3
-#? [a4 b3 east b7 west]
+#? [b3 a4 b7 west east]
 
 28 group_blocks b12
 #? [b12 west south]
 
 29 group_blocks h9
-#? [j10 h9 g7 east]
+#? [g7 h9 j10 east]
 
 #
 # Check that blocks with semis to two different members of a group are
@@ -82,7 +82,7 @@ loadsgf sgf/vc/check-friendly-group-break-simple.sgf
 #? [e9]
 
 51 group_blocks f8
-#? [f8 d7]
+#? [d7 f8]
 
 #
 # Check that opponent groups are recomputed properly
@@ -92,7 +92,7 @@ loadsgf sgf/vc/check-opp-group-break-simple.sgf
 #? [d8 d10]
 
 61 group_blocks e7
-#? [e7 d5 east]
+#? [d5 e7 east]
 
 loadsgf sgf/vc/check-opp-group-break-into-three.sgf
 62 group_blocks g9

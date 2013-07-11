@@ -713,6 +713,7 @@ void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
     std::vector<int> blocks = m_brd.GetBlocksInGroup(p);
+    std::stable_sort(blocks.begin(), blocks.end());
     for(size_t i = 0; i < blocks.size(); ++i)
 	cmd << ' ' << m_brd.ToString(blocks[i]);
 }
@@ -733,6 +734,7 @@ void YGtpEngine::CmdGroupCarrier(GtpCommand& cmd)
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
     std::vector<int> carrier = m_brd.GroupCarrier(p);
+    std::stable_sort(carrier.begin(), carrier.end());
     for(size_t i = 0; i < carrier.size(); ++i)
 	cmd << ' ' << m_brd.ToString(carrier[i]);
 }
@@ -742,6 +744,7 @@ void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)
     cmd.CheckNuArg(1);
     int p1 = CellArg(cmd, 0);
     std::vector<int> liberties = m_brd.GetLibertiesWith(p1);
+    std::stable_sort(liberties.begin(), liberties.end());
     for(std::vector<int>::size_type i = 0; i != liberties.size(); ++i)
 	cmd << ' ' << m_brd.ToString(liberties[i]);
 }
