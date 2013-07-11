@@ -84,6 +84,13 @@ loadsgf sgf/vc/check-friendly-group-break-simple.sgf
 51 group_blocks f8
 #? [d7 f8]
 
+# Last move merges two blocks together: then friendly group search
+# is using out-of-date block anchors temporarily. This check ensures
+# the group search is correct in such a case.
+loadsgf sgf/vc/check-friendly-group-break-blockmerge.sgf 18
+55 group_blocks c8
+#? [e7 b10 west east south]
+
 #
 # Check that opponent groups are recomputed properly
 #
@@ -103,4 +110,3 @@ loadsgf sgf/vc/check-opp-group-break-into-three.sgf
 
 64 group_blocks f10
 #? [f10]
-

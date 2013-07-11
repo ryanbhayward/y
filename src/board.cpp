@@ -453,7 +453,10 @@ void Board::Play(SgBlackWhite color, int p)
                 Group* g = GetGroup(gAnchor);
                 for (int j = 0; j < g->m_blocks.Length(); ++j) {
                     if (!IsBorder(g->m_blocks[j])) {
-                        blocks.PushBack(g->m_blocks[j]);
+                        blocks.Include(BlockAnchor(g->m_blocks[j]));
+                        // ^^ Note use of BlockAnchor!!
+                        // We are in a transitionary period where the old
+                        // groups may use out of date block anchors.
                     }
                 }
             }
@@ -642,13 +645,19 @@ void Board::ComputeGroupForBlock(Block* b)
     for (size_t i = 0; i < b->m_shared.size(); ++i)
     {
         SharedLiberties& sl = b->m_shared[i];
+        if (IsBorder(sl.m_other))
+            continue;
         int gAnchor = GroupAnchor(sl.m_other);
         if (!seenGroups.Contains(gAnchor)) {
             seenGroups.PushBack(gAnchor);
             Group* g = GetGroup(gAnchor);
             for (int j = 0; j < g->m_blocks.Length(); ++j) {
-                if (!IsBorder(g->m_blocks[j]))
-                    blocks.PushBack(g->m_blocks[j]);
+                if (!IsBorder(g->m_blocks[j])) {
+                    blocks.Include(BlockAnchor(g->m_blocks[j]));
+                    // ^^ Note use of BlockAnchor!!
+                    // We are in a transitionary period where the old
+                    // groups may use out of date block anchors.
+                }
             }
         }
     }    
