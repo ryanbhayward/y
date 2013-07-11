@@ -351,18 +351,18 @@ void Board::RemoveSharedLiberty(int p, Block* a, Block* b)
     if (a->m_color == SG_BORDER && b->m_color == SG_BORDER)
         return;
 
-    int i = a->GetSharedLibertiesIndex(b);
+    int i = a->GetConnectionIndex(b);
     if (i == -1)
 	return;
     a->m_shared[i].Exclude(p);
     if (a->m_shared[i].Empty()) {
-        a->RemoveSharedLiberties(i);
+        RemoveConnectionAtIndex(a, i);
     }
 
-    i = b->GetSharedLibertiesIndex(a);
+    i = b->GetConnectionIndex(a);
     b->m_shared[i].Exclude(p);
     if (b->m_shared[i].Empty()) {
-        b->RemoveSharedLiberties(i);
+        RemoveConnectionAtIndex(b, i);
     }
 }
 
@@ -487,11 +487,23 @@ Board::GetSharedLiberties(const Block* b1, const Block* b2) const
     return EMPTY_SHARED_LIBERTIES;
 }
 
+void Board::FixOrderOfConnectionsFromBack(Block* b1)
+{
+    if (!IsBorder(b1->m_shared.back().m_other)) {
+        // ensure edges appear last in list
+        size_t i = b1->m_shared.size() - 1;
+        while (i > 0 && IsBorder(b1->m_shared[i - 1].m_other)) {
+            std::swap(b1->m_shared[i - 1], b1->m_shared[i]);
+            --i;
+        }
+    }
+}
+
 void Board::AddSharedLiberty(Block* b1, Block* b2, int p)
 {
-    int i = b1->GetSharedLibertiesIndex(b2);
+    int i = b1->GetConnectionIndex(b2);
     if(i != -1) {
-        int j = b2->GetSharedLibertiesIndex(b1);
+        int j = b2->GetConnectionIndex(b1);
         assert(j != -1);
         b1->m_shared[i].Include(p);
         b2->m_shared[j].Include(p);
@@ -501,8 +513,33 @@ void Board::AddSharedLiberty(Block* b1, Block* b2, int p)
     }
     else {
 	b1->m_shared.push_back(SharedLiberties(b2->m_anchor, p));
+        FixOrderOfConnectionsFromBack(b1);
+
 	b2->m_shared.push_back(SharedLiberties(b1->m_anchor, p));
+        FixOrderOfConnectionsFromBack(b2);
     }
+}
+
+void Board::RemoveConnectionAtIndex(Block* b, size_t i)
+{
+    b->m_shared[i] = b->m_shared.back();
+    b->m_shared.pop_back();
+    // ensure edges always appear last in list
+    if (IsBorder(b->m_shared[i].m_other)) {
+        while (i + 1 < b->m_shared.size() 
+               && !IsBorder(b->m_shared[i+1].m_other)) 
+        {
+            std::swap(b->m_shared[i], b->m_shared[i+1]);
+            ++i;
+        }
+    }
+}
+
+void Board::RemoveConnectionWith(Block* b, const Block* other)
+{
+    int i = b->GetConnectionIndex(other);
+    if (i != -1)
+        RemoveConnectionAtIndex(b, i);
 }
 
 // Merge b1 into b2
@@ -514,9 +551,9 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
             continue;
         Block* otherBlock = m_state.m_block[otherAnchor];
         assert(otherBlock);     
-        int index = b2->GetSharedLibertiesIndex(otherBlock);
+        int index = b2->GetConnectionIndex(otherBlock);
         if (index != -1) {
-            int index2 = otherBlock->GetSharedLibertiesIndex(b2);
+            int index2 = otherBlock->GetConnectionIndex(b2);
             assert(index2 != -1);
             // transfer any new liberties from b1 to b2
             for (size_t j = 0; j < b1->m_shared[i].Size(); ++j)
@@ -527,37 +564,37 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
                     otherBlock->m_shared[index2].PushBack(lib);
                 }
             }
-            // remove mention of b1 from other's list.
-            const int j = otherBlock->GetSharedLibertiesIndex(b1);
-            otherBlock->RemoveSharedLiberties(j);
+            RemoveConnectionWith(otherBlock, b1);
         }
         else {
             b2->m_shared.push_back(b1->m_shared[i]);
-            const int j = otherBlock->GetSharedLibertiesIndex(b1);
+            FixOrderOfConnectionsFromBack(b2);
+
+            const int j = otherBlock->GetConnectionIndex(b1);
             otherBlock->m_shared[j].m_other = b2->m_anchor;
+            // No need to worry about order here, since b1 and b2
+            // are both not border blocks and otherBlock's list
+            // is properly ordered.
         }
     }
     // Remove mention of any connections from b2->b1, since b1 is now
-    // part of b2. Index could be -1 if there was only a single shared
-    // liberty between them.
-    int index = b2->GetSharedLibertiesIndex(b1);
-    if (index != -1)
-        b2->RemoveSharedLiberties(index);
+    // part of b2. 
+    RemoveConnectionWith(b2, b1);
 }
 
 void Board::RemoveEdgeSharedLiberties(Block* b)
 {
     if (b->m_border & BORDER_LEFT) {
-        b->RemoveSharedLibertiesWith(GetBlock(Const().WEST));
-        GetBlock(Const().WEST)->RemoveSharedLibertiesWith(b);
+        RemoveConnectionWith(b, GetBlock(Const().WEST));
+        RemoveConnectionWith(GetBlock(Const().WEST), b);
     }
     if (b->m_border & BORDER_RIGHT) {
-        b->RemoveSharedLibertiesWith(GetBlock(Const().EAST));
-        GetBlock(Const().EAST)->RemoveSharedLibertiesWith(b);
+        RemoveConnectionWith(b, GetBlock(Const().EAST));
+        RemoveConnectionWith(GetBlock(Const().EAST), b);
     }
     if (b->m_border & BORDER_BOTTOM) {
-        b->RemoveSharedLibertiesWith(GetBlock(Const().SOUTH));
-        GetBlock(Const().SOUTH)->RemoveSharedLibertiesWith(b);
+        RemoveConnectionWith(b, GetBlock(Const().SOUTH));
+        RemoveConnectionWith(GetBlock(Const().SOUTH), b);
     }
 }
 
@@ -607,6 +644,7 @@ void Board::ComputeGroupForBlock(Block* b)
 
 void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
 {
+    //std::cerr << "ComputeGroupForBlock: " << ToString(b->m_anchor) << '\n';
     Group* g = m_state.m_group[b->m_anchor] = &m_state.m_groupList[b->m_anchor];
     g->m_anchor = b->m_anchor;
     g->m_border = b->m_border;

@@ -435,25 +435,12 @@ private:
 	Block* Smaller(Block* b1, Block* b2)
 	{ return b1->m_anchor < b2->m_anchor ? b1 : b2; }
 
-        int GetSharedLibertiesIndex(const Block* b2) const
+        int GetConnectionIndex(const Block* b2) const
         {
             for(size_t i = 0; i != m_shared.size(); ++i)
                 if (m_shared[i].m_other == b2->m_anchor)
                     return i;
             return -1;
-        }
-
-        void RemoveSharedLiberties(int i)
-        {
-            m_shared[i] = m_shared.back();
-            m_shared.pop_back();
-        }
-
-        void RemoveSharedLibertiesWith(const Block* other)
-        {
-            int i = GetSharedLibertiesIndex(other);
-            if (i != -1)
-                RemoveSharedLiberties(i);
         }
 
         std::string SharedLibertiesToString(const ConstBoard& cbrd) const
@@ -591,7 +578,13 @@ private:
 
     void RemoveSharedLiberty(int p, SgArrayList<int, 3>& adjBlocks);
 
+    void RemoveConnectionAtIndex(Block* b, size_t i);
+
+    void RemoveConnectionWith(Block* b, const Block* other);
+
     void RemoveEdgeSharedLiberties(Block* b);
+
+    void FixOrderOfConnectionsFromBack(Block* b1);
 
     const SharedLiberties&
     GetSharedLiberties(const Block* b1, const Block* b2) const;
