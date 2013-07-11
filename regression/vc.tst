@@ -58,7 +58,6 @@ loadsgf sgf/vc/check-bridge-with-edge.sgf
 29 group_blocks h9
 #? [j10 h9 g7 east]
 
-
 #
 # Check that blocks with semis to two different members of a group are
 # added to the group
@@ -68,32 +67,40 @@ loadsgf sgf/vc/check-triangle.sgf
 #? [.*c8.*]
 
 #
+# Semis to the edge should not prevent connecting to a block
+# touching the edge.
+#
+loadsgf sgf/vc/semi-with-edge-conflict.sgf 19
+40 group_blocks e6
+#? [.*d4.*]
+
+#
 # Check that friendly groups are recomputed properly next to a move
 #
 loadsgf sgf/vc/check-friendly-group-break-simple.sgf
-31 group_blocks e9
+50 group_blocks e9
 #? [e9]
 
-32 group_blocks f8
+51 group_blocks f8
 #? [f8 d7]
 
 #
 # Check that opponent groups are recomputed properly
 #
 loadsgf sgf/vc/check-opp-group-break-simple.sgf
-33 group_blocks e9
+60 group_blocks e9
 #? [d8 d10]
 
-34 group_blocks e7
+61 group_blocks e7
 #? [e7 d5 east]
 
 loadsgf sgf/vc/check-opp-group-break-into-three.sgf
-35 group_blocks g9
+62 group_blocks g9
 #? [g9 east]
 
-36 group_blocks d9
+63 group_blocks d9
 #? [d9]
 
-37 group_blocks f10
+64 group_blocks f10
 #? [f10]*
 
