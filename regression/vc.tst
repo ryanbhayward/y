@@ -102,5 +102,5 @@ loadsgf sgf/vc/check-opp-group-break-into-three.sgf
 #? [d9]
 
 64 group_blocks f10
-#? [f10]*
+#? [f10]
 

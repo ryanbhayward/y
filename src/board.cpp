@@ -438,12 +438,32 @@ void Board::Play(SgBlackWhite color, int p)
     }
 
     // Recompute groups for adjacent opponent blocks.
-    if (oppBlocks.Length() > 1) {
+    if (oppBlocks.Length() > 1) 
+    {
+        // For each non-edge oppBlock: add all blocks in its group to 
+        // list of blocks whose group we need to compute.
+        SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
+        for (int i = 0; i < oppBlocks.Length(); ++i)
+        {
+            if (IsBorder(oppBlocks[i]))
+                continue;
+            int gAnchor = GroupAnchor(oppBlocks[i]);
+            if (!seenGroups.Contains(gAnchor)) {
+                seenGroups.PushBack(gAnchor);
+                Group* g = GetGroup(gAnchor);
+                for (int j = 0; j < g->m_blocks.Length(); ++j) {
+                    if (!IsBorder(g->m_blocks[j])) {
+                        blocks.PushBack(g->m_blocks[j]);
+                    }
+                }
+            }
+        }    
+        
 	int seen[Const().TotalGBCells+10];
 	memset(seen, 0, sizeof(seen));
-	for(int i = 0; i < oppBlocks.Length(); ++i) {
-            Block* b = GetBlock(oppBlocks[i]);
-            if (!IsBorder(b->m_anchor))
+	for(int i = 0; i < blocks.Length(); ++i) {
+            Block* b = GetBlock(blocks[i]);
+            if (seen[blocks[i]] != 1)
                 ComputeGroupForBlock(b, seen, 100 + i);
         }
     }
@@ -616,9 +636,6 @@ void Board::MarkLibertiesAsSeen(const SharedLiberties& lib, int* seen, int id)
 
 void Board::ComputeGroupForBlock(Block* b)
 {
-    int seen[Const().TotalGBCells+10];
-    memset(seen, 0, sizeof(seen));
-
     SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
     blocks.PushBack(b->m_anchor);
 
@@ -636,6 +653,8 @@ void Board::ComputeGroupForBlock(Block* b)
         }
     }    
 
+    int seen[Const().TotalGBCells+10];
+    memset(seen, 0, sizeof(seen));
     for(int i = 0; i < blocks.Length(); ++i) {
         if (seen[blocks[i]] != 1)
             ComputeGroupForBlock(GetBlock(blocks[i]), seen, 100 + i);
