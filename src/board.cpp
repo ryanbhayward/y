@@ -701,16 +701,22 @@ void Board::GroupSearch(int* seen, Block* b, int id)
 
 	//std::cerr << "Considering: " << ToString(sl.m_other) << '\n';
         int count = NumUnmarkedSharedLiberties(sl, seen, id);
+        // Never seen this block before:
+        // visit it if we have a vc and mark it as potential if we have a semi
 	if (seen[sl.m_other] == 0) 
         {
             if (count > 1)
                 visit = true;
             else if (count == 1) {
+                //std::cerr << "Marking as potential!\n";
                 seen[sl.m_other] = id;
                 MarkLibertiesAsSeen(sl, seen, id);
             }
         }
-        else if (seen[sl.m_other] == id && count == 1)
+        // block is marked as potential:
+        // visit it if we have a vc or a semi (since the other semi
+        // we found earlier combined with this semi gives a vc)
+        else if (seen[sl.m_other] == id && count >= 1)
         {
             visit = true;
         }
