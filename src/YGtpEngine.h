@@ -37,6 +37,8 @@ public:
     void CmdSolve(GtpCommand& cmd);
     void CmdUndo(GtpCommand& cmd);
     void CmdGenMove(GtpCommand& cmd);
+    void CmdLoadSgf(GtpCommand& cmd);
+
 #if GTPENGINE_INTERRUPT
     void CmdInterrupt(GtpCommand& cmd);
 #endif
@@ -126,6 +128,10 @@ private:
     void Undo();
 
     void NewGame();
+
+    void NewGame(int size);
+
+    void SetPosition(const SgNode* node);
 
     void RegisterCmd(const std::string& name,
                      GtpCallback<YGtpEngine>::Method method);

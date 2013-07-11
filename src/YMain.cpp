@@ -10,7 +10,7 @@
 #include "SgRandom.h"
 #include "SgInit.h"
 #include "YGtpEngine.h"
-//#include "YInit.h"
+#include "YSgUtil.h"
 
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/cmdline.hpp>
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
     ProcessCommandLineArguments(argc, argv);
 
     SgInit();
-    //HavannahInit();
+    YSgUtil::Init();
     SgRandom::SetSeed(g_seed);
 
     YGtpEngine engine(g_boardSize);

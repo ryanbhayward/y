@@ -2,14 +2,18 @@
 /** @file YGtpEngine.cpp */
 //----------------------------------------------------------------------------
 
+#include <fstream>
+
 #include "SgSystem.h"
 #include "SgRandom.h"
 #include "SgSearchControl.h"
 #include "SgSearch.h"
 #include "SgTimer.h"
+#include "SgGameReader.h"
 #include "SgGameWriter.h"
+
 #include "YGtpEngine.h"
-#include <fstream>
+#include "YSgUtil.h"
 
 //----------------------------------------------------------------------------
 
@@ -37,6 +41,7 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("showanchors", &YGtpEngine::CmdShowAnchors);
     RegisterCmd("clear_board", &YGtpEngine::CmdClearBoard);
     RegisterCmd("genmove", &YGtpEngine::CmdGenMove);
+    RegisterCmd("loadsgf", &YGtpEngine::CmdLoadSgf);
 #if GTPENGINE_INTERRUPT
     RegisterCmd("gogui-interrupt", &YGtpEngine::CmdInterrupt);
 #endif
@@ -140,6 +145,13 @@ void YGtpEngine::ApplyTimeSettings()
 {
     m_timeLeft[SG_BLACK] = m_mainTime;
     m_timeLeft[SG_WHITE] = m_mainTime;
+}
+
+void YGtpEngine::NewGame(int size)
+{
+    m_brd.SetSize(size);
+    m_history.clear();
+    ApplyTimeSettings();
 }
 
 void YGtpEngine::NewGame()
@@ -303,6 +315,7 @@ void YGtpEngine::CmdBoardSize(GtpCommand& cmd)
     cmd.CheckNuArg(2);  // ignore second argument (so we work in hexgui)
     int size = cmd.IntArg(0, 1, Y_MAX_SIZE);
     m_brd.SetSize(size);
+    NewGame();
 }
 
 void YGtpEngine::CmdClearBoard(GtpCommand& cmd)
@@ -790,3 +803,75 @@ void YGtpEngine::CmdPlayoutWeights(GtpCommand& cmd)
     }
 }
 
+//----------------------------------------------------------------------
+
+/** Plays setup stones to the board.                                            
+    Plays all black moves first then all white moves as actuall game            
+    moves.                                                                      
+    @bug This will not work if the setup stones intersect previously            
+    played stones! The current only works if we expect only a single            
+    node with setup information. If multiple nodes in the game tree             
+    are adding/removing stones this will break horribly. */
+void YGtpEngine::SetPosition(const SgNode* node)
+{
+    std::vector<int> black, white, empty;
+    YSgUtil::GetSetupPosition(node, m_brd.Size(), black, white, empty);
+    for (std::size_t i = 0; ; ++i)
+    {
+        bool bdone = (i >= black.size());
+        bool wdone = (i >= white.size());
+        if (!bdone)
+            Play(SG_BLACK, black[i]);
+        if (!wdone)
+            Play(SG_WHITE, white[i]);
+        if (bdone && wdone)
+            break;
+    }
+}
+
+/** Loads game or position from given sgf.                                      
+    Sets position to given move number or the last move of the game if          
+    none is given. */
+void YGtpEngine::CmdLoadSgf(GtpCommand& cmd)
+{
+    cmd.CheckNuArgLessEqual(2);
+    std::string filename = cmd.Arg(0);
+    int moveNumber = std::numeric_limits<int>::max();
+    if (cmd.NuArg() == 2)
+	moveNumber = cmd.ArgMin<int>(1, 0);
+    std::ifstream file(filename.c_str());
+    if (!file)
+        throw GtpFailure() << "cannot load file";
+    SgGameReader sgreader(file, 13);
+    SgNode* root = sgreader.ReadGame();
+    if (root == 0)
+	throw GtpFailure() << "cannot load file";
+    sgreader.PrintWarnings(std::cerr);
+
+    int size = root->GetIntProp(SG_PROP_SIZE);
+    NewGame(size);
+    if (YSgUtil::NodeHasSetupInfo(root))
+    {
+        std::cerr << "Root has setup info!\n";
+        SetPosition(root);
+    }
+    // Play moveNumber moves; stop if we hit the end of the game                
+    SgNode* cur = root;
+    for (int mn = 0; mn < moveNumber;)
+    {
+        cur = cur->NodeInDirection(SgNode::NEXT);
+        if (!cur)
+            break;
+        if (YSgUtil::NodeHasSetupInfo(cur))
+        {
+            SetPosition(cur);
+            continue;
+        }
+        else if (!cur->HasNodeMove())
+            continue;
+        SgBlackWhite color = cur->NodePlayer();
+        int point = YSgUtil::SgPointToYPoint(cur->NodeMove(), m_brd.Const());
+        Play(color, point);
+        ++mn;
+    }
+}

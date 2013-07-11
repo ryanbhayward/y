@@ -6,6 +6,7 @@ WeightedRandom.cpp \
 YMain.cpp \
 YGtpEngine.cpp \
 YSearch.cpp \
+YSgUtil.cpp \
 YUctSearch.cpp \
 YUctSearchUtil.cpp
 
@@ -16,6 +17,7 @@ VectorIterator.h \
 WeightedRandom.h \
 YGtpEngine.h \
 YSearch.h \
+YSgUtil.h \
 YUctSearch.h \
 YUctSearchUtil.h
 
