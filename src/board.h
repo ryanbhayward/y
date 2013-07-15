@@ -568,6 +568,8 @@ private:
     static void MarkLibertiesAsSeen(const SharedLiberties& lib, 
                                     int* seen, int id);
 
+    void ResetBlocksInGroup(Block* b);
+
     void ComputeGroupForBlock(Block* b);
 
     void ComputeGroupForBlock(Block* b, int* seen, int id);

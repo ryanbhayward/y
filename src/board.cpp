@@ -459,9 +459,10 @@ void Board::Play(SgBlackWhite color, int p)
                         // groups may use out of date block anchors.
                     }
                 }
+		ResetBlocksInGroup(GetBlock(gAnchor));
             }
-        }    
-        
+        } 
+
 	int seen[Const().TotalGBCells+10];
 	memset(seen, 0, sizeof(seen));
 	for(int i = 0; i < blocks.Length(); ++i) {
@@ -637,6 +638,31 @@ void Board::MarkLibertiesAsSeen(const SharedLiberties& lib, int* seen, int id)
         seen[lib.m_liberties[j]] = id;
 }
 
+void Board::ResetBlocksInGroup(Block* b)
+{
+    Group* g = GetGroup(b->m_anchor);
+    if( g != NULL) {
+	Group* g2;
+	Block* b2;
+	// Start from 1 since first block in list is g
+	for( int i = 1; i < g->m_blocks.Length(); ++i) {
+	    if(IsBorder(g->m_blocks[i]))
+		continue;
+	    b2 = GetBlock(g->m_blocks[i]);
+	    g2 = m_state.m_group[b2->m_anchor] = &m_state.m_groupList[b2->m_anchor];
+	    g2->m_anchor = b2->m_anchor;
+	    g2->m_border = b2->m_border;
+	    g2->m_blocks.Clear();
+	    g2->m_blocks.PushBack(g2->m_anchor);
+	}
+    }
+    g = m_state.m_group[b->m_anchor] = &m_state.m_groupList[b->m_anchor];
+    g->m_anchor = b->m_anchor;
+    g->m_border = b->m_border;
+    g->m_blocks.Clear();
+    g->m_blocks.PushBack(g->m_anchor);
+}
+
 void Board::ComputeGroupForBlock(Block* b)
 {
     SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
@@ -659,9 +685,11 @@ void Board::ComputeGroupForBlock(Block* b)
                     // groups may use out of date block anchors.
                 }
             }
+	    ResetBlocksInGroup(GetBlock(gAnchor));
         }
     }    
 
+    ResetBlocksInGroup(b);
     int seen[Const().TotalGBCells+10];
     memset(seen, 0, sizeof(seen));
     for(int i = 0; i < blocks.Length(); ++i) {
@@ -673,13 +701,10 @@ void Board::ComputeGroupForBlock(Block* b)
 void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
 {
     //std::cerr << "ComputeGroupForBlock: " << ToString(b->m_anchor) << '\n';
-    Group* g = m_state.m_group[b->m_anchor] = &m_state.m_groupList[b->m_anchor];
-    g->m_anchor = b->m_anchor;
-    g->m_border = b->m_border;
-    g->m_blocks.Clear();
-    g->m_blocks.PushBack(g->m_anchor);
 
     GroupSearch(seen, b, id);
+
+    Group* g = m_state.m_group[b->m_anchor];
 
     // Add edge to group if we are touching
     if ((g->m_border & BORDER_LEFT) && !g->m_blocks.Contains(Const().WEST))
