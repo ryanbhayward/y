@@ -217,7 +217,7 @@ void Board::SetPosition(const Board& other)
 {
     SetSize(other.Size());
     for (BoardIterator it(Const()); it; ++it) {
-        SgBlackWhite c = other.m_state.m_color[*it];
+        SgBlackWhite c = other.GetColor(*it);
         if (c != SG_EMPTY)
             Play(c, *it);
     }
@@ -266,7 +266,7 @@ void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
 bool Board::IsAdjacent(int p, const Block* b)
 {
     for (CellNbrIterator it(Const(), p); it; ++it)
-        if (m_state.m_block[*it] == b)
+        if (GetBlock(*it) == b)
             return true;
     return false;
 }
@@ -284,7 +284,7 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
         }
     }
     m_state.m_block[p] = b;
-    m_state.m_group[p] = m_state.m_group[b->m_anchor];
+    m_state.m_group[p] = GetGroup(b->m_anchor);
     RemoveEdgeSharedLiberties(b);
     ComputeGroupForBlock(b);
 }
@@ -304,7 +304,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
         }
     }
     m_state.m_block[p] = largestBlock;
-    m_state.m_group[p] = m_state.m_group[largestBlock->m_anchor];
+    m_state.m_group[p] = GetGroup(largestBlock->m_anchor);
     largestBlock->m_border |= border;
     largestBlock->m_stones.PushBack(p);
 
@@ -323,7 +323,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
         {
             largestBlock->m_stones.PushBack(*stn);
             m_state.m_block[*stn] = largestBlock;
-	    m_state.m_group[*stn] = m_state.m_group[largestBlock->m_anchor];
+	    m_state.m_group[*stn] = GetGroup(largestBlock->m_anchor);
         }
         for (Block::LibertyIterator lib(adjBlock->m_liberties); lib; ++lib)
             if (!seen[*lib]) {
@@ -333,7 +333,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
 	m_state.RemoveActiveBlock(adjBlock);
     }
     for (CellNbrIterator it(Const(), p); it; ++it) {
-        if (m_state.m_color[*it] == SG_EMPTY && !seen[*it]) {
+        if (GetColor(*it) == SG_EMPTY && !seen[*it]) {
             largestBlock->m_liberties.PushBack(*it);
             AddSharedLibertiesAroundPoint(largestBlock, *it, p);
 	}
@@ -573,7 +573,7 @@ void Board::MergeSharedLiberty(Block* b1, Block* b2)
         const int otherAnchor = b1->m_shared[i].m_other;
 	if (otherAnchor == b2->m_anchor)
             continue;
-        Block* otherBlock = m_state.m_block[otherAnchor];
+        Block* otherBlock = GetBlock(otherAnchor);
         assert(otherBlock);     
         int index = b2->GetConnectionIndex(otherBlock);
         if (index != -1) {
@@ -704,7 +704,7 @@ void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
 
     GroupSearch(seen, b, id);
 
-    Group* g = m_state.m_group[b->m_anchor];
+    Group* g = GetGroup(b->m_anchor);
 
     // Add edge to group if we are touching
     if ((g->m_border & BORDER_LEFT) && !g->m_blocks.Contains(Const().WEST))
@@ -749,7 +749,7 @@ void Board::GroupSearch(int* seen, Block* b, int id)
         if (visit)
 	{
 	    //std::cerr << "Inside!\n";
-	    Group* g = m_state.m_group[b->m_anchor];
+	    Group* g = GetGroup(b->m_anchor);
 	    g->m_border |= GetBlock(sl.m_other)->m_border;
             g->m_blocks.PushBack(sl.m_other);
 	    if(GetColor(sl.m_other) != SG_BORDER) {
@@ -778,10 +778,10 @@ void Board::RemoveStone(int p)
 void Board::Swap()
 {
     for (BoardIterator it(Const()); it; ++it) {
-	if(m_state.m_color[*it] != SG_EMPTY) {
-            m_state.m_color[*it] = SgOppBW(m_state.m_color[*it]);
+	if(GetColor(*it) != SG_EMPTY) {
+            m_state.m_color[*it] = SgOppBW(GetColor(*it));
             if (*it == BlockAnchor(*it)) {
-                Block* b = m_state.m_block[*it];
+                Block* b = GetBlock(*it);
                 b->m_color = SgOppBW(b->m_color);
             }
         }
@@ -814,19 +814,19 @@ void Board::CheckConsistency()
     // FIXME: ADD MORE CHECKS HERE!!
     DumpBlocks();
     for (BoardIterator it(Const()); it; ++it) {
-        int color = m_state.m_color[*it];
+        int color = GetColor(*it);
         if (color != SG_BLACK && color != SG_WHITE && color != SG_EMPTY)
         {
             std::cerr << ToString();
             std::cerr << ToString(*it) << " color = " 
-                      << m_state.m_color[*it] << '\n';
+                      << GetColor(*it) << '\n';
             abort();
         }
         
         if ((color == SG_BLACK || color == SG_WHITE) 
-            && m_state.m_block[*it]->m_anchor == *it) 
+            && GetBlock(*it)->m_anchor == *it) 
         {
-            Block* b = m_state.m_block[*it];
+            Block* b = GetBlock(*it);
             for (size_t i = 0; i < b->m_shared.size(); ++i) {
                 if (!Const().IsOnBoard(b->m_shared[i].m_other)
                     || GetColor(b->m_shared[i].m_other) == SG_EMPTY)
@@ -846,8 +846,8 @@ void Board::CheckConsistency()
 void Board::DumpBlocks() 
 {
     for(size_t i = 0; i < m_state.m_block.size(); ++i) {
-        if(m_state.m_block[i] != NULL) {
-            const Block * b = m_state.m_block[i];
+        if(GetBlock(i) != NULL) {
+            const Block * b = GetBlock(i);
             if (b->m_color == 3)
                 continue;
             std::cerr << "id=" << ToString(i)  << " " << b->ToString(Const()) << '\n';
@@ -876,7 +876,7 @@ std::string Board::ToString() const
             os << ' ';
         os << (j+1<10?" ":"") << j+1 << "  "; 
         for (int k = 0; k <= j ; k++) 
-            os << ConstBoard::ColorToChar(m_state.m_color[Const().fatten(j,k)]) << "  ";
+            os << ConstBoard::ColorToChar(GetColor(Const().fatten(j,k))) << "  ";
         os << "\n";
     }
     os << "   ";
@@ -897,9 +897,9 @@ std::string Board::BorderToString() const
 	    os << ' ';
 	for (int k = 0; k < Np2G; k++) {
             char c = '*';
-	    if (m_state.m_block[psn] != 0) {
-                if (m_state.m_block[psn]->m_border != BORDER_NONE)
-                    c = '0' + m_state.m_block[psn]->m_border;
+	    if (GetBlock(psn) != NULL) {
+                if (GetBlock(psn)->m_border != BORDER_NONE)
+                    c = '0' + GetBlock(psn)->m_border;
             }
             os << "  " << c;
 
@@ -921,7 +921,7 @@ std::string Board::AnchorsToString() const
 	for (int k = 0; k < N-j; k++) 
 	    os << ' ';
 	for (int k = 0; k <= j; k++) {
-	    if(m_state.m_block[psn] != 0) {
+	    if(GetBlock(psn) != NULL) {
 		if(Const().board_row(psn)+1 < 10)
 		    os << ' ';
 		os << ToString(BlockAnchor(psn));
@@ -942,8 +942,8 @@ int Board::MaintainConnection(int b1, int b2) const
     const SharedLiberties& libs = GetSharedLiberties(b1, b2);
     if (libs.Size() != 1)
         return SG_NULLMOVE;
-    const Group* g1 = m_state.m_group[b1];
-    const Group* g2 = m_state.m_group[b2];
+    const Group* g1 = GetGroup(b1);
+    const Group* g2 = GetGroup(b2);
     if (GetColor(b1) == SG_BORDER || GetColor(b2) == SG_BORDER) {
         if ((g1->m_border & g2->m_border) == 0)
             return libs.m_liberties[0];
@@ -983,7 +983,7 @@ int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay,
     {
         const int i = (j + start) % 6;
         const int p = lastMove + Const().Nbr_offsets[i];
-        const bool mine = m_state.m_color[p] == toPlay;
+        const bool mine = GetColor(p) == toPlay;
         if (s == 0)
         {
             if (mine) s = 1;
@@ -991,7 +991,7 @@ int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay,
         else if (s == 1)
         {
             if (mine) s = 1;
-            else if (m_state.m_color[p] == !toPlay) s = 0;
+            else if (GetColor(p) == !toPlay) s = 0;
             else
             {
                 s = 2;
