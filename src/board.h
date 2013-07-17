@@ -576,6 +576,8 @@ private:
 
     void GroupSearch(int* seen, Block* b, int id);
 
+    void AddNonGroupEdges(int* seen, Group* g, int id);
+
     void RemoveSharedLiberty(int p, Block* a, Block* b);
 
     void RemoveSharedLiberty(int p, SgArrayList<int, 3>& adjBlocks);

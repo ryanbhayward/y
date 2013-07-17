@@ -706,6 +706,9 @@ void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
 
     Group* g = GetGroup(b->m_anchor);
 
+    //Currently breaks proven wins are root.
+    //AddNonGroupEdges(seen, g, id);
+
     // Add edge to group if we are touching
     if ((g->m_border & BORDER_LEFT) && !g->m_blocks.Contains(Const().WEST))
         g->m_blocks.PushBack(Const().WEST);
@@ -763,6 +766,23 @@ void Board::GroupSearch(int* seen, Block* b, int id)
             //std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
 	}
     }
+}
+
+void Board::AddNonGroupEdges(int* seen, Group* g, int id)
+{
+    int w, e, s;
+    w = e = s = 0;
+    for(int i = 0; i < Const().TotalGBCells+10; ++i) {
+	if(seen[i] == id && GetColor(i) == ToPlay()) {
+	    int border = GetBlock(i)->m_border;
+	    if(border == BORDER_LEFT) w++;
+	    else if(border == BORDER_RIGHT) e++;
+	    else if(border == BORDER_BOTTOM) s++;
+	}
+    }
+    if(w > 1) g->m_border |= BORDER_LEFT;
+    if(e > 1) g->m_border |= BORDER_RIGHT;
+    if(s > 1) g->m_border |= BORDER_BOTTOM;
 }
 
 void Board::RemoveStone(int p)
