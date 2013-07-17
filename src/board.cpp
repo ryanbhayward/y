@@ -706,7 +706,7 @@ void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
 
     Group* g = GetGroup(b->m_anchor);
 
-    //Currently breaks proven wins are root.
+    //Currently breaks proven wins at root.
     //AddNonGroupEdges(seen, g, id);
 
     // Add edge to group if we are touching
@@ -772,9 +772,9 @@ void Board::AddNonGroupEdges(int* seen, Group* g, int id)
 {
     int w, e, s;
     w = e = s = 0;
-    for(int i = 0; i < Const().TotalGBCells+10; ++i) {
-	if(seen[i] == id && GetColor(i) == ToPlay()) {
-	    int border = GetBlock(i)->m_border;
+    for(BoardIterator it(Const()); it; ++it) {
+	if(seen[*it] == id && GetColor(*it) == ToPlay()) {
+	    int border = GetBlock(*it)->m_border;
 	    if(border == BORDER_LEFT) w++;
 	    else if(border == BORDER_RIGHT) e++;
 	    else if(border == BORDER_BOTTOM) s++;
