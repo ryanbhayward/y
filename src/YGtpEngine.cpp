@@ -65,6 +65,8 @@ YGtpEngine::YGtpEngine(int boardSize)
 
     RegisterCmd("board_statistics", &YGtpEngine::CmdBoardStatistics);
     
+    RegisterCmd("empty_cell_info", &YGtpEngine::CmdEmptyCellInfo);
+
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
     RegisterCmd("block_liberties", &YGtpEngine::CmdBlockLiberties);
@@ -101,6 +103,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "string/Board Statistics/board_statistics\n"
         "string/Playout Statistics/playout_statistics\n"
         "pspairs/Playout Weights/playout_weights\n"
+	"string/Empty Cell Info/empty_cell_info %p\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
 	"group/Group Blocks/group_blocks %p\n"
@@ -645,6 +648,17 @@ void YGtpEngine::CmdPlayoutStatistics(GtpCommand& cmd)
 void YGtpEngine::CmdBoardStatistics(GtpCommand& cmd)
 {
     cmd << Board::Statistics::Get().ToString();
+}
+
+//----------------------------------------------------------------------------
+
+void YGtpEngine::CmdEmptyCellInfo(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    if (m_brd.IsOccupied(p))
+        throw GtpFailure("Invalid cell");
+    cmd << m_brd.CellInfo(p);
 }
 
 //----------------------------------------------------------------------------

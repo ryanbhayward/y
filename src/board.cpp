@@ -105,11 +105,15 @@ void Board::State::Init(int T)
     m_color.resize(T+3);
     std::fill(m_color.begin(), m_color.end(), SG_BORDER);
 
+    m_cell.resize(T+3);
+    std::fill(m_cell.begin(), m_cell.end(), (Cell*)0);
     m_block.resize(T+3);
     std::fill(m_block.begin(), m_block.end(), (Block*)0);
-    m_group.resize(T+3);
+   m_group.resize(T+3);
     std::fill(m_group.begin(), m_group.end(), (Group*)0); 
 
+    m_cellList.resize(T+3);
+    std::fill(m_cellList.begin(), m_cellList.end(), Cell());
     m_blockList.resize(T+3);
     std::fill(m_blockList.begin(), m_blockList.end(), Block());
     m_groupList.resize(T+3);
@@ -205,8 +209,15 @@ void Board::SetSize(int size)
     gptr[Const().fatten(-1,-1)+1] = &glst[Const().EAST];
     gptr[Const().fatten(N,N)] = &glst[Const().SOUTH];
 
-    for (BoardIterator it(Const()); it; ++it)
+    for (BoardIterator it(Const()); it; ++it){
         m_state.m_color[*it] = SG_EMPTY;
+	m_state.m_cell[*it] = &m_state.m_cellList[*it];
+    }
+
+    for (BoardIterator i(Const()); i; ++i)
+	for (CellNbrIterator j(Const(), *i); j; ++j)
+	    if(GetColor(*j) == SG_EMPTY)
+		GetCell(*i)->m_Adj[SG_EMPTY]++;
 
     m_state.m_winner   = SG_EMPTY;
     m_state.m_vcWinner = SG_EMPTY;
@@ -418,6 +429,10 @@ void Board::Play(SgBlackWhite color, int p)
                      && !oppBlocks.Contains(b->m_anchor))
                 oppBlocks.PushBack(b->m_anchor);
         }
+	else {
+	    GetCell(*it)->m_Adj[SG_EMPTY]--;
+	    GetCell(*it)->m_Adj[color]++;
+	}
     }
     RemoveSharedLiberty(p, adjBlocks);
     RemoveSharedLiberty(p, oppBlocks);
@@ -825,6 +840,9 @@ void Board::CopyState(Board::State& a, const Board::State& b)
 	    a.m_group[*it] = &a.m_groupList[b.m_group[*it]->m_anchor];
 	    if (!a.IsActive(a.m_block[*it]))
 		a.m_activeBlocks[color].push_back(a.m_block[*it]);
+	}
+	else {
+	    a.m_cell[*it] = &a.m_cellList[*it];
 	}
     }
 }

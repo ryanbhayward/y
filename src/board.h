@@ -345,8 +345,11 @@ struct Board
 	return ret;
     }
 
+    std::string CellInfo(int p) const
+    { return GetCell(p)->ToString(Const()); }
+
     std::string BlockInfo(int p) const
-    { return m_state.m_block[p]->ToString(Const()); }
+    { return GetBlock(p)->ToString(Const()); }
 
     void SetSavePoint1()      { CopyState(m_savePoint1, m_state); }
     void SetSavePoint2()      { CopyState(m_savePoint2, m_state); }
@@ -362,6 +365,32 @@ private:
     static const int BORDER_LEFT  = 2; // 010
     static const int BORDER_RIGHT = 4; // 100
     static const int BORDER_ALL   = 7; // 111
+
+    struct Cell
+    {
+	int m_Adj[3];
+	SgArrayList<SgArrayList<int, 6>, 2> m_SemiConnects;
+	SgArrayList<SgArrayList<int, 3>, 2> m_FullConnects;
+
+	Cell()
+	{
+	    memset(m_Adj, 0, sizeof(m_Adj));
+        }
+
+	std::string ToString(const ConstBoard& cbrd) const
+        {
+            std::ostringstream os;
+            os << "[Empty=" << this->NumNeighbours(SG_EMPTY)
+               << " Black=" << this->NumNeighbours(SG_BLACK)
+               << " White=" << this->NumNeighbours(SG_WHITE)
+               << "]\n";
+            return os.str();
+        }
+
+	int NumNeighbours(SgBlackWhite color) const
+	{ return this->m_Adj[color]; }
+
+    };
 
     struct SharedLiberties
     {
@@ -496,6 +525,8 @@ private:
     struct State 
     {
         std::vector<SgBoardColor> m_color;
+	std::vector<Cell*> m_cell;
+	std::vector<Cell> m_cellList;
         std::vector<Block*> m_block;
         std::vector<Block> m_blockList;
 	std::vector< std::vector<Block*> > m_activeBlocks;
@@ -609,6 +640,12 @@ private:
 
     const Group* GetGroup(int p) const
     { return m_state.m_group[p]; }
+
+    Cell* GetCell(int p)
+    { return m_state.m_cell[p]; }
+
+    const Cell* GetCell(int p) const
+    { return m_state.m_cell[p]; }
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented
