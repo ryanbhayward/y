@@ -380,15 +380,12 @@ private:
 	std::string ToString(const ConstBoard& cbrd) const
         {
             std::ostringstream os;
-            os << "[Empty=" << this->NumNeighbours(SG_EMPTY)
-               << " Black=" << this->NumNeighbours(SG_BLACK)
-               << " White=" << this->NumNeighbours(SG_WHITE)
+            os << "[Empty=" << this->m_Adj[SG_EMPTY]
+               << " Black=" << this->m_Adj[SG_BLACK]
+               << " White=" << this->m_Adj[SG_WHITE]
                << "]\n";
             return os.str();
         }
-
-	int NumNeighbours(SgBlackWhite color) const
-	{ return this->m_Adj[color]; }
 
     };
 
@@ -646,6 +643,9 @@ private:
 
     const Cell* GetCell(int p) const
     { return m_state.m_cell[p]; }
+
+    int NumNeighbours(int p, SgBlackWhite color) const
+    { return GetCell(p)->m_Adj[color]; }
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented
