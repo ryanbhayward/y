@@ -201,8 +201,13 @@ void YUctThreadState::InitializeWeights()
     for (BoardIterator it(m_brd.Const()); it; ++it)
     {
         if (m_brd.IsEmpty(*it)) {
-            m_weights[SG_BLACK][*it] = 1.0;
-            m_weights[SG_WHITE][*it] = 1.0;
+            if (m_brd.IsCellDead(*it)) {
+                m_weights[SG_BLACK][*it] = LocalMoves::WEIGHT_DEAD_CELL;
+                m_weights[SG_WHITE][*it] = LocalMoves::WEIGHT_DEAD_CELL;
+            } else {
+                m_weights[SG_BLACK][*it] = 1.0;
+                m_weights[SG_WHITE][*it] = 1.0;
+            }
         }
     }
     m_weights[SG_BLACK].Build();

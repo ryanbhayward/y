@@ -379,6 +379,7 @@ private:
 
 	std::string ToString(const ConstBoard& cbrd) const
         {
+            SG_UNUSED(cbrd);
             std::ostringstream os;
             os << "[Empty=" << this->m_Adj[SG_EMPTY]
                << " Black=" << this->m_Adj[SG_BLACK]

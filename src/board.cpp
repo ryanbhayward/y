@@ -109,7 +109,7 @@ void Board::State::Init(int T)
     std::fill(m_cell.begin(), m_cell.end(), (Cell*)0);
     m_block.resize(T+3);
     std::fill(m_block.begin(), m_block.end(), (Block*)0);
-   m_group.resize(T+3);
+    m_group.resize(T+3);
     std::fill(m_group.begin(), m_group.end(), (Group*)0); 
 
     m_cellList.resize(T+3);
@@ -1045,14 +1045,14 @@ int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay,
     return SG_NULLMOVE;
 }
 
-// TODO: If used, should be sped up
 bool Board::IsCellDead(int p) const
 {
-    int count = 0;
-    for (CellNbrIterator it(Const(), p); it; ++it)
-	if(GetColor(*it) == SG_BLACK || GetColor(*it) == SG_WHITE)
-	    ++count;
-    if (count < 4) return false;
+    if (NumNeighbours(p, SG_EMPTY) > 2)
+        return false;
+    if (NumNeighbours(p, SG_BLACK) >= 4)
+        return true;
+    if (NumNeighbours(p, SG_WHITE) >= 4)
+        return true;
 
     SgBlackWhite lastColor = -1;
     int s = 0;
