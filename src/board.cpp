@@ -132,6 +132,12 @@ void Board::SetSize(int size)
     const int T = Const().TotalGBCells;
     m_state.Init(T);
 
+    // initialize empty cells
+    for (BoardIterator it(Const()); it; ++it){
+        m_state.m_color[*it] = SG_EMPTY;
+	m_state.m_cell[*it] = &m_state.m_cellList[*it];
+    }
+
     // Create block/group for left edge
     {
         Block& b = m_state.m_blockList[Const().WEST];
@@ -145,8 +151,12 @@ void Board::SetSize(int size)
 	g.m_border = b.m_border;
 	g.m_blocks.Clear();
 	g.m_blocks.PushBack(b.m_anchor);
-        for (int i = 0; i < N; ++i)
-            b.m_liberties.PushBack(Const().fatten(i,0));
+        for (int i = 0; i < N; ++i) {
+            int p = Const().fatten(i,0);
+            b.m_liberties.PushBack(p);
+            if (GetCell(p)->m_FullConnects[SG_BLACK].Length() > 0)
+            GetCell(p)->AddBorderConnection(&b);
+        }
     }
     // Create block/group for right edge
     {
@@ -161,8 +171,11 @@ void Board::SetSize(int size)
 	g.m_border = b.m_border;
 	g.m_blocks.Clear();
 	g.m_blocks.PushBack(b.m_anchor);
-        for (int i = 0; i < N; ++i)
-            b.m_liberties.PushBack(Const().fatten(i,i));
+        for (int i = 0; i < N; ++i) {
+            int p = Const().fatten(i,i);
+            b.m_liberties.PushBack(p);
+            GetCell(p)->AddBorderConnection(&b);
+        }
     }
     // Create block/group for bottom edge
     {
@@ -177,8 +190,11 @@ void Board::SetSize(int size)
 	g.m_border = b.m_border;
 	g.m_blocks.Clear();
 	g.m_blocks.PushBack(b.m_anchor);
-        for (int i = 0; i < N; ++i)
-            b.m_liberties.PushBack(Const().fatten(N,i-1));
+        for (int i = 0; i < N; ++i) {
+            int p = Const().fatten(N-1,i);
+            b.m_liberties.PushBack(p);
+            GetCell(p)->AddBorderConnection(&b);
+        }
     }
     // set guards to point to their border block
     std::vector<Block*>& bptr = m_state.m_block;
@@ -208,11 +224,6 @@ void Board::SetSize(int size)
     gptr[Const().fatten(-1,0)-1] = &glst[Const().WEST];
     gptr[Const().fatten(-1,-1)+1] = &glst[Const().EAST];
     gptr[Const().fatten(N,N)] = &glst[Const().SOUTH];
-
-    for (BoardIterator it(Const()); it; ++it){
-        m_state.m_color[*it] = SG_EMPTY;
-	m_state.m_cell[*it] = &m_state.m_cellList[*it];
-    }
 
     for (BoardIterator i(Const()); i; ++i)
 	for (CellNbrIterator j(Const(), *i); j; ++j)
@@ -267,6 +278,7 @@ void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY) {
             b->m_liberties.PushBack(*it);
+            GetCell(*it)->AddEmptyFull(b);
             AddSharedLibertiesAroundPoint(b, *it, p);
 	}
     }
@@ -290,6 +302,7 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
         if (GetColor(*it) == SG_EMPTY) {
             if (!IsAdjacent(*it, b)) {
                 b->m_liberties.PushBack(*it);
+                GetCell(*it)->AddEmptyFull(b);
                 AddSharedLibertiesAroundPoint(b, *it, p);
             }
         }
@@ -325,7 +338,7 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
         seen[*lib] = true;
     for (SgArrayList<int,3>::Iterator it(adjBlocks); it; ++it)
     {
-        Block* adjBlock = GetBlock(*it);
+        const Block* adjBlock = GetBlock(*it);
         if (adjBlock == largestBlock)
             continue;
 	MergeSharedLiberty(adjBlock, largestBlock);
@@ -340,6 +353,8 @@ void Board::MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks)
             if (!seen[*lib]) {
                 seen[*lib] = true;
                 largestBlock->m_liberties.PushBack(*lib);
+                GetCell(*lib)
+                    ->UpdateConnectionsToNewAnchor(adjBlock,largestBlock);
             }
 	m_state.RemoveActiveBlock(adjBlock);
     }
@@ -582,7 +597,7 @@ void Board::RemoveConnectionWith(Block* b, const Block* other)
 }
 
 // Merge b1 into b2
-void Board::MergeSharedLiberty(Block* b1, Block* b2)
+void Board::MergeSharedLiberty(const Block* b1, Block* b2)
 {
     for (size_t i = 0; i < b1->m_shared.size(); ++i) {
         const int otherAnchor = b1->m_shared[i].m_other;

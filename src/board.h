@@ -345,11 +345,22 @@ struct Board
 	return ret;
     }
 
+    std::string BlockInfo(int p) const
+    { return GetBlock(p)->ToString(Const()); }
+
     std::string CellInfo(int p) const
     { return GetCell(p)->ToString(Const()); }
 
-    std::string BlockInfo(int p) const
-    { return GetBlock(p)->ToString(Const()); }
+    std::vector<int> CellFullConnectedTo(int p, SgBlackWhite c) const
+    {
+        std::vector<int> ret;
+        const Cell::FullConnectionList& fulls = GetCell(p)->m_FullConnects[c];
+        for (int i = 0; i < fulls.Length(); ++i) {
+            ret.push_back(fulls[i].m_block);
+        }
+        return ret;
+    }
+    
 
     void SetSavePoint1()      { CopyState(m_savePoint1, m_state); }
     void SetSavePoint2()      { CopyState(m_savePoint2, m_state); }
@@ -365,30 +376,6 @@ private:
     static const int BORDER_LEFT  = 2; // 010
     static const int BORDER_RIGHT = 4; // 100
     static const int BORDER_ALL   = 7; // 111
-
-    struct Cell
-    {
-	int m_Adj[3];
-	SgArrayList<SgArrayList<int, 6>, 2> m_SemiConnects;
-	SgArrayList<SgArrayList<int, 3>, 2> m_FullConnects;
-
-	Cell()
-	{
-	    memset(m_Adj, 0, sizeof(m_Adj));
-        }
-
-	std::string ToString(const ConstBoard& cbrd) const
-        {
-            SG_UNUSED(cbrd);
-            std::ostringstream os;
-            os << "[Empty=" << this->m_Adj[SG_EMPTY]
-               << " Black=" << this->m_Adj[SG_BLACK]
-               << " White=" << this->m_Adj[SG_WHITE]
-               << "]\n";
-            return os.str();
-        }
-
-    };
 
     struct SharedLiberties
     {
@@ -517,6 +504,70 @@ private:
 	{ }
     };
 
+    struct VC
+    {
+        int m_block;
+        int m_size;
+        int m_carrier[2];
+
+        VC()
+        { }
+
+        VC(int block)
+            : m_block(block)
+            , m_size(0)
+        { }
+    };
+
+    struct Cell
+    {
+	int m_Adj[3];
+        typedef SgArrayList<VC, 6> SemiConnectionList;        
+        typedef SgArrayList<VC, 3> FullConnectionList;        
+	SemiConnectionList m_SemiConnects[2];
+	FullConnectionList m_FullConnects[2];
+
+	Cell()
+	{
+	    memset(m_Adj, 0, sizeof(m_Adj));
+        }
+
+        void AddEmptyFull(const Block* b)
+        {
+            m_FullConnects[b->m_color].PushBack(VC(b->m_anchor));
+        }
+
+        void AddBorderConnection(const Block* b)
+        {
+            m_FullConnects[SG_BLACK].PushBack(VC(b->m_anchor));
+            m_FullConnects[SG_WHITE].PushBack(VC(b->m_anchor));            
+        }
+
+        void UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
+        {
+            FullConnectionList& fulls = m_FullConnects[from->m_color];
+            for (int i = 0; i < fulls.Length(); ++i) {
+                if (fulls[i].m_block == from->m_anchor)
+                    fulls[i].m_block = to->m_anchor;
+            }
+            SemiConnectionList& semis = m_SemiConnects[from->m_color];
+            for (int i = 0; i < semis.Length(); ++i) {
+                if (semis[i].m_block == from->m_anchor)
+                    semis[i].m_block = to->m_anchor;
+            }
+        }
+
+	std::string ToString(const ConstBoard& cbrd) const
+        {
+            SG_UNUSED(cbrd);
+            std::ostringstream os;
+            os << "[Empty=" << this->m_Adj[SG_EMPTY]
+               << " Black=" << this->m_Adj[SG_BLACK]
+               << " White=" << this->m_Adj[SG_WHITE]
+               << "]\n";
+            return os.str();
+        }
+    };
 
     ConstBoard m_constBrd;
 
@@ -550,7 +601,7 @@ private:
 		    return true;
 	    return false;
 	}
-	void RemoveActiveBlock(Block* b)
+	void RemoveActiveBlock(const Block* b)
 	{
 	    SgBlackWhite color = b->m_color;
 	    for (size_t i = 0; i < m_activeBlocks[color].size(); ++i)
@@ -588,7 +639,7 @@ private:
 
     void AddSharedLibertiesAroundPoint(Block* b1, int p, int skip);
 
-    void MergeSharedLiberty(Block* b1, Block* b2);
+    void MergeSharedLiberty(const Block* b1, Block* b2);
 
     static int
         NumUnmarkedSharedLiberties(const SharedLiberties& lib, 

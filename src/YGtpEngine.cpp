@@ -65,7 +65,9 @@ YGtpEngine::YGtpEngine(int boardSize)
 
     RegisterCmd("board_statistics", &YGtpEngine::CmdBoardStatistics);
     
-    RegisterCmd("empty_cell_info", &YGtpEngine::CmdEmptyCellInfo);
+    RegisterCmd("cell_info", &YGtpEngine::CmdCellInfo);
+    RegisterCmd("cell_full_connected_with", 
+                &YGtpEngine::CmdCellFullConnectedWith);
 
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
@@ -103,7 +105,8 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "string/Board Statistics/board_statistics\n"
         "string/Playout Statistics/playout_statistics\n"
         "pspairs/Playout Weights/playout_weights\n"
-	"string/Empty Cell Info/empty_cell_info %p\n"
+	"string/Cell Info/cell_info %p\n"
+        "plist/Cell Full Connected With/cell_full_connected_with %p %c\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
 	"group/Group Blocks/group_blocks %p\n"
@@ -652,13 +655,26 @@ void YGtpEngine::CmdBoardStatistics(GtpCommand& cmd)
 
 //----------------------------------------------------------------------------
 
-void YGtpEngine::CmdEmptyCellInfo(GtpCommand& cmd)
+void YGtpEngine::CmdCellInfo(GtpCommand& cmd)
 {
     cmd.CheckNuArg(1);
     int p = CellArg(cmd, 0);
     if (m_brd.IsOccupied(p))
         throw GtpFailure("Invalid cell");
     cmd << m_brd.CellInfo(p);
+}
+
+void YGtpEngine::CmdCellFullConnectedWith(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(2);
+    int p = CellArg(cmd, 0);
+    if (m_brd.IsOccupied(p))
+        throw GtpFailure("Invalid cell");
+    SgBlackWhite color = ColorArg(cmd, 1);
+    std::vector<int> blocks = m_brd.CellFullConnectedTo(p, color);
+    for (size_t i = 0; i < blocks.size(); ++i) {
+        cmd << ' ' << m_brd.ToString(blocks[i]);
+    }
 }
 
 //----------------------------------------------------------------------------

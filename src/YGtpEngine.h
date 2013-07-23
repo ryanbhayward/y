@@ -60,7 +60,8 @@ public:
 
     void CmdBoardStatistics(GtpCommand& cmd);
 
-    void CmdEmptyCellInfo(GtpCommand& cmd);
+    void CmdCellInfo(GtpCommand& cmd);
+    void CmdCellFullConnectedWith(GtpCommand& cmd);
 
     void CmdBlockInfo(GtpCommand& cmd);
     void CmdBlockStones(GtpCommand& cmd);
