@@ -356,7 +356,7 @@ struct Board
         std::vector<int> ret;
         const Cell::FullConnectionList& fulls = GetCell(p)->m_FullConnects[c];
         for (int i = 0; i < fulls.Length(); ++i) {
-            ret.push_back(fulls[i].m_block);
+            ret.push_back(fulls[i].m_other);
         }
         return ret;
     }
@@ -386,6 +386,10 @@ private:
 
 	SharedLiberties()
             : m_other(-1)
+	{ }
+
+	SharedLiberties(int anchor)
+	    : m_other(anchor)
 	{ }
 
         SharedLiberties(int anchor, int liberty)
@@ -522,8 +526,8 @@ private:
     struct Cell
     {
 	int m_Adj[3];
-        typedef SgArrayList<VC, 6> SemiConnectionList;        
-        typedef SgArrayList<VC, 3> FullConnectionList;        
+        typedef SgArrayList<SharedLiberties, 6> SemiConnectionList;        
+        typedef SgArrayList<SharedLiberties, 3> FullConnectionList;        
 	SemiConnectionList m_SemiConnects[2];
 	FullConnectionList m_FullConnects[2];
 
@@ -534,26 +538,26 @@ private:
 
         void AddEmptyFull(const Block* b)
         {
-            m_FullConnects[b->m_color].PushBack(VC(b->m_anchor));
+            m_FullConnects[b->m_color].PushBack(SharedLiberties(b->m_anchor));
         }
 
         void AddBorderConnection(const Block* b)
         {
-            m_FullConnects[SG_BLACK].PushBack(VC(b->m_anchor));
-            m_FullConnects[SG_WHITE].PushBack(VC(b->m_anchor));            
+            m_FullConnects[SG_BLACK].PushBack(SharedLiberties(b->m_anchor));
+            m_FullConnects[SG_WHITE].PushBack(SharedLiberties(b->m_anchor));
         }
 
         void UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
         {
             FullConnectionList& fulls = m_FullConnects[from->m_color];
             for (int i = 0; i < fulls.Length(); ++i) {
-                if (fulls[i].m_block == from->m_anchor)
-                    fulls[i].m_block = to->m_anchor;
+                if (fulls[i].m_other == from->m_anchor)
+                    fulls[i].m_other = to->m_anchor;
             }
             SemiConnectionList& semis = m_SemiConnects[from->m_color];
             for (int i = 0; i < semis.Length(); ++i) {
-                if (semis[i].m_block == from->m_anchor)
-                    semis[i].m_block = to->m_anchor;
+                if (semis[i].m_other == from->m_anchor)
+                    semis[i].m_other = to->m_anchor;
             }
         }
 

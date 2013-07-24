@@ -154,7 +154,6 @@ void Board::SetSize(int size)
         for (int i = 0; i < N; ++i) {
             int p = Const().fatten(i,0);
             b.m_liberties.PushBack(p);
-            if (GetCell(p)->m_FullConnects[SG_BLACK].Length() > 0)
             GetCell(p)->AddBorderConnection(&b);
         }
     }
