@@ -62,6 +62,9 @@ public:
 
     void CmdCellInfo(GtpCommand& cmd);
     void CmdCellFullConnectedWith(GtpCommand& cmd);
+    void CmdCellSemiConnectedWith(GtpCommand& cmd);
+    void CmdTableConnected(GtpCommand& cmd);
+    void CmdTableCarrier(GtpCommand& cmd);
 
     void CmdBlockInfo(GtpCommand& cmd);
     void CmdBlockStones(GtpCommand& cmd);

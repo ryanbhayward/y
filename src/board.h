@@ -360,6 +360,41 @@ struct Board
         }
         return ret;
     }
+
+    std::vector<int> CellSemiConnectedTo(int p, SgBlackWhite c) const
+    {
+        std::vector<int> ret;
+        const Cell::SemiConnectionList& semis = GetCell(p)->m_SemiConnects[c];
+        for (int i = 0; i < semis.Length(); ++i) {
+            ret.push_back(semis[i].m_other);
+        }
+        return ret;
+    }
+
+    std::vector<int> GetConnectedToFromTable(int p) const
+    {
+	if(IsEmpty(p))
+	    return GetConnectionsWith(p);
+	else
+	    return GetConnectionsWith(GetBlock(p)->m_anchor);
+    }
+
+    std::vector<int> GetConnectionCarrier(int p1, int p2) const 
+    {
+	if(IsOccupied(p1)) {
+	    if(IsOccupied(p2))
+		return GetCarrierBetween(GetBlock(p1)->m_anchor, 
+					 GetBlock(p2)->m_anchor);
+	    else
+		return GetCarrierBetween(GetBlock(p1)->m_anchor, p2);
+	}
+	else {
+	    if(IsOccupied(p2))
+		return GetCarrierBetween(p1, GetBlock(p2)->m_anchor);
+	    else
+		return GetCarrierBetween(p1, p2);
+	}
+    }
     
 
     void SetSavePoint1()      { CopyState(m_savePoint1, m_state); }
@@ -541,6 +576,24 @@ private:
             m_FullConnects[b->m_color].PushBack(SharedLiberties(b->m_anchor));
         }
 
+	void AddEmptySemi(const Block* b)
+	{
+	    m_SemiConnects[b->m_color].PushBack(SharedLiberties(b->m_anchor));
+	}
+
+	void AddSemi(const Block* b, int carrier)
+	{
+	    m_SemiConnects[b->m_color].PushBack(SharedLiberties
+						(b->m_anchor, carrier));
+	}
+
+	void AddFull(const Block* b, const SharedLiberties &sl)
+	{
+	    AddEmptyFull(b);
+	    for(size_t i = 0; i < sl.Size(); ++i)
+		m_FullConnects[b->m_color].Last().PushBack(sl.m_liberties[i]);
+	}
+
         void AddBorderConnection(const Block* b)
         {
             m_FullConnects[SG_BLACK].PushBack(SharedLiberties(b->m_anchor));
@@ -571,6 +624,25 @@ private:
                << "]\n";
             return os.str();
         }
+
+	bool IsSemiConnected(Block* b) const
+	{
+	    for(int i = 0; i < 6; ++i)
+		if(m_SemiConnects[b->m_color][i].m_other == b->m_anchor)
+		    return true;
+	    return false;
+	}
+
+	bool IsFullConnected(Block* b) const
+	{
+	    for(int i = 0; i < 3; ++i)
+		if(m_FullConnects[b->m_color][i].m_other == b->m_anchor)
+		    return true;
+	    return false;
+	}
+
+	void RemoveSemiConnection(int p) {return;}
+	void RemoveFullConnection(int p) {return;}
     };
 
     ConstBoard m_constBrd;
@@ -585,6 +657,7 @@ private:
 	std::vector< std::vector<Block*> > m_activeBlocks;
 	std::vector<Group*> m_group;
 	std::vector<Group> m_groupList;
+	std::vector<std::vector<SharedLiberties> > m_connections;
         
         SgArrayList<int, 3> m_oppBlocks;
                 
@@ -702,6 +775,44 @@ private:
 
     int NumNeighbours(int p, SgBlackWhite color) const
     { return GetCell(p)->m_Adj[color]; }
+
+    void AddConnection(int p1, int p2)
+    { 
+	m_state.m_connections[p1][p2].m_other = 1;
+	m_state.m_connections[p2][p1].m_other = 1;
+    }
+
+    void AddCarrierToConnection(int p1, int p2, int carrier)
+    {
+	m_state.m_connections[p1][p2].Include(carrier);
+	m_state.m_connections[p2][p1].Include(carrier);
+    }
+
+    void UpdateConnectionsToNewAnchor(const Block* from, const Block* to);
+    void AddSharedLibertyConnection(int p1, int p2, int carrier);
+    void RemoveConnection(int p);
+    void UpdateCellConnection(Block* b, int empty);
+
+    bool IsConnected(int p1, int p2) const
+    { return m_state.m_connections[p1][p2].m_other == 1; }
+
+    const std::vector<int> GetConnectionsWith(int p) const
+    { 
+	std::vector<int> ret;
+	for(size_t i = 0; i < m_state.m_connections[p].size(); ++i)
+	    if(IsConnected(p, (int)i))
+		ret.push_back((int) i);
+	return ret;
+    }
+
+    const std::vector<int> GetCarrierBetween(int p1, int p2) const
+    {
+	std::vector<int> ret;
+	if(IsConnected(p1, p2))
+	   for(size_t i = 0; i < m_state.m_connections[p1][p2].Size(); ++i)
+	       ret.push_back(m_state.m_connections[p1][p2].m_liberties[i]);
+	return ret;
+    }
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented

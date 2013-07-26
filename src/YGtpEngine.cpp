@@ -68,6 +68,10 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("cell_info", &YGtpEngine::CmdCellInfo);
     RegisterCmd("cell_full_connected_with", 
                 &YGtpEngine::CmdCellFullConnectedWith);
+    RegisterCmd("cell_semi_connected_with",
+		&YGtpEngine::CmdCellSemiConnectedWith);
+    RegisterCmd("table_connected", &YGtpEngine::CmdTableConnected);
+    RegisterCmd("table_carrier", &YGtpEngine::CmdTableCarrier);
 
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
@@ -107,6 +111,9 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "pspairs/Playout Weights/playout_weights\n"
 	"string/Cell Info/cell_info %p\n"
         "plist/Cell Full Connected With/cell_full_connected_with %p %c\n"
+	"plist/Cell Semi Connected With/cell_semi_connected_with %p %c\n"
+	"plist/Table Connections/table_connected %p\n"
+	"plist/Table Carrier/table_carrier %P\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
 	"group/Group Blocks/group_blocks %p\n"
@@ -674,6 +681,40 @@ void YGtpEngine::CmdCellFullConnectedWith(GtpCommand& cmd)
     std::vector<int> blocks = m_brd.CellFullConnectedTo(p, color);
     for (size_t i = 0; i < blocks.size(); ++i) {
         cmd << ' ' << m_brd.ToString(blocks[i]);
+    }
+}
+
+void YGtpEngine::CmdCellSemiConnectedWith(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(2);
+    int p = CellArg(cmd, 0);
+    if (m_brd.IsOccupied(p))
+        throw GtpFailure("Invalid cell");
+    SgBlackWhite color = ColorArg(cmd, 1);
+    std::vector<int> blocks = m_brd.CellSemiConnectedTo(p, color);
+    for (size_t i = 0; i < blocks.size(); ++i) {
+        cmd << ' ' << m_brd.ToString(blocks[i]);
+    }
+}
+
+void YGtpEngine::CmdTableConnected(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    std::vector<int> cells = m_brd.GetConnectedToFromTable(p);
+    for (size_t i = 0; i < cells.size(); ++i) {
+        cmd << ' ' << m_brd.ToString(cells[i]);
+    }
+}
+
+void YGtpEngine::CmdTableCarrier(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(2);
+    int p1 = CellArg(cmd, 0);
+    int p2 = CellArg(cmd, 1);
+    std::vector<int> cells = m_brd.GetConnectionCarrier(p1, p2);
+    for (size_t i = 0; i < cells.size(); ++i) {
+        cmd << ' ' << m_brd.ToString(cells[i]);
     }
 }
 
