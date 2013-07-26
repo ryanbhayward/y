@@ -1157,24 +1157,23 @@ void Board::RemoveConnection(int p)
 
 void Board::UpdateCellConnection(Block* b, int empty)
 {
-    int occupied = b->m_anchor;
-    int size = (int)m_state.m_connections[occupied][empty].Size();
+    int size = (int)m_state.m_connections[b->m_anchor][empty].Size();
     Cell* cell = GetCell(empty);
     if(size == 0) {
 	if(cell->IsSemiConnected(b))
-	    cell->RemoveSemiConnection(occupied);
+	    cell->RemoveSemiConnection(b);
 	else if(cell->IsFullConnected(b))
-	    cell->RemoveFullConnection(occupied);
+	    cell->RemoveFullConnection(b);
     }
     else if(size == 1) {
 	if(cell->IsFullConnected(b))
-	    cell->RemoveFullConnection(occupied);
-	cell->AddSemi(b, m_state.m_connections[occupied][empty].m_liberties[0]);
+	    cell->RemoveFullConnection(b);
+	cell->AddSemi(b, m_state.m_connections[b->m_anchor][empty].m_liberties[0]);
     }
     else {        
 	if(cell->IsSemiConnected(b))
-	    cell->RemoveSemiConnection(occupied);
+	    cell->RemoveSemiConnection(b);
 	if(!cell->IsFullConnected(b))
-	    cell->AddFull(b, m_state.m_connections[occupied][empty]);
+	    cell->AddFull(b, m_state.m_connections[b->m_anchor][empty]);
     }
 }

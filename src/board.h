@@ -641,8 +641,26 @@ private:
 	    return false;
 	}
 
-	void RemoveSemiConnection(int p) {return;}
-	void RemoveFullConnection(int p) {return;}
+	void RemoveSemiConnection(Block* b) 
+        {
+	    for(int i = 0; i < 3; ++i)
+		if(m_SemiConnects[b->m_color][i].m_other == b->m_anchor) {
+		    m_SemiConnects[b->m_color][i] = 
+			m_SemiConnects[b->m_color].Last();
+		    m_SemiConnects[b->m_color].Last() = SharedLiberties();
+		    break;
+		}
+	}
+	void RemoveFullConnection(Block* b) 
+	{
+	    for(int i = 0; i < 6; ++i)
+		if(m_FullConnects[b->m_color][i].m_other == b->m_anchor) {
+		    m_FullConnects[b->m_color][i] = 
+			m_FullConnects[b->m_color].Last();
+		    m_FullConnects[b->m_color].Last() = SharedLiberties();
+		    break;
+		}
+	}
     };
 
     ConstBoard m_constBrd;
