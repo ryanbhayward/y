@@ -137,6 +137,7 @@ void Board::SetSize(int size)
 
     const int N = Size();
     const int T = Const().TotalGBCells;
+    std::cerr << "T=" << T << '\n';
     m_state.Init(T);
 
     // initialize empty cells
@@ -237,7 +238,7 @@ void Board::SetSize(int size)
     for (BoardIterator i(Const()); i; ++i)
 	for (CellNbrIterator j(Const(), *i); j; ++j)
 	    if(GetColor(*j) == SG_EMPTY)
-		GetCell(*i)->m_Adj[SG_EMPTY]++;
+		GetCell(*i)->m_NumAdj[SG_EMPTY]++;
 
     m_state.m_winner   = SG_EMPTY;
     m_state.m_vcWinner = SG_EMPTY;
@@ -293,7 +294,7 @@ void Board::CreateSingleStoneBlock(int p, SgBlackWhite color, int border)
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY) {
             b->m_liberties.PushBack(*it);
-            GetCell(*it)->AddEmptyFull(b);
+            GetCell(*it)->AddFull(b);
 	    AddConnection(*it, p);
             AddSharedLibertiesAroundPoint(b, *it, p);
 	}
@@ -318,7 +319,7 @@ void Board::AddStoneToBlock(int p, int border, Block* b)
         if (GetColor(*it) == SG_EMPTY) {
             if (!IsAdjacent(*it, b)) {
                 b->m_liberties.PushBack(*it);
-                GetCell(*it)->AddEmptyFull(b);
+                GetCell(*it)->AddFull(b);
 		AddConnection(*it, b->m_anchor);
                 AddSharedLibertiesAroundPoint(b, *it, p);
             }
@@ -464,8 +465,8 @@ void Board::Play(SgBlackWhite color, int p)
                 oppBlocks.PushBack(b->m_anchor);
         }
 	else {
-	    GetCell(*it)->m_Adj[SG_EMPTY]--;
-	    GetCell(*it)->m_Adj[color]++;
+	    GetCell(*it)->m_NumAdj[SG_EMPTY]--;
+	    GetCell(*it)->m_NumAdj[color]++;
 	}
     }
     RemoveSharedLiberty(p, adjBlocks);
@@ -861,6 +862,7 @@ void Board::Swap()
 void Board::CopyState(Board::State& a, const Board::State& b)
 {
     a = b;
+    
     // Fix pointers since they are now pointing into other
     a.m_block[Const().WEST] = &a.m_blockList[Const().WEST];
     a.m_block[Const().EAST] = &a.m_blockList[Const().EAST];
@@ -1168,12 +1170,12 @@ void Board::UpdateCellConnection(Block* b, int empty)
     else if(size == 1) {
 	if(cell->IsFullConnected(b))
 	    cell->RemoveFullConnection(b);
-	cell->AddSemi(b, m_state.m_connections[b->m_anchor][empty].m_liberties[0]);
+	cell->AddSemi(b);
     }
     else {        
 	if(cell->IsSemiConnected(b))
 	    cell->RemoveSemiConnection(b);
 	if(!cell->IsFullConnected(b))
-	    cell->AddFull(b, m_state.m_connections[b->m_anchor][empty]);
+	    cell->AddFull(b);
     }
 }

@@ -356,7 +356,7 @@ struct Board
         std::vector<int> ret;
         const Cell::FullConnectionList& fulls = GetCell(p)->m_FullConnects[c];
         for (int i = 0; i < fulls.Length(); ++i) {
-            ret.push_back(fulls[i].m_other);
+            ret.push_back(fulls[i]);
         }
         return ret;
     }
@@ -366,7 +366,7 @@ struct Board
         std::vector<int> ret;
         const Cell::SemiConnectionList& semis = GetCell(p)->m_SemiConnects[c];
         for (int i = 0; i < semis.Length(); ++i) {
-            ret.push_back(semis[i].m_other);
+            ret.push_back(semis[i]);
         }
         return ret;
     }
@@ -560,57 +560,44 @@ private:
 
     struct Cell
     {
-	int m_Adj[3];
-        typedef SgArrayList<SharedLiberties, 6> SemiConnectionList;        
-        typedef SgArrayList<SharedLiberties, 3> FullConnectionList;        
+	int m_NumAdj[3];
+        typedef SgArrayList<int, 6> SemiConnectionList;        
+        typedef SgArrayList<int, 3> FullConnectionList;        
 	SemiConnectionList m_SemiConnects[2];
 	FullConnectionList m_FullConnects[2];
 
 	Cell()
 	{
-	    memset(m_Adj, 0, sizeof(m_Adj));
+	    memset(m_NumAdj, 0, sizeof(m_NumAdj));
         }
 
-        void AddEmptyFull(const Block* b)
+        void AddFull(const Block* b)
         {
-            m_FullConnects[b->m_color].PushBack(SharedLiberties(b->m_anchor));
+            m_FullConnects[b->m_color].PushBack(b->m_anchor);
         }
 
-	void AddEmptySemi(const Block* b)
+	void AddSemi(const Block* b)
 	{
-	    m_SemiConnects[b->m_color].PushBack(SharedLiberties(b->m_anchor));
-	}
-
-	void AddSemi(const Block* b, int carrier)
-	{
-	    m_SemiConnects[b->m_color].PushBack(SharedLiberties
-						(b->m_anchor, carrier));
-	}
-
-	void AddFull(const Block* b, const SharedLiberties &sl)
-	{
-	    AddEmptyFull(b);
-	    for(size_t i = 0; i < sl.Size(); ++i)
-		m_FullConnects[b->m_color].Last().PushBack(sl.m_liberties[i]);
+	    m_SemiConnects[b->m_color].PushBack(b->m_anchor);
 	}
 
         void AddBorderConnection(const Block* b)
         {
-            m_FullConnects[SG_BLACK].PushBack(SharedLiberties(b->m_anchor));
-            m_FullConnects[SG_WHITE].PushBack(SharedLiberties(b->m_anchor));
+            m_FullConnects[SG_BLACK].PushBack(b->m_anchor);
+            m_FullConnects[SG_WHITE].PushBack(b->m_anchor);
         }
 
         void UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
         {
             FullConnectionList& fulls = m_FullConnects[from->m_color];
             for (int i = 0; i < fulls.Length(); ++i) {
-                if (fulls[i].m_other == from->m_anchor)
-                    fulls[i].m_other = to->m_anchor;
+                if (fulls[i] == from->m_anchor)
+                    fulls[i] = to->m_anchor;
             }
             SemiConnectionList& semis = m_SemiConnects[from->m_color];
             for (int i = 0; i < semis.Length(); ++i) {
-                if (semis[i].m_other == from->m_anchor)
-                    semis[i].m_other = to->m_anchor;
+                if (semis[i] == from->m_anchor)
+                    semis[i] = to->m_anchor;
             }
         }
 
@@ -618,48 +605,36 @@ private:
         {
             SG_UNUSED(cbrd);
             std::ostringstream os;
-            os << "[Empty=" << this->m_Adj[SG_EMPTY]
-               << " Black=" << this->m_Adj[SG_BLACK]
-               << " White=" << this->m_Adj[SG_WHITE]
+            os << "[Empty=" << this->m_NumAdj[SG_EMPTY]
+               << " Black=" << this->m_NumAdj[SG_BLACK]
+               << " White=" << this->m_NumAdj[SG_WHITE]
                << "]\n";
             return os.str();
         }
 
 	bool IsSemiConnected(Block* b) const
 	{
-	    for(int i = 0; i < 6; ++i)
-		if(m_SemiConnects[b->m_color][i].m_other == b->m_anchor)
+	    for(int i = 0; i < m_SemiConnects[b->m_color].Length(); ++i)
+		if(m_SemiConnects[b->m_color][i] == b->m_anchor)
 		    return true;
 	    return false;
 	}
 
 	bool IsFullConnected(Block* b) const
 	{
-	    for(int i = 0; i < 3; ++i)
-		if(m_FullConnects[b->m_color][i].m_other == b->m_anchor)
+	    for(int i = 0; i < m_FullConnects[b->m_color].Length(); ++i)
+		if(m_FullConnects[b->m_color][i] == b->m_anchor)
 		    return true;
 	    return false;
 	}
 
 	void RemoveSemiConnection(Block* b) 
         {
-	    for(int i = 0; i < 3; ++i)
-		if(m_SemiConnects[b->m_color][i].m_other == b->m_anchor) {
-		    m_SemiConnects[b->m_color][i] = 
-			m_SemiConnects[b->m_color].Last();
-		    m_SemiConnects[b->m_color].Last() = SharedLiberties();
-		    break;
-		}
+            m_SemiConnects[b->m_color].Exclude(b->m_anchor);
 	}
 	void RemoveFullConnection(Block* b) 
 	{
-	    for(int i = 0; i < 6; ++i)
-		if(m_FullConnects[b->m_color][i].m_other == b->m_anchor) {
-		    m_FullConnects[b->m_color][i] = 
-			m_FullConnects[b->m_color].Last();
-		    m_FullConnects[b->m_color].Last() = SharedLiberties();
-		    break;
-		}
+            m_FullConnects[b->m_color].Exclude(b->m_anchor);
 	}
     };
 
@@ -672,10 +647,11 @@ private:
 	std::vector<Cell> m_cellList;
         std::vector<Block*> m_block;
         std::vector<Block> m_blockList;
-	std::vector< std::vector<Block*> > m_activeBlocks;
 	std::vector<Group*> m_group;
 	std::vector<Group> m_groupList;
 	std::vector<std::vector<SharedLiberties> > m_connections;
+
+	std::vector< std::vector<Block*> > m_activeBlocks;
         
         SgArrayList<int, 3> m_oppBlocks;
                 
@@ -792,7 +768,7 @@ private:
     { return m_state.m_cell[p]; }
 
     int NumNeighbours(int p, SgBlackWhite color) const
-    { return GetCell(p)->m_Adj[color]; }
+    { return GetCell(p)->m_NumAdj[color]; }
 
     void AddConnection(int p1, int p2)
     { 
