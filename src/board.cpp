@@ -65,32 +65,37 @@ ConstBoard::ConstBoard()
 
 ConstBoard::ConstBoard(int size)
     : m_size(size)
-    , Np2G(m_size+2*GUARDS)
     , TotalCells(m_size*(m_size+1)/2)
-    , TotalGBCells(Np2G*Np2G)
+    , TotalGBCells((m_size+(2*GUARDS+1))*(m_size+(2*GUARDS+1)+1)/2)
     , WEST(TotalGBCells+0)
     , EAST(TotalGBCells+1)
     , SOUTH(TotalGBCells+2)
+    , m_cells()
+    , m_cell_nbr()
 {
-    Nbr_offsets[0] =  -Np2G;
-    Nbr_offsets[1] = 1-Np2G;
-    Nbr_offsets[2] = 1;
-    Nbr_offsets[3] = Np2G;
-    Nbr_offsets[4] = Np2G-1;
-    Nbr_offsets[5] = -1;
-    Nbr_offsets[6] = -Np2G;
-
-    Bridge_offsets[0] = -2*Np2G+1;
-    Bridge_offsets[1] = 2-Np2G;
-    Bridge_offsets[2] = Np2G+1;
-    Bridge_offsets[3] = 2*Np2G-1;
-    Bridge_offsets[4] = Np2G-2;
-    Bridge_offsets[5] = -(Np2G+1);
     m_cells.clear();
-
     for (int r=0; r<Size(); r++)
-        for (int c=0; c<=r; c++)
+        for (int c=0; c<=r; c++) {
             m_cells.push_back(fatten(r,c));
+        }
+    
+    m_cell_nbr.resize(TotalGBCells);
+    for (int r=0; r<Size(); r++) {
+        for (int c=0; c<=r; c++) {
+            int p = fatten(r,c);
+            m_cell_nbr[p].resize(6);
+
+            int rr = r + 2;
+
+            // spin clockwise from top left neighbor
+            m_cell_nbr[p][0] = p - rr - 1;
+            m_cell_nbr[p][1] = p - rr;
+            m_cell_nbr[p][2] = p + 1;
+            m_cell_nbr[p][3] = p + (rr + 1) + 1;
+            m_cell_nbr[p][4] = p + (rr + 1);
+            m_cell_nbr[p][5] = p - 1;
+        }
+    }
 }
 
 //----------------------------------------------------------------------
@@ -137,7 +142,6 @@ void Board::SetSize(int size)
 
     const int N = Size();
     const int T = Const().TotalGBCells;
-    std::cerr << "T=" << T << '\n';
     m_state.Init(T);
 
     // initialize empty cells
@@ -220,7 +224,7 @@ void Board::SetSize(int size)
     bptr[Const().fatten(-1,0)-1] = &blst[Const().WEST];
     bptr[Const().fatten(-1,-1)+1] = &blst[Const().EAST];
     bptr[Const().fatten(N,N)] = &blst[Const().SOUTH];
-   
+
     std::vector<Group*>& gptr = m_state.m_group;
     std::vector<Group>& glst = m_state.m_groupList;
     gptr[Const().WEST] = &glst[Const().WEST];
@@ -264,13 +268,18 @@ void Board::AddSharedLibertiesAroundPoint(Block* b1, int p, int skip)
             continue;
         if (GetColor(*it) == SgOppBW(b1->m_color))
             continue;
-        Block* b2 = GetBlock(*it);
-        if (b1 == b2)
-            continue;
         if (GetColor(*it) == SG_EMPTY){
             AddSharedLibertyConnection(b1->m_anchor, *it, p);
 	    UpdateCellConnection(b1, *it);
+            continue;
 	}
+        Block* b2 = GetBlock(*it);
+        // std::cerr << "p=" << ToString(p) 
+        //           << " b1->anchor=" << ToString(b1->m_anchor) 
+        //           << " b2->anchor=" << ToString(b2->m_anchor)
+        //           << " it=" << ToString(*it) << '\n';
+        if (b1 == b2)
+            continue;
         else if (b2->m_color == b1->m_color) {
             AddSharedLiberty(b1, b2, p);
 	    AddSharedLibertyConnection(b1->m_anchor, b2->m_anchor, p);
@@ -964,25 +973,29 @@ std::string Board::ToString() const
 std::string Board::BorderToString() const
 {
     ostringstream os;
-    const int Np2G = Const().Np2G;
-    os << "\n" << "Border Values:\n";
-    int psn = 0;
-    for (int j = 0; j < Np2G; j++) {
-	for (int k = 0; k < j; k++)
-	    os << ' ';
-	for (int k = 0; k < Np2G; k++) {
+    const int N = Size() + 2*ConstBoard::GUARDS;
+
+    os << "\n";
+    for (int j = 0; j < N; j++) {
+        for (int k = 0; k < N-j; k++) 
+            os << ' ';
+        os << (j+1<10?" ":"") << j+1 << "  "; 
+        for (int k = 0; k <= j+1 ; k++) 
+        {
             char c = '*';
-	    if (GetBlock(psn) != NULL) {
-                if (GetBlock(psn)->m_border != BORDER_NONE)
-                    c = '0' + GetBlock(psn)->m_border;
+            int p =  Const().fatten(j-1,k-1);
+	    if (GetBlock(p) != NULL) {
+                if (GetBlock(p)->m_border != BORDER_NONE)
+                    c = '0' + GetBlock(p)->m_border;
             }
             os << "  " << c;
-
-            psn++;
-	}
-	os << "\n";
+            
+        }
+        os << "\n";
     }
-    os << "\n"; 
+    os << "   ";
+    for (char ch='a'; ch < 'a'+N; ch++) 
+        os << ' ' << ch << ' '; 
     return os.str();
 }
 
@@ -1057,7 +1070,7 @@ int Board::SaveBridge(int lastMove, const SgBlackWhite toPlay,
     for (int j = 0; j < 8; ++j)
     {
         const int i = (j + start) % 6;
-        const int p = lastMove + Const().Nbr_offsets[i];
+        const int p = Const().m_cell_nbr[lastMove][i];
         const bool mine = GetColor(p) == toPlay;
         if (s == 0)
         {
@@ -1096,7 +1109,7 @@ bool Board::IsCellDead(int p) const
     for (int j = 0; j < 12; ++j)
     {
 	const int i = j % 6;
-	const SgBlackWhite color = GetColor(p + Const().Nbr_offsets[i]);
+	const SgBlackWhite color = GetColor(Const().m_cell_nbr[p][i]);
 	if (s == 0)
 	{
 	    if (color == SG_BLACK || color == SG_WHITE) s = 1;
@@ -1110,9 +1123,9 @@ bool Board::IsCellDead(int p) const
 	else if (s == 2)
 	{
 	    if (color == lastColor) s = 3;
-	    else if(GetColor(p + Const().Nbr_offsets[i+1]) 
+	    else if(GetColor(Const().m_cell_nbr[p][(i+1)%6]) 
 		    == SgOppBW(lastColor) && 
-		    GetColor(p + Const().Nbr_offsets[(i+2)%6]) 
+		    GetColor(Const().m_cell_nbr[p][(i+2)%6])
 		    == SgOppBW(lastColor))
 		return true;
 	    else s = 0;
@@ -1120,7 +1133,7 @@ bool Board::IsCellDead(int p) const
 	else if (s == 3)
 	{
 	    if (color == lastColor) return true;
-	    else if(GetColor(p + Const().Nbr_offsets[i+1]) 
+	    else if(GetColor(Const().m_cell_nbr[p][(i+1)%6])
 		    == SgOppBW(lastColor))
 		return true;
 	    else s = 0;

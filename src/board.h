@@ -23,38 +23,31 @@ bool Contains(const std::vector<T>& v, const T& val)
 }
 
 
-//  Y-board       N cells per side    N(N+1)/2  total cells
-//  fat board, aka. guarded board with GUARDS extra rows/cols,
-//  allows fixed offsets for nbrs @ dist 1 or 2, 
-//  e.g. below with GUARDS = 2
-//          . . g g g g g g g 
-//           . g g g g g g g g 
-//            g g * * * * * g g 
-//             g g * * * * g g . 
-//              g g * * * g g . . 
-//               g g * * g g . . . 
-//                g g * g g . . . . 
-//                 g g g g . . . . . 
-//                  g g g . . . . . . 
+
+//                 0  g
+//                1  g g  
+//               2  g * g   
+//              3  g * * g   
+//             4  g * * * g  
+//            5  g * * * * g  
+//           6  g * * * * * g   
+//          7  g g g g g g g g 
+//
+// T = S*(S+1)/2 + 3
+// first guard of row n = n(n+1)/2
 
 
 static const int Y_MAX_CELL = 512;
-static const int Y_MAX_SIZE = 19;   // such that TotalCells < Y_MAX_CELL
-
-static const int TMP = 4;
-
+static const int Y_MAX_SIZE = 15;   // such that TotalCells < Y_MAX_CELL
 static const int Y_SWAP = -2;  // SG_NULLMOVE == -1
  
-static const int NumNbrs = 6;              // num nbrs of each cell
-
 class ConstBoard 
 {
 public:
 
-    static const int GUARDS = 2; // must be at least one
+    static const int GUARDS = 1; // must be at least one
 
     int m_size;
-    int Np2G;
     int TotalCells;
     int TotalGBCells;
 
@@ -62,36 +55,27 @@ public:
     int EAST;
     int SOUTH;
 
-    int Nbr_offsets[NumNbrs+1];
-    int Bridge_offsets[NumNbrs];
-
     ConstBoard();
     ConstBoard(int size);
 
     static char ColorToChar(SgBoardColor color);
     static std::string ColorToString(SgBoardColor color);
 
-    inline int fatten(int r,int c) const 
-    {  return Np2G*(r+GUARDS) + (GUARDS+m_size-r-1+c); }
-
-    inline int  board_row(int lcn) const 
-    {  return (lcn/Np2G)-GUARDS;}
-
-    inline int  board_col(int lcn) const 
-    {
-        int r = board_row(lcn);
-        return (lcn%Np2G)-GUARDS-m_size+r+1;
+    inline int fatten(int r, int c) const 
+    { return (r+GUARDS+1)*(r+GUARDS+2)/2 + c + GUARDS; }
+    
+    inline int board_row(int p) const 
+    {  
+        int r = 2;
+        while((r+1)*(r+2)/2 < p)
+            ++r;
+        return r - 2;
     }
 
-    inline bool near_edge(int lcn) const
-    { 
-        //static inline bool near_edge(int lcn,int d) { 
-        // near_edge(lcn,0) true if lcn on edge
-        // near_edge(lcn,1) true if lcn 1-away from edge
-        int r = board_row(lcn);
-        int c = board_col(lcn);
-        //return ((d==r)||(d==c)||(N==r+c+d+1));
-        return ((0==r)||(0==c)||(m_size==r+c+1));
+    inline int board_col(int p) const 
+    {
+        int r = board_row(p) + 2;
+        return p - r*(r+1)/2 - GUARDS;
     }
 
     int Size() const { return m_size; }
@@ -106,12 +90,14 @@ public:
 
 private:
     std::vector<int> m_cells;
-
+    std::vector<std::vector<int> > m_cell_nbr;
+ 
     friend class BoardIterator;
 
     friend class Board;
-};
 
+    friend class CellNbrIterator;
+};
 
 
 //----------------------------------------------------------------------
@@ -131,7 +117,7 @@ public:
     
     /** Return the current liberty. */
     int operator*() const
-    { return m_point + m_cbrd.Nbr_offsets[m_index]; }
+    { return m_cbrd.m_cell_nbr[m_point][m_index]; }
     
     /** Return true if iteration is valid, otherwise false. */
     operator bool() const
@@ -833,15 +819,5 @@ inline BoardIterator::BoardIterator(const ConstBoard& brd)
 }
     
 //----------------------------------------------------------------------
-
-extern const int Nbr_offsets[NumNbrs+1] ;  // last = 1st to avoid using %mod
-extern const int Bridge_offsets[NumNbrs] ;
-
-static const int RHOMBUS = 0;
-static const int TRI   = 1;
-
-void shapeAs(int shape, int X[]);
-void showYcore(int X[]) ;  // simple version of Board.show
-void display_nearedges();
 
 #endif
