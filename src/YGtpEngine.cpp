@@ -518,6 +518,8 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
             << m_uctSearch.BiasTermConstant() << '\n'
             << "[string] expand_threshold " 
             << m_uctSearch.ExpandThreshold() << '\n'
+            << "[string] number_playouts " 
+            << m_uctSearch.NumberPlayouts() << '\n'
             << "[string] num_threads " << m_uctSearch.NumberThreads() << '\n'
             << "[string] max_games " << m_uctMaxGames << '\n'
             << "[string] max_memory "
@@ -543,6 +545,8 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
             m_uctSearch.SetBiasTermConstant(cmd.FloatArg(1));
         else if (name == "expand_threshold")
             m_uctSearch.SetExpandThreshold(cmd.IntArg(1, 1));
+        else if (name == "number_playouts")
+            m_uctSearch.SetNumberPlayouts(cmd.IntArg(1,1));
         else if (name == "num_threads")
             m_uctSearch.SetNumberThreads(cmd.IntArg(1, 1));
         else if (name == "max_games")
