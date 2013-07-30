@@ -129,11 +129,10 @@ void Board::State::Init(int T)
     m_groupList.resize(T+3);
     std::fill(m_groupList.begin(), m_groupList.end(), Group());
 
-    m_connections.resize(T+3);
+    m_con.resize(T+3);
     for(int i = 0; i < T+3; ++i) {
-	m_connections[i].resize(T+3);
-	std::fill(m_connections[i].begin(), m_connections[i].end(), 
-		  SharedLiberties());
+       m_con[i].resize(T+3);
+       std::fill(m_con[i].begin(), m_con[i].end(), SharedLiberties());
     }
 
     m_activeBlocks.resize(2);
@@ -1154,12 +1153,13 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
 {
     int p1 = from->m_anchor;
     int p2 = to->m_anchor;
-    for(size_t i = 0; i < m_state.m_connections[p1].size(); ++i) {
-	if(IsConnected(p1, (int)i)) {
-	    if(!IsConnected(p2, (int)i))
-		AddConnection(p2, (int)i);
-	    for(size_t j = 0; j < m_state.m_connections[p1][i].Size(); ++j)
-		AddCarrierToConnection(p2, i, m_state.m_connections[p1][i].m_liberties[j]);
+    for(CellAndEdgeIterator i(Const()); i; ++i) {
+	if(IsConnected(p1, *i)) {
+	    if(!IsConnected(p2, *i))
+		AddConnection(p2, *i);
+	    for(size_t j = 0; j < m_state.m_con[p1][*i].Size(); ++j)
+		AddCarrierToConnection(p2, *i, 
+                                       m_state.m_con[p1][*i].m_liberties[j]);
 	}
     }
 }
@@ -1177,7 +1177,7 @@ void Board::RemoveConnection(int p)
 
 void Board::UpdateCellConnection(Block* b, int empty)
 {
-    int size = (int)m_state.m_connections[b->m_anchor][empty].Size();
+    int size = (int)m_state.m_con[b->m_anchor][empty].Size();
     Cell* cell = GetCell(empty);
     if(size == 0) {
 	if(cell->IsSemiConnected(b))
@@ -1196,4 +1196,24 @@ void Board::UpdateCellConnection(Block* b, int empty)
 	if(!cell->IsFullConnected(b))
 	    cell->AddFull(b);
     }
+}
+
+//////////////////////////////////////////////////////////////////////
+
+const std::vector<int> Board::GetConnectionsWith(int p) const
+{ 
+    std::vector<int> ret;
+    for (CellAndEdgeIterator i(Const()); i; ++i)
+        if(IsConnected(p, *i))
+            ret.push_back(*i);
+    return ret;
+}
+
+const std::vector<int> Board::GetCarrierBetween(int p1, int p2) const
+{
+    std::vector<int> ret;
+    if(IsConnected(p1, p2))
+        for(size_t i = 0; i < m_state.m_con[p1][p2].Size(); ++i)
+	       ret.push_back(m_state.m_con[p1][p2].m_liberties[i]);
+    return ret;
 }

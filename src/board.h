@@ -406,7 +406,7 @@ private:
         SgArrayList<int, MAX_LIBERTIES> m_liberties;
 
 	SharedLiberties()
-            : m_other(-1)
+            : m_other(0)
 	{ }
 
 	SharedLiberties(int anchor)
@@ -635,7 +635,8 @@ private:
         std::vector<Block> m_blockList;
 	std::vector<Group*> m_group;
 	std::vector<Group> m_groupList;
-	std::vector<std::vector<SharedLiberties> > m_connections;
+        std::vector<std::vector<SharedLiberties> > m_con;
+        //SharedLiberties m_con[Y_MAX_CELL][Y_MAX_CELL];
 
 	std::vector< std::vector<Block*> > m_activeBlocks;
         
@@ -758,14 +759,14 @@ private:
 
     void AddConnection(int p1, int p2)
     { 
-	m_state.m_connections[p1][p2].m_other = 1;
-	m_state.m_connections[p2][p1].m_other = 1;
+	m_state.m_con[p1][p2].m_other = 1;
+	m_state.m_con[p2][p1].m_other = 1;
     }
 
     void AddCarrierToConnection(int p1, int p2, int carrier)
     {
-	m_state.m_connections[p1][p2].Include(carrier);
-	m_state.m_connections[p2][p1].Include(carrier);
+	m_state.m_con[p1][p2].Include(carrier);
+	m_state.m_con[p2][p1].Include(carrier);
     }
 
     void UpdateConnectionsToNewAnchor(const Block* from, const Block* to);
@@ -774,25 +775,11 @@ private:
     void UpdateCellConnection(Block* b, int empty);
 
     bool IsConnected(int p1, int p2) const
-    { return m_state.m_connections[p1][p2].m_other == 1; }
+    { return m_state.m_con[p1][p2].m_other == 1; }
 
-    const std::vector<int> GetConnectionsWith(int p) const
-    { 
-	std::vector<int> ret;
-	for(size_t i = 0; i < m_state.m_connections[p].size(); ++i)
-	    if(IsConnected(p, (int)i))
-		ret.push_back((int) i);
-	return ret;
-    }
+    const std::vector<int> GetConnectionsWith(int p) const;
 
-    const std::vector<int> GetCarrierBetween(int p1, int p2) const
-    {
-	std::vector<int> ret;
-	if(IsConnected(p1, p2))
-	   for(size_t i = 0; i < m_state.m_connections[p1][p2].Size(); ++i)
-	       ret.push_back(m_state.m_connections[p1][p2].m_liberties[i]);
-	return ret;
-    }
+    const std::vector<int> GetCarrierBetween(int p1, int p2) const;
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented
