@@ -37,7 +37,7 @@ bool Contains(const std::vector<T>& v, const T& val)
 // first guard of row n = n(n+1)/2
 
 
-static const int Y_MAX_CELL = 512;
+static const int Y_MAX_CELL = 192;
 static const int Y_MAX_SIZE = 15;   // such that TotalCells < Y_MAX_CELL
 static const int Y_SWAP = -2;  // SG_NULLMOVE == -1
  
