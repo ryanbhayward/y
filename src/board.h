@@ -817,6 +817,24 @@ inline CellIterator::CellIterator(const ConstBoard& brd)
     : VectorIterator<int>(brd.m_cells)
 {
 }
+
+class CellAndEdgeIterator : public VectorIterator<int>
+{
+public:
+    CellAndEdgeIterator(const Board& brd);
+
+    CellAndEdgeIterator(const ConstBoard& brd);
+};
+
+inline CellAndEdgeIterator::CellAndEdgeIterator(const Board& brd)
+    : VectorIterator<int>(brd.Const().m_cells_edges)
+{
+}
+
+inline CellAndEdgeIterator::CellAndEdgeIterator(const ConstBoard& brd)
+    : VectorIterator<int>(brd.m_cells_edges)
+{
+}
     
 //----------------------------------------------------------------------
 

@@ -78,6 +78,11 @@ ConstBoard::ConstBoard(int size)
         for (int c=0; c<=r; c++) {
             m_cells.push_back(fatten(r,c));
         }
+
+    m_cells_edges = m_cells;
+    m_cells_edges.push_back(WEST);
+    m_cells_edges.push_back(EAST);
+    m_cells_edges.push_back(SOUTH);
     
     m_cell_nbr.resize(TotalGBCells);
     for (int r=0; r<Size(); r++) {
