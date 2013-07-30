@@ -145,7 +145,7 @@ void Board::SetSize(int size)
     m_state.Init(T);
 
     // initialize empty cells
-    for (BoardIterator it(Const()); it; ++it){
+    for (CellIterator it(Const()); it; ++it){
         m_state.m_color[*it] = SG_EMPTY;
 	m_state.m_cell[*it] = &m_state.m_cellList[*it];
     }
@@ -239,7 +239,7 @@ void Board::SetSize(int size)
     gptr[Const().fatten(-1,-1)+1] = &glst[Const().EAST];
     gptr[Const().fatten(N,N)] = &glst[Const().SOUTH];
 
-    for (BoardIterator i(Const()); i; ++i)
+    for (CellIterator i(Const()); i; ++i)
 	for (CellNbrIterator j(Const(), *i); j; ++j)
 	    if(GetColor(*j) == SG_EMPTY)
 		GetCell(*i)->m_NumAdj[SG_EMPTY]++;
@@ -252,7 +252,7 @@ void Board::SetSize(int size)
 void Board::SetPosition(const Board& other) 
 {
     SetSize(other.Size());
-    for (BoardIterator it(Const()); it; ++it) {
+    for (CellIterator it(Const()); it; ++it) {
         SgBlackWhite c = other.GetColor(*it);
         if (c != SG_EMPTY)
             Play(c, *it);
@@ -832,7 +832,7 @@ void Board::AddNonGroupEdges(int* seen, Group* g, int id)
 {
     int w, e, s;
     w = e = s = 0;
-    for(BoardIterator it(Const()); it; ++it) {
+    for(CellIterator it(Const()); it; ++it) {
 	if(seen[*it] == id && GetColor(*it) == ToPlay()) {
 	    int border = GetBlock(*it)->m_border;
 	    if(border == BORDER_LEFT) w++;
@@ -850,14 +850,14 @@ void Board::RemoveStone(int p)
     std::vector<SgBoardColor> m_oldColor(m_state.m_color);
     m_oldColor[p] = SG_EMPTY;
     SetSize(Size());
-    for (BoardIterator it(Const()); it; ++it)
+    for (CellIterator it(Const()); it; ++it)
         if (m_oldColor[*it] != SG_EMPTY)
             Play(m_oldColor[*it],*it);
 }
 
 void Board::Swap()
 {
-    for (BoardIterator it(Const()); it; ++it) {
+    for (CellIterator it(Const()); it; ++it) {
 	if(GetColor(*it) != SG_EMPTY) {
             m_state.m_color[*it] = SgOppBW(GetColor(*it));
             if (*it == BlockAnchor(*it)) {
@@ -879,7 +879,7 @@ void Board::CopyState(Board::State& a, const Board::State& b)
     a.m_group[Const().WEST] = &a.m_groupList[Const().WEST];
     a.m_group[Const().EAST] = &a.m_groupList[Const().EAST];
     a.m_group[Const().SOUTH]= &a.m_groupList[Const().SOUTH];
-    for (BoardIterator it(Const()); it; ++it) {
+    for (CellIterator it(Const()); it; ++it) {
 	SgBlackWhite color = b.m_color[*it];
         if (color != SG_EMPTY) {
             a.m_block[*it] = &a.m_blockList[b.m_block[*it]->m_anchor];
@@ -897,7 +897,7 @@ void Board::CheckConsistency()
 {
     // FIXME: ADD MORE CHECKS HERE!!
     DumpBlocks();
-    for (BoardIterator it(Const()); it; ++it) {
+    for (CellIterator it(Const()); it; ++it) {
         int color = GetColor(*it);
         if (color != SG_BLACK && color != SG_WHITE && color != SG_EMPTY)
         {

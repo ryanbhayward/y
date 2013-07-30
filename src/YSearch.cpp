@@ -79,7 +79,7 @@ void YSearch::Generate(SgVector<SgMove>* moves, int depth)
 {
     SG_UNUSED(depth);
     moves->Clear();
-    for (BoardIterator it(m_brd); it; ++it)
+    for (CellIterator it(m_brd); it; ++it)
         if (m_brd.IsEmpty(*it))
             moves->PushBack(*it);
 }

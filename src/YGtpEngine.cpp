@@ -267,7 +267,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
     {
 #if 0
         std::vector<int> empty;
-        for (BoardIterator it(m_brd); it; ++it)
+        for (CellIterator it(m_brd); it; ++it)
             if (m_brd.IsEmpty(*it))
                 empty.push_back(*it);
         return empty[SgRandom::Global().Int(empty.size())];
@@ -742,7 +742,7 @@ void YGtpEngine::CmdBlockStones(GtpCommand& cmd)
     int anchor = m_brd.BlockAnchor(p);
     SgBlackWhite color = m_brd.GetColor(anchor);
     cmd << m_brd.ToString(anchor);
-    for (BoardIterator it(m_brd.Const()); it; ++it) {
+    for (CellIterator it(m_brd.Const()); it; ++it) {
         if (*it != anchor
             && m_brd.GetColor(*it) == color 
             && m_brd.IsInBlock(*it, anchor))
@@ -757,7 +757,7 @@ void YGtpEngine::CmdBlockLiberties(GtpCommand& cmd)
     if (m_brd.GetColor(p) == SG_EMPTY)
         return;
     int anchor = m_brd.BlockAnchor(p);
-    for (BoardIterator it(m_brd.Const()); it; ++it) {
+    for (CellIterator it(m_brd.Const()); it; ++it) {
         if (m_brd.GetColor(*it) == SG_EMPTY 
             && m_brd.IsLibertyOfBlock(*it, anchor))
             cmd << ' ' << m_brd.ToString(*it);
@@ -829,7 +829,7 @@ void YGtpEngine::CmdSharedLiberties(GtpCommand& cmd)
     cmd.CheckNuArg(2);
     int p1 = CellArg(cmd, 0);
     int p2 = CellArg(cmd, 1);
-    for (BoardIterator p(m_brd.Const()); p; ++p)
+    for (CellIterator p(m_brd.Const()); p; ++p)
         if (m_brd.IsSharedLiberty(p1, p2, *p))
             cmd << ' ' << m_brd.ToString(*p);
 }
@@ -873,7 +873,7 @@ void YGtpEngine::CmdPlayoutWeights(GtpCommand& cmd)
 
     std::vector<float> weights;
     thread->GetWeightsForLastMove(weights, m_brd.ToPlay());
-    for (BoardIterator i(m_brd.Const()); i; ++i) {
+    for (CellIterator i(m_brd.Const()); i; ++i) {
         if (weights[*i] > 0.0f)
             cmd << ' ' << m_brd.ToString(*i)
                 << ' ' << weights[*i];

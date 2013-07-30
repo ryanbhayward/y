@@ -106,7 +106,7 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
         return false;
     }
     SG_UNUSED(count);
-    for (BoardIterator it(m_brd); it; ++it)
+    for (CellIterator it(m_brd); it; ++it)
     {
         if (m_brd.IsEmpty(*it))
             moves.push_back(*it);
@@ -198,7 +198,7 @@ void YUctThreadState::InitializeWeights()
 {
     m_weights[SG_BLACK].Clear();
     m_weights[SG_WHITE].Clear();
-    for (BoardIterator it(m_brd.Const()); it; ++it)
+    for (CellIterator it(m_brd.Const()); it; ++it)
     {
         if (m_brd.IsEmpty(*it)) {
             if (m_brd.IsCellDead(*it)) {
@@ -256,7 +256,7 @@ void YUctThreadState::GetWeightsForLastMove
 (std::vector<float>& weights, SgBlackWhite toPlay) const
 {
     weights.assign(Y_MAX_CELL, 0.0f);
-    for (BoardIterator i(m_brd.Const()); i; ++i)
+    for (CellIterator i(m_brd.Const()); i; ++i)
         weights[*i] = m_weights[toPlay][*i];
     for (size_t i = 0; i < m_localMoves.move.size(); ++i)
         weights[ m_localMoves.move[i] ] += m_localMoves.gamma[i];

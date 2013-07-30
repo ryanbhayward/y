@@ -90,12 +90,12 @@ public:
 
 private:
     std::vector<int> m_cells;
+    std::vector<int> m_cells_edges;
     std::vector<std::vector<int> > m_cell_nbr;
- 
-    friend class BoardIterator;
 
     friend class Board;
-
+    friend class CellIterator;
+    friend class CellAndEdgeIterator;
     friend class CellNbrIterator;
 };
 
@@ -800,20 +800,20 @@ private:
 
 //----------------------------------------------------------------------
 
-class BoardIterator : public VectorIterator<int>
+class CellIterator : public VectorIterator<int>
 {
 public:
-    BoardIterator(const Board& brd);
+    CellIterator(const Board& brd);
 
-    BoardIterator(const ConstBoard& brd);
+    CellIterator(const ConstBoard& brd);
 };
 
-inline BoardIterator::BoardIterator(const Board& brd)
+inline CellIterator::CellIterator(const Board& brd)
     : VectorIterator<int>(brd.Const().m_cells)
 {
 }
 
-inline BoardIterator::BoardIterator(const ConstBoard& brd)
+inline CellIterator::CellIterator(const ConstBoard& brd)
     : VectorIterator<int>(brd.m_cells)
 {
 }
