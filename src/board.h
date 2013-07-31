@@ -700,10 +700,10 @@ private:
     int NumNeighbours(cell_t p, SgBlackWhite color) const
     { return GetCell(p)->m_NumAdj[color]; }
 
-    void AddCarrierToConnection(cell_t p1, cell_t p2, cell_t carrier)
+    void AddCellToConnection(cell_t p1, cell_t p2, cell_t cell)
     {
-	m_state.m_con[p1][p2].Include(carrier);
-	m_state.m_con[p2][p1].Include(carrier);
+	m_state.m_con[p1][p2].Include(cell);
+	m_state.m_con[p2][p1].Include(cell);
     }
 
     bool RemoveCellFromConnection(cell_t p1, cell_t p2, cell_t cell)
@@ -713,7 +713,6 @@ private:
     }
 
     void UpdateConnectionsToNewAnchor(const Block* from, const Block* to);
-    void AddSharedLibertyConnection(cell_t p1, cell_t p2, cell_t carrier);
     void PromoteConnectionType(cell_t p, const Block* b);
     void DemoteConnectionType(cell_t p, Block* b);
 

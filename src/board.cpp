@@ -271,7 +271,7 @@ void Board::AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip)
             continue;
         if (GetColor(*it) == SG_EMPTY){
             if (!IsAdjacent(*it, b1)) {
-                AddSharedLibertyConnection(b1->m_anchor, *it, p);
+                AddCellToConnection(b1->m_anchor, *it, p);
                 PromoteConnectionType(*it, b1);
             }
             continue;
@@ -285,11 +285,11 @@ void Board::AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip)
             continue;
         else if (b2->m_color == b1->m_color) {
             AddSharedLiberty(b1, b2, p);
-	    AddSharedLibertyConnection(b1->m_anchor, b2->m_anchor, p);
+	    AddCellToConnection(b1->m_anchor, b2->m_anchor, p);
 	}
         else if (b2->m_color == SG_BORDER && ((b2->m_border&b1->m_border)==0)){
             AddSharedLiberty(b1, b2, p);
-	    AddSharedLibertyConnection(b1->m_anchor, b2->m_anchor, p);
+	    AddCellToConnection(b1->m_anchor, b2->m_anchor, p);
 	}
     }
 }
@@ -1073,18 +1073,13 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
             continue;
 
         for(size_t j = 0; j < m_state.m_con[p1][*i].Size(); ++j) {
-            AddCarrierToConnection(p2, *i, 
+            AddCellToConnection(p2, *i, 
                                    m_state.m_con[p1][*i].m_liberties[j]);
         }
         if (IsEmpty(*i)) {
             PromoteConnectionType(*i, to);
         }
     }
-}
-
-void Board::AddSharedLibertyConnection(cell_t p1, cell_t p2, cell_t carrier)
-{
-    AddCarrierToConnection(p1, p2, carrier);
 }
 
 void Board::PromoteConnectionType(cell_t p, const Block* b)
