@@ -332,6 +332,7 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
                 b->m_liberties.PushBack(*it);
 
                 GetCell(*it)->AddFull(b);
+                GetCell(*it)->RemoveSemiConnection(b);
                 m_state.m_con[*it][b->m_anchor].m_liberties.Clear();
                 m_state.m_con[b->m_anchor][*it].m_liberties.Clear();
 
