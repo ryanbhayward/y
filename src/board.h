@@ -514,35 +514,29 @@ private:
 	    memset(m_NumAdj, 0, sizeof(m_NumAdj));
         }
 
-        void AddFull(const Block* b)
-        {
-            // std::cerr << " color = " << (int)b->m_color
-            //           << " b->anchor = " << (int)b->m_anchor 
-            //           << " length=" << m_FullConnects[b->m_color].Length()
-            //           << '\n';
-            m_FullConnects[b->m_color].Include(b->m_anchor);
-        }
-
-	void AddSemi(const Block* b)
-	{ m_SemiConnects[b->m_color].Include(b->m_anchor); }
-
         void AddBorderConnection(const Block* b)
         {
             m_FullConnects[SG_BLACK].Include(b->m_anchor);
             m_FullConnects[SG_WHITE].Include(b->m_anchor);
         }
 
-	bool IsSemiConnected(const Block* b) const
-	{  return m_SemiConnects[b->m_color].Contains(b->m_anchor); }
+        void AddFull(const Block* b, SgBlackWhite color)
+        {  m_FullConnects[color].Include(b->m_anchor); }
 
-	bool IsFullConnected(const Block* b) const
-	{  return m_FullConnects[b->m_color].Contains(b->m_anchor); }
+	void AddSemi(const Block* b, SgBlackWhite color)
+	{  m_SemiConnects[color].Include(b->m_anchor); }
 
-	void RemoveSemiConnection(const Block* b) 
-        {  m_SemiConnects[b->m_color].Exclude(b->m_anchor); }
+	void RemoveSemiConnection(const Block* b, SgBlackWhite color) 
+        {  m_SemiConnects[color].Exclude(b->m_anchor); }
 
-	void RemoveFullConnection(const Block* b) 
-	{  m_FullConnects[b->m_color].Exclude(b->m_anchor); }
+	void RemoveFullConnection(const Block* b, SgBlackWhite color) 
+	{  m_FullConnects[color].Exclude(b->m_anchor); }
+
+	bool IsSemiConnected(const Block* b, SgBlackWhite color ) const
+	{  return m_SemiConnects[color].Contains(b->m_anchor); }
+
+	bool IsFullConnected(const Block* b, SgBlackWhite color) const
+	{  return m_FullConnects[color].Contains(b->m_anchor); }
 
 	std::string ToString(const ConstBoard& cbrd) const
         {
@@ -713,8 +707,8 @@ private:
     }
 
     void UpdateConnectionsToNewAnchor(const Block* from, const Block* to);
-    void PromoteConnectionType(cell_t p, const Block* b);
-    void DemoteConnectionType(cell_t p, Block* b);
+    void PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color);
+    void DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color);
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented

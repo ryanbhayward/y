@@ -272,7 +272,7 @@ void Board::AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip)
         if (GetColor(*it) == SG_EMPTY){
             if (!IsAdjacent(*it, b1)) {
                 AddCellToConnection(b1->m_anchor, *it, p);
-                PromoteConnectionType(*it, b1);
+                PromoteConnectionType(*it, b1, b1->m_color);
             }
             continue;
 	}
@@ -306,7 +306,7 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY) {
             b->m_liberties.PushBack(*it);
-            GetCell(*it)->AddFull(b);
+            GetCell(*it)->AddFull(b, color);
             AddSharedLibertiesAroundPoint(b, *it, p);
 	}
     }
@@ -331,8 +331,8 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
             if (!IsAdjacent(*it, b)) {
                 b->m_liberties.PushBack(*it);
 
-                GetCell(*it)->AddFull(b);
-                GetCell(*it)->RemoveSemiConnection(b);
+                GetCell(*it)->AddFull(b, b->m_color);
+                GetCell(*it)->RemoveSemiConnection(b, b->m_color);
                 m_state.m_con[*it][b->m_anchor].m_liberties.Clear();
                 m_state.m_con[b->m_anchor][*it].m_liberties.Clear();
 
@@ -452,7 +452,8 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
         for (CellNbrIterator j(Const(), p); j; ++j) {
             if (IsEmpty(*j)) {
                 if (RemoveCellFromConnection(adjBlocks[i], *j, p))
-                    DemoteConnectionType(*j, GetBlock(adjBlocks[i]));
+                    DemoteConnectionType(*j, GetBlock(adjBlocks[i]), 
+                                         GetColor(adjBlocks[i]));
             }
         }        
     }
@@ -1050,8 +1051,8 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
     {
         if (GetColor(*i) == SG_EMPTY) 
         {
-            GetCell(*i)->RemoveSemiConnection(from);
-            GetCell(*i)->RemoveFullConnection(from);
+            GetCell(*i)->RemoveSemiConnection(from, from->m_color);
+            GetCell(*i)->RemoveFullConnection(from, from->m_color);
 
             // Liberties of new captain don't need to be changed
             if (to->m_liberties.Contains(*i))
@@ -1059,8 +1060,8 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
             
             // Liberties of from now are adjacent to to
             if (from->m_liberties.Contains(*i)) {
-                GetCell(*i)->RemoveSemiConnection(to);
-                GetCell(*i)->AddFull(to);
+                GetCell(*i)->RemoveSemiConnection(to, to->m_color);
+                GetCell(*i)->AddFull(to, to->m_color);
                 continue;
             }
         } 
@@ -1078,37 +1079,36 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
             continue;
 
         for(size_t j = 0; j < m_state.m_con[p1][*i].Size(); ++j) {
-            AddCellToConnection(p2, *i, 
-                                   m_state.m_con[p1][*i].m_liberties[j]);
+            AddCellToConnection(p2, *i, m_state.m_con[p1][*i].m_liberties[j]);
         }
         if (IsEmpty(*i)) {
-            PromoteConnectionType(*i, to);
+            PromoteConnectionType(*i, to, to->m_color);
         }
     }
 }
 
-void Board::PromoteConnectionType(cell_t p, const Block* b)
+void Board::PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color)
 {
     Cell* cell = GetCell(p);
-    if (cell->IsFullConnected(b))
+    if (cell->IsFullConnected(b, color))
         return;
     int size = (int)m_state.m_con[p][b->m_anchor].Size();
     if (size == 1) {
-	cell->AddSemi(b);
+	cell->AddSemi(b, color);
     }
     else {        
-        cell->RemoveSemiConnection(b);
-        cell->AddFull(b);
+        cell->RemoveSemiConnection(b, color);
+        cell->AddFull(b, color);
     }
 }
 
-void Board::DemoteConnectionType(cell_t p, Block* b)
+void Board::DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color)
 {
     // Just removed a cell from this connection
     Cell* cell = GetCell(p);
     int size = (int)m_state.m_con[p][b->m_anchor].Size();
     if (size >= 2) {
-        if (!cell->IsFullConnected(b))
+        if (!cell->IsFullConnected(b, color))
         {
             std::cerr << "MORE THAN 2 LIBERTIES BUT NOT FULL CONNECTED!!\n";
             std::cerr << ToString() << '\n'
@@ -1120,12 +1120,12 @@ void Board::DemoteConnectionType(cell_t p, Block* b)
         return;
     }
     if (size == 0) {
-        cell->RemoveSemiConnection(b);
+        cell->RemoveSemiConnection(b, color);
         
     }
     else if(size == 1) {
-        cell->RemoveFullConnection(b);
-	cell->AddSemi(b);
+        cell->RemoveFullConnection(b, color);
+	cell->AddSemi(b, color);
     }
 }
 
@@ -1142,7 +1142,7 @@ std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
     for (CellIterator i(Const()); i; ++i) {
         if (IsOccupied(*i))
             continue;
-        if (GetCell(*i)->IsFullConnected(b))
+        if (GetCell(*i)->IsFullConnected(b, c))
             ret.push_back(*i);
     }
     return ret;
@@ -1159,7 +1159,7 @@ std::vector<cell_t> Board::SemiConnectedTo(cell_t p, SgBlackWhite c) const
     for (CellIterator i(Const()); i; ++i) {
         if (IsOccupied(*i))
             continue;
-        if (GetCell(*i)->IsSemiConnected(b))
+        if (GetCell(*i)->IsSemiConnected(b, c))
             ret.push_back(*i);
     }
     return ret;
