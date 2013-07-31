@@ -70,7 +70,7 @@ YGtpEngine::YGtpEngine(int boardSize)
                 &YGtpEngine::CmdFullConnectedWith);
     RegisterCmd("semi_connected_with",
 		&YGtpEngine::CmdSemiConnectedWith);
-    RegisterCmd("table_carrier", &YGtpEngine::CmdTableCarrier);
+    RegisterCmd("carrier_between", &YGtpEngine::CmdCarrierBetween);
 
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
@@ -111,7 +111,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
 	"string/Cell Info/cell_info %p\n"
         "plist/Full Connected With/full_connected_with %p %c\n"
 	"plist/Semi Connected With/semi_connected_with %p %c\n"
-	"plist/Table Carrier/table_carrier %P\n"
+	"plist/Carrier Between/carrier_between %P\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
 	"group/Group Blocks/group_blocks %p\n"
@@ -695,12 +695,12 @@ void YGtpEngine::CmdSemiConnectedWith(GtpCommand& cmd)
     }
 }
 
-void YGtpEngine::CmdTableCarrier(GtpCommand& cmd)
+void YGtpEngine::CmdCarrierBetween(GtpCommand& cmd)
 {
     cmd.CheckNuArg(2);
     int p1 = CellArg(cmd, 0);
     int p2 = CellArg(cmd, 1);
-    std::vector<cell_t> cells = m_brd.GetConnectionCarrier(p1, p2);
+    std::vector<cell_t> cells = m_brd.GetCarrierBetween(p1, p2);
     for (size_t i = 0; i < cells.size(); ++i) {
         cmd << ' ' << m_brd.ToString(cells[i]);
     }

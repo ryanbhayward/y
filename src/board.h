@@ -353,7 +353,7 @@ struct Board
 
     std::vector<cell_t> FullConnectedTo(cell_t p, SgBlackWhite c) const;
     std::vector<cell_t> SemiConnectedTo(cell_t p, SgBlackWhite c) const;
-    std::vector<cell_t> GetConnectionCarrier(cell_t p1, cell_t p2) const; 
+    std::vector<cell_t> GetCarrierBetween(cell_t p1, cell_t p2) const;
     
     void SetSavePoint1()      { CopyState(m_savePoint1, m_state); }
     void SetSavePoint2()      { CopyState(m_savePoint2, m_state); }
@@ -715,8 +715,6 @@ private:
     void UpdateConnectionsToNewAnchor(const Block* from, const Block* to);
     void PromoteConnectionType(cell_t p, const Block* b);
     void DemoteConnectionType(cell_t p, Block* b);
-
-    const std::vector<cell_t> GetCarrierBetween(cell_t p1, cell_t p2) const;
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented

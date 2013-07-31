@@ -330,7 +330,11 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
         if (GetColor(*it) == SG_EMPTY) {
             if (!IsAdjacent(*it, b)) {
                 b->m_liberties.PushBack(*it);
+
                 GetCell(*it)->AddFull(b);
+                m_state.m_con[*it][b->m_anchor].m_liberties.Clear();
+                m_state.m_con[b->m_anchor][*it].m_liberties.Clear();
+
                 AddSharedLibertiesAroundPoint(b, *it, p);
             }
         }
@@ -1160,29 +1164,14 @@ std::vector<cell_t> Board::SemiConnectedTo(cell_t p, SgBlackWhite c) const
     return ret;
 }
 
-std::vector<cell_t> Board::GetConnectionCarrier(cell_t p1, cell_t p2) const 
+std::vector<cell_t> Board::GetCarrierBetween(cell_t p1, cell_t p2) const 
 {
-    if(IsOccupied(p1)) {
-        if(IsOccupied(p2))
-            return GetCarrierBetween(GetBlock(p1)->m_anchor, 
-                                     GetBlock(p2)->m_anchor);
-        else
-            return GetCarrierBetween(GetBlock(p1)->m_anchor, p2);
-    }
-    else {
-        if(IsOccupied(p2))
-            return GetCarrierBetween(p1, GetBlock(p2)->m_anchor);
-        else
-            return GetCarrierBetween(p1, p2);
-    }
-}
-
-const std::vector<cell_t> Board::GetCarrierBetween(cell_t p1, cell_t p2) const
-{
+    if (IsOccupied(p1))
+        p1 = GetBlock(p1)->m_anchor;
+    if (IsOccupied(p2))
+        p2 = GetBlock(p2)->m_anchor;
     std::vector<cell_t> ret;
-    // if(IsConnected(p1, p2))
-    //     for(size_t i = 0; i < m_state.m_con[p1][p2].Size(); ++i)
-    //         ret.push_back(m_state.m_con[p1][p2].m_liberties[i]);
+    Append(ret, m_state.m_con[p1][p2].m_liberties);
     return ret;
 }
 
