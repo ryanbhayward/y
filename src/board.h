@@ -58,13 +58,13 @@ public:
 
     static const int GUARDS = 1; // must be at least one
 
+    static const int WEST = 0;
+    static const int EAST = 1;
+    static const int SOUTH = 2;
+
     int m_size;
     int TotalCells;
     int TotalGBCells;
-
-    int WEST;
-    int EAST;
-    int SOUTH;
 
     ConstBoard();
     ConstBoard(int size);
@@ -72,22 +72,28 @@ public:
     static char ColorToChar(SgBoardColor color);
     static std::string ColorToString(SgBoardColor color);
 
-    inline cell_t fatten(int r, int c) const 
-    { return (r+GUARDS+1)*(r+GUARDS+2)/2 + c + GUARDS; }
-    
-    inline int board_row(cell_t p) const 
+    static inline int board_row(cell_t p)
     {  
+        p -= 3;
         int r = 2;
         while((r+1)*(r+2)/2 < p)
             ++r;
         return r - 2;
     }
 
-    inline int board_col(cell_t p) const 
+    static inline int board_col(cell_t p)
     {
+        p -= 3;
         int r = board_row(p) + 2;
         return p - r*(r+1)/2 - GUARDS;
     }
+
+    static inline cell_t fatten(int r, int c)
+    { return (r+GUARDS+1)*(r+GUARDS+2)/2 + c + GUARDS + 3; }
+
+    static std::string ToString(cell_t cell);
+
+    static cell_t FromString(const std::string& name);
 
     int Size() const { return m_size; }
 
@@ -95,9 +101,6 @@ public:
     {
         return std::find(m_cells.begin(), m_cells.end(), cell) != m_cells.end();
     }
-
-    std::string ToString(cell_t cell) const;
-    cell_t FromString(const std::string& name) const;
 
 private:
     std::vector<cell_t> m_cells;
@@ -234,8 +237,8 @@ struct Board
 
     void SetPosition(const Board& other);
 
-    std::string ToString() const;
-    std::string ToString(cell_t p) const { return Const().ToString(p); }
+    std::string ToString();
+    static std::string ToString(cell_t p) { return ConstBoard::ToString(p); }
     std::string BorderToString() const;
     std::string AnchorsToString() const;
     std::string ActiveBlocksToString(SgBlackWhite color) const;

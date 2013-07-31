@@ -29,7 +29,7 @@ std::string ConstBoard::ColorToString(SgBoardColor color)
     }
 }
 
-std::string ConstBoard::ToString(cell_t cell) const
+std::string ConstBoard::ToString(cell_t cell)
 {
     if (cell == WEST)
         return "west";
@@ -42,7 +42,7 @@ std::string ConstBoard::ToString(cell_t cell) const
     return str;
 }
 
-cell_t ConstBoard::FromString(const string& name) const
+cell_t ConstBoard::FromString(const string& name)
 {
     if (name.size() >= 4 && name.substr(0,4) == "swap")
     	return Y_SWAP;
@@ -66,10 +66,7 @@ ConstBoard::ConstBoard()
 ConstBoard::ConstBoard(int size)
     : m_size(size)
     , TotalCells(m_size*(m_size+1)/2)
-    , TotalGBCells((m_size+(2*GUARDS+1))*(m_size+(2*GUARDS+1)+1)/2)
-    , WEST(TotalGBCells+0)
-    , EAST(TotalGBCells+1)
-    , SOUTH(TotalGBCells+2)
+    , TotalGBCells((m_size+(2*GUARDS+1))*(m_size+(2*GUARDS+1)+1)/2 + 3)
     , m_cells()
     , m_cell_nbr()
 {
@@ -112,26 +109,26 @@ Board::Board(int size)
 
 void Board::State::Init(int T)
 {
-    m_color.resize(T+3);
+    m_color.resize(T);
     std::fill(m_color.begin(), m_color.end(), SG_BORDER);
 
-    m_cell.resize(T+3);
+    m_cell.resize(T);
     std::fill(m_cell.begin(), m_cell.end(), (Cell*)0);
-    m_block.resize(T+3);
+    m_block.resize(T);
     std::fill(m_block.begin(), m_block.end(), (Block*)0);
-    m_group.resize(T+3);
+    m_group.resize(T);
     std::fill(m_group.begin(), m_group.end(), (Group*)0); 
 
-    m_cellList.resize(T+3);
+    m_cellList.resize(T);
     std::fill(m_cellList.begin(), m_cellList.end(), Cell());
-    m_blockList.resize(T+3);
+    m_blockList.resize(T);
     std::fill(m_blockList.begin(), m_blockList.end(), Block());
-    m_groupList.resize(T+3);
+    m_groupList.resize(T);
     std::fill(m_groupList.begin(), m_groupList.end(), Group());
 
-    m_con.resize(T+3);
-    for(int i = 0; i < T+3; ++i) {
-       m_con[i].resize(T+3);
+    m_con.resize(T);
+    for(int i = 0; i < T; ++i) {
+       m_con[i].resize(T);
        std::fill(m_con[i].begin(), m_con[i].end(), SharedLiberties());
     }
 
@@ -968,7 +965,7 @@ std::string Board::ActiveBlocksToString(SgBlackWhite color) const
 
 //----------------------------------------------------------------------
 
-std::string Board::ToString() const
+std::string Board::ToString()
 {
     ostringstream os;
     const int N = Size();
