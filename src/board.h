@@ -22,6 +22,14 @@ bool Contains(const std::vector<T>& v, const T& val)
     return false;
 }
 
+template<typename T, int SIZE>
+void Append(std::vector<T>& v, const SgArrayList<T,SIZE>& a)
+{
+    for (int i = 0; i < a.Length(); ++i) {
+        if (!Contains(v, a[i]))
+            v.push_back(a[i]);
+    }
+}
 
 
 //                 0  g
@@ -39,6 +47,9 @@ bool Contains(const std::vector<T>& v, const T& val)
 
 static const int Y_MAX_CELL = 192;
 static const int Y_MAX_SIZE = 15;   // such that TotalCells < Y_MAX_CELL
+
+typedef uint8_t cell_t;
+
 static const int Y_SWAP = -2;  // SG_NULLMOVE == -1
  
 class ConstBoard 
@@ -61,10 +72,10 @@ public:
     static char ColorToChar(SgBoardColor color);
     static std::string ColorToString(SgBoardColor color);
 
-    inline int fatten(int r, int c) const 
+    inline cell_t fatten(int r, int c) const 
     { return (r+GUARDS+1)*(r+GUARDS+2)/2 + c + GUARDS; }
     
-    inline int board_row(int p) const 
+    inline int board_row(cell_t p) const 
     {  
         int r = 2;
         while((r+1)*(r+2)/2 < p)
@@ -72,7 +83,7 @@ public:
         return r - 2;
     }
 
-    inline int board_col(int p) const 
+    inline int board_col(cell_t p) const 
     {
         int r = board_row(p) + 2;
         return p - r*(r+1)/2 - GUARDS;
@@ -80,18 +91,18 @@ public:
 
     int Size() const { return m_size; }
 
-    bool IsOnBoard(int cell) const
+    bool IsOnBoard(cell_t cell) const
     {
         return std::find(m_cells.begin(), m_cells.end(), cell) != m_cells.end();
     }
 
-    std::string ToString(int cell) const;
-    int FromString(const std::string& name) const;
+    std::string ToString(cell_t cell) const;
+    cell_t FromString(const std::string& name) const;
 
 private:
-    std::vector<int> m_cells;
-    std::vector<int> m_cells_edges;
-    std::vector<std::vector<int> > m_cell_nbr;
+    std::vector<cell_t> m_cells;
+    std::vector<cell_t> m_cells_edges;
+    std::vector<std::vector<cell_t> > m_cell_nbr;
 
     friend class Board;
     friend class CellIterator;
@@ -105,7 +116,7 @@ private:
 class CellNbrIterator
 {
 public:
-    CellNbrIterator(const ConstBoard& cbrd, int p)
+    CellNbrIterator(const ConstBoard& cbrd, cell_t p)
         : m_cbrd(cbrd)
         , m_point(p)
         , m_index(0)
@@ -116,7 +127,7 @@ public:
     { ++m_index; }
     
     /** Return the current liberty. */
-    int operator*() const
+    cell_t operator*() const
     { return m_cbrd.m_cell_nbr[m_point][m_index]; }
     
     /** Return true if iteration is valid, otherwise false. */
@@ -125,8 +136,8 @@ public:
     
 private:
     const ConstBoard& m_cbrd;
-    int m_point;
-    int m_index;
+    cell_t m_point;
+    cell_t m_index;
 };
 
 //----------------------------------------------------------------------
@@ -150,7 +161,7 @@ struct LocalMoves
     float Total() const 
     { return gammaTotal; }
 
-    void AddWeight(int p, float w)
+    void AddWeight(cell_t p, float w)
     {
         for (size_t i = 0; i < move.size(); ++i) {
             if (move[i] == p) {
@@ -224,7 +235,7 @@ struct Board
     void SetPosition(const Board& other);
 
     std::string ToString() const;
-    std::string ToString(int p) const { return Const().ToString(p); }
+    std::string ToString(cell_t p) const { return Const().ToString(p); }
     std::string BorderToString() const;
     std::string AnchorsToString() const;
     std::string ActiveBlocksToString(SgBlackWhite color) const;
@@ -240,11 +251,11 @@ struct Board
     SgBoardColor GetVCWinner() const { return m_state.m_vcWinner; }
     bool IsVCWinner(SgBlackWhite player) const
     { return player == m_state.m_vcWinner; }
-    int WinningVCGroup() const { return m_state.m_vcGroupAnchor; }
+    cell_t WinningVCGroup() const { return m_state.m_vcGroupAnchor; }
 
-    std::vector<int> GroupCarrier(int p) const
+    std::vector<cell_t> GroupCarrier(cell_t p) const
     {
-        std::vector<int> ret;
+        std::vector<cell_t> ret;
         const Group* g = GetGroup(GroupAnchor(p));
         for (int i = 0; i < g->m_blocks.Length(); ++i) {
             for (int j = i + 1; j < g->m_blocks.Length(); ++j) {
@@ -261,67 +272,70 @@ struct Board
 
     void Swap();
 
-    bool IsOccupied(int cell) const 
+    bool IsOccupied(cell_t cell) const 
     { return m_state.m_color[cell] != SG_EMPTY; }
     
-    bool IsEmpty(int cell) const 
+    bool IsEmpty(cell_t cell) const 
     { return m_state.m_color[cell] == SG_EMPTY; }
 
-    bool IsBorder(int cell) const
+    bool IsBorder(cell_t cell) const
     { return m_state.m_color[cell] == SG_BORDER; }
 
-    SgBoardColor GetColor(int cell) const
+    SgBoardColor GetColor(cell_t cell) const
     { return m_state.m_color[cell]; }
 
-    int ToPlay() const         { return m_state.m_toPlay; }
-    void SetToPlay(int toPlay) { m_state.m_toPlay = toPlay; }
+    SgBlackWhite ToPlay() const         { return m_state.m_toPlay; }
+    void SetToPlay(SgBlackWhite toPlay) { m_state.m_toPlay = toPlay; }
     void FlipToPlay()          { m_state.m_toPlay = SgOppBW(m_state.m_toPlay); }
 
-    void RemoveStone(int lcn);
-    int LastMove() const { return m_state.m_lastMove; }
-    void SetLastMove(int lcn) { m_state.m_lastMove = lcn; } // used after undo
-    void Play(SgBlackWhite color, int p);
+    void RemoveStone(cell_t lcn);
+    cell_t LastMove() const { return m_state.m_lastMove; }
+    void SetLastMove(cell_t lcn) { m_state.m_lastMove = lcn; } // used after undo
+    void Play(SgBlackWhite color, cell_t p);
 
     // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
     // a move to reestablish the connection.
-    int SaveBridge(int lastMove, const SgBlackWhite toPlay, 
+    int SaveBridge(cell_t lastMove, const SgBlackWhite toPlay, 
                    SgRandom& random) const;
 
-    int MaintainConnection(int b1, int b2) const;
+    SgMove MaintainConnection(cell_t b1, cell_t b2) const;
     // Returns SG_NULLMOVE if no savebridge pattern matches last move played
     void GeneralSaveBridge(LocalMoves& local) const;
 
-    bool IsCellDead(int p) const;
+    bool IsCellDead(cell_t p) const;
 
-    int BlockAnchor(int p) const 
+    cell_t BlockAnchor(cell_t p) const 
     { return m_state.m_block[p]->m_anchor; }
 
-    int GroupAnchor(int p) const
+    bool IsBlockAnchor(cell_t p) const
+    { return BlockAnchor(p) == p; } 
+
+    cell_t GroupAnchor(cell_t p) const
     { return GetGroup(BlockAnchor(p))->m_anchor; }
 
-    int GroupBorder(int p) const
+    int GroupBorder(cell_t p) const
     { return GetGroup(BlockAnchor(p))->m_border; }
 
-    bool IsInBlock(int p, int anchor) const
+    bool IsInBlock(cell_t p, cell_t anchor) const
     { return m_state.m_block[p]->m_anchor == anchor; }
 
-    bool IsLibertyOfBlock(int p, int anchor) const
+    bool IsLibertyOfBlock(cell_t p, cell_t anchor) const
     { return m_state.m_block[anchor]->m_liberties.Contains(p); }
 
-    bool IsSharedLiberty(int p1, int p2, int p) const
+    bool IsSharedLiberty(cell_t p1, cell_t p2, cell_t p) const
     { return GetSharedLiberties(p1, p2).Contains(p); }
 
-    std::vector<int> GetLibertiesWith(int p1) const
+    std::vector<cell_t> GetLibertiesWith(cell_t p1) const
     {
-        std::vector<int> ret;
+        std::vector<cell_t> ret;
         for (size_t i = 0; i < m_state.m_block[p1]->m_shared.size(); ++i)
             ret.push_back(m_state.m_block[p1]->m_shared[i].m_other);
         return ret;
     }
 
-    std::vector<int> GetBlocksInGroup(int p) const
+    std::vector<cell_t> GetBlocksInGroup(cell_t p) const
     {
-	std::vector<int> ret;
+	std::vector<cell_t> ret;
         const Group* g = GetGroup(BlockAnchor(p));
         for (int i = 0; i < g->m_blocks.Length(); ++i) {
             ret.push_back(g->m_blocks[i]);
@@ -331,58 +345,16 @@ struct Board
 	return ret;
     }
 
-    std::string BlockInfo(int p) const
+    std::string BlockInfo(cell_t p) const
     { return GetBlock(p)->ToString(Const()); }
 
-    std::string CellInfo(int p) const
+    std::string CellInfo(cell_t p) const
     { return GetCell(p)->ToString(Const()); }
 
-    std::vector<int> CellFullConnectedTo(int p, SgBlackWhite c) const
-    {
-        std::vector<int> ret;
-        const Cell::FullConnectionList& fulls = GetCell(p)->m_FullConnects[c];
-        for (int i = 0; i < fulls.Length(); ++i) {
-            ret.push_back(fulls[i]);
-        }
-        return ret;
-    }
-
-    std::vector<int> CellSemiConnectedTo(int p, SgBlackWhite c) const
-    {
-        std::vector<int> ret;
-        const Cell::SemiConnectionList& semis = GetCell(p)->m_SemiConnects[c];
-        for (int i = 0; i < semis.Length(); ++i) {
-            ret.push_back(semis[i]);
-        }
-        return ret;
-    }
-
-    std::vector<int> GetConnectedToFromTable(int p) const
-    {
-	if(IsEmpty(p))
-	    return GetConnectionsWith(p);
-	else
-	    return GetConnectionsWith(GetBlock(p)->m_anchor);
-    }
-
-    std::vector<int> GetConnectionCarrier(int p1, int p2) const 
-    {
-	if(IsOccupied(p1)) {
-	    if(IsOccupied(p2))
-		return GetCarrierBetween(GetBlock(p1)->m_anchor, 
-					 GetBlock(p2)->m_anchor);
-	    else
-		return GetCarrierBetween(GetBlock(p1)->m_anchor, p2);
-	}
-	else {
-	    if(IsOccupied(p2))
-		return GetCarrierBetween(p1, GetBlock(p2)->m_anchor);
-	    else
-		return GetCarrierBetween(p1, p2);
-	}
-    }
+    std::vector<cell_t> FullConnectedTo(cell_t p, SgBlackWhite c) const;
+    std::vector<cell_t> SemiConnectedTo(cell_t p, SgBlackWhite c) const;
+    std::vector<cell_t> GetConnectionCarrier(cell_t p1, cell_t p2) const; 
     
-
     void SetSavePoint1()      { CopyState(m_savePoint1, m_state); }
     void SetSavePoint2()      { CopyState(m_savePoint2, m_state); }
     void RestoreSavePoint1()  { CopyState(m_state, m_savePoint1); }
@@ -402,18 +374,18 @@ private:
     {
         static const size_t MAX_LIBERTIES = 8;
 
-	int m_other;
-        SgArrayList<int, MAX_LIBERTIES> m_liberties;
+	cell_t m_other;
+        SgArrayList<cell_t, MAX_LIBERTIES> m_liberties;
 
 	SharedLiberties()
             : m_other(0)
 	{ }
 
-	SharedLiberties(int anchor)
+	SharedLiberties(cell_t anchor)
 	    : m_other(anchor)
 	{ }
 
-        SharedLiberties(int anchor, int liberty)
+        SharedLiberties(cell_t anchor, cell_t liberty)
 	    : m_other(anchor)
             , m_liberties(liberty)
 	{ }
@@ -424,24 +396,24 @@ private:
         size_t Size() const
         { return m_liberties.Length(); }
 
-        bool Contains(int p) const
+        bool Contains(cell_t p) const
         { return m_liberties.Contains(p); }
 
-        void PushBack(int p)
+        void PushBack(cell_t p)
         { 
             if (Size() < MAX_LIBERTIES)
                 m_liberties.PushBack(p); 
         }
 
-        void Include(int p)
+        void Include(cell_t p)
         {
             if (!Contains(p))
                 PushBack(p);
         }
 
-        void Exclude(int p)
+        bool Exclude(cell_t p)
         {
-            m_liberties.Exclude(p);
+            return m_liberties.Exclude(p);
         }
 
     };
@@ -456,7 +428,7 @@ private:
         typedef SgArrayList<int, MAX_STONES> StoneList;
         typedef StoneList::Iterator StoneIterator;
 
-        int m_anchor;
+        cell_t m_anchor;
         int m_border;
         SgBlackWhite m_color;
         LibertyList m_liberties;    
@@ -466,7 +438,7 @@ private:
         Block()
         { }
 
-        Block(int p, SgBlackWhite color)
+        Block(cell_t p, SgBlackWhite color)
             : m_anchor(p)
             , m_color(color)
         { }
@@ -515,40 +487,25 @@ private:
     {
 	static const size_t MAX_BLOCKS = Y_MAX_CELL/4;
 
-	int m_anchor;
+	cell_t m_anchor;
 	int m_border;
-	SgArrayList<int, MAX_BLOCKS> m_blocks;
+	SgArrayList<cell_t, MAX_BLOCKS> m_blocks;
 
 	Group()
 	{ }
 
-	Group(int anchor, int border)
+	Group(cell_t anchor, cell_t border)
 	    : m_anchor(anchor)
 	    , m_border(border)
 	    , m_blocks(anchor)
 	{ }
     };
 
-    struct VC
-    {
-        int m_block;
-        int m_size;
-        int m_carrier[2];
-
-        VC()
-        { }
-
-        VC(int block)
-            : m_block(block)
-            , m_size(0)
-        { }
-    };
-
     struct Cell
     {
 	int m_NumAdj[3];
-        typedef SgArrayList<int, 6> SemiConnectionList;        
-        typedef SgArrayList<int, 3> FullConnectionList;        
+        typedef SgArrayList<cell_t, 6> SemiConnectionList;        
+        typedef SgArrayList<cell_t, 6> FullConnectionList;        
 	SemiConnectionList m_SemiConnects[2];
 	FullConnectionList m_FullConnects[2];
 
@@ -559,33 +516,33 @@ private:
 
         void AddFull(const Block* b)
         {
-            m_FullConnects[b->m_color].PushBack(b->m_anchor);
+            // std::cerr << " color = " << (int)b->m_color
+            //           << " b->anchor = " << (int)b->m_anchor 
+            //           << " length=" << m_FullConnects[b->m_color].Length()
+            //           << '\n';
+            m_FullConnects[b->m_color].Include(b->m_anchor);
         }
 
 	void AddSemi(const Block* b)
-	{
-	    m_SemiConnects[b->m_color].PushBack(b->m_anchor);
-	}
+	{ m_SemiConnects[b->m_color].Include(b->m_anchor); }
 
         void AddBorderConnection(const Block* b)
         {
-            m_FullConnects[SG_BLACK].PushBack(b->m_anchor);
-            m_FullConnects[SG_WHITE].PushBack(b->m_anchor);
+            m_FullConnects[SG_BLACK].Include(b->m_anchor);
+            m_FullConnects[SG_WHITE].Include(b->m_anchor);
         }
 
-        void UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
-        {
-            FullConnectionList& fulls = m_FullConnects[from->m_color];
-            for (int i = 0; i < fulls.Length(); ++i) {
-                if (fulls[i] == from->m_anchor)
-                    fulls[i] = to->m_anchor;
-            }
-            SemiConnectionList& semis = m_SemiConnects[from->m_color];
-            for (int i = 0; i < semis.Length(); ++i) {
-                if (semis[i] == from->m_anchor)
-                    semis[i] = to->m_anchor;
-            }
-        }
+	bool IsSemiConnected(const Block* b) const
+	{  return m_SemiConnects[b->m_color].Contains(b->m_anchor); }
+
+	bool IsFullConnected(const Block* b) const
+	{  return m_FullConnects[b->m_color].Contains(b->m_anchor); }
+
+	void RemoveSemiConnection(const Block* b) 
+        {  m_SemiConnects[b->m_color].Exclude(b->m_anchor); }
+
+	void RemoveFullConnection(const Block* b) 
+	{  m_FullConnects[b->m_color].Exclude(b->m_anchor); }
 
 	std::string ToString(const ConstBoard& cbrd) const
         {
@@ -594,34 +551,20 @@ private:
             os << "[Empty=" << this->m_NumAdj[SG_EMPTY]
                << " Black=" << this->m_NumAdj[SG_BLACK]
                << " White=" << this->m_NumAdj[SG_WHITE]
-               << "]\n";
+               << " Fulls=[ ";
+            // FullConnectionList& fulls = m_FullConnects[from->m_color];
+            // for (int i = 0; i < fulls.Length(); ++i) {
+            //     if (i) os << ',';
+            //     os << (int)fulls[i];
+            // }
+            // os << ']';
+            // SemiConnectionList& semis = m_SemiConnects[from->m_color];
+            // for (int i = 0; i < fulls.Length(); ++i) {
+            //     if (i) os << ',';
+            //     os << (int)fulls[i];
+            // }
             return os.str();
         }
-
-	bool IsSemiConnected(Block* b) const
-	{
-	    for(int i = 0; i < m_SemiConnects[b->m_color].Length(); ++i)
-		if(m_SemiConnects[b->m_color][i] == b->m_anchor)
-		    return true;
-	    return false;
-	}
-
-	bool IsFullConnected(Block* b) const
-	{
-	    for(int i = 0; i < m_FullConnects[b->m_color].Length(); ++i)
-		if(m_FullConnects[b->m_color][i] == b->m_anchor)
-		    return true;
-	    return false;
-	}
-
-	void RemoveSemiConnection(Block* b) 
-        {
-            m_SemiConnects[b->m_color].Exclude(b->m_anchor);
-	}
-	void RemoveFullConnection(Block* b) 
-	{
-            m_FullConnects[b->m_color].Exclude(b->m_anchor);
-	}
     };
 
     ConstBoard m_constBrd;
@@ -640,13 +583,13 @@ private:
 
 	std::vector< std::vector<Block*> > m_activeBlocks;
         
-        SgArrayList<int, 3> m_oppBlocks;
+        SgArrayList<cell_t, 3> m_oppBlocks;
                 
         SgBlackWhite m_toPlay;
         SgBoardColor m_winner;
         SgBoardColor m_vcWinner;
-        int          m_vcGroupAnchor;
-        int          m_lastMove;
+        cell_t       m_vcGroupAnchor;
+        cell_t       m_lastMove;
 
         void Init(int T);
         void CopyState(const State& other);
@@ -683,19 +626,19 @@ private:
     State m_savePoint1;
     State m_savePoint2;
 
-    void CreateSingleStoneBlock(int p, SgBlackWhite color, int border);
+    void CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border);
 
-    bool IsAdjacent(int p, const Block* b);
+    bool IsAdjacent(cell_t p, const Block* b);
 
-    void AddStoneToBlock(int p, int border, Block* b);
+    void AddStoneToBlock(cell_t p, int border, Block* b);
 
-    void MergeBlocks(int p, int border, SgArrayList<int, 3>& adjBlocks);
+    void MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks);
 
     int GetSharedLibertiesIndex(Block* b1, Block* b2) const;
 
-    void AddSharedLiberty(Block* b1, Block* b2, int p);
+    void AddSharedLiberty(Block* b1, Block* b2, cell_t p);
 
-    void AddSharedLibertiesAroundPoint(Block* b1, int p, int skip);
+    void AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip);
 
     void MergeSharedLiberty(const Block* b1, Block* b2);
 
@@ -716,9 +659,9 @@ private:
 
     void AddNonGroupEdges(int* seen, Group* g, int id);
 
-    void RemoveSharedLiberty(int p, Block* a, Block* b);
+    void RemoveSharedLiberty(cell_t p, Block* a, Block* b);
 
-    void RemoveSharedLiberty(int p, SgArrayList<int, 3>& adjBlocks);
+    void RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks);
 
     void RemoveConnectionAtIndex(Block* b, size_t i);
 
@@ -731,55 +674,50 @@ private:
     const SharedLiberties&
     GetSharedLiberties(const Block* b1, const Block* b2) const;
 
-    const SharedLiberties& GetSharedLiberties(int p1, int p2) const
+    const SharedLiberties& GetSharedLiberties(cell_t p1, cell_t p2) const
     { return GetSharedLiberties(GetBlock(p1), GetBlock(p2)); }
 
     void CopyState(Board::State& a, const Board::State& b);
 
-    Block* GetBlock(int p) 
+    Block* GetBlock(cell_t p) 
     { return m_state.m_block[p]; }
 
-    const Block* GetBlock(int p) const
+    const Block* GetBlock(cell_t p) const
     { return m_state.m_block[p]; }
 
-    Group* GetGroup(int p)
+    Group* GetGroup(cell_t p)
     { return m_state.m_group[p]; }
 
-    const Group* GetGroup(int p) const
+    const Group* GetGroup(cell_t p) const
     { return m_state.m_group[p]; }
 
-    Cell* GetCell(int p)
+    Cell* GetCell(cell_t p)
     { return m_state.m_cell[p]; }
 
-    const Cell* GetCell(int p) const
+    const Cell* GetCell(cell_t p) const
     { return m_state.m_cell[p]; }
 
-    int NumNeighbours(int p, SgBlackWhite color) const
+    int NumNeighbours(cell_t p, SgBlackWhite color) const
     { return GetCell(p)->m_NumAdj[color]; }
 
-    void AddConnection(int p1, int p2)
-    { 
-	m_state.m_con[p1][p2].m_other = 1;
-	m_state.m_con[p2][p1].m_other = 1;
-    }
-
-    void AddCarrierToConnection(int p1, int p2, int carrier)
+    void AddCarrierToConnection(cell_t p1, cell_t p2, cell_t carrier)
     {
 	m_state.m_con[p1][p2].Include(carrier);
 	m_state.m_con[p2][p1].Include(carrier);
     }
 
+    bool RemoveCellFromConnection(cell_t p1, cell_t p2, cell_t cell)
+    {
+	m_state.m_con[p1][p2].Exclude(cell);
+	return m_state.m_con[p2][p1].Exclude(cell);
+    }
+
     void UpdateConnectionsToNewAnchor(const Block* from, const Block* to);
-    void AddSharedLibertyConnection(int p1, int p2, int carrier);
-    void RemoveConnection(int p);
-    void UpdateCellConnection(Block* b, int empty);
+    void AddSharedLibertyConnection(cell_t p1, cell_t p2, cell_t carrier);
+    void PromoteConnectionType(cell_t p, const Block* b);
+    void DemoteConnectionType(cell_t p, Block* b);
 
-    bool IsConnected(int p1, int p2) const
-    { return m_state.m_con[p1][p2].m_other == 1; }
-
-    const std::vector<int> GetConnectionsWith(int p) const;
-
-    const std::vector<int> GetCarrierBetween(int p1, int p2) const;
+    const std::vector<cell_t> GetCarrierBetween(cell_t p1, cell_t p2) const;
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented
@@ -787,7 +725,7 @@ private:
 
 //----------------------------------------------------------------------
 
-class CellIterator : public VectorIterator<int>
+class CellIterator : public VectorIterator<cell_t>
 {
 public:
     CellIterator(const Board& brd);
@@ -796,16 +734,16 @@ public:
 };
 
 inline CellIterator::CellIterator(const Board& brd)
-    : VectorIterator<int>(brd.Const().m_cells)
+    : VectorIterator<cell_t>(brd.Const().m_cells)
 {
 }
 
 inline CellIterator::CellIterator(const ConstBoard& brd)
-    : VectorIterator<int>(brd.m_cells)
+    : VectorIterator<cell_t>(brd.m_cells)
 {
 }
 
-class CellAndEdgeIterator : public VectorIterator<int>
+class CellAndEdgeIterator : public VectorIterator<cell_t>
 {
 public:
     CellAndEdgeIterator(const Board& brd);
@@ -814,12 +752,12 @@ public:
 };
 
 inline CellAndEdgeIterator::CellAndEdgeIterator(const Board& brd)
-    : VectorIterator<int>(brd.Const().m_cells_edges)
+    : VectorIterator<cell_t>(brd.Const().m_cells_edges)
 {
 }
 
 inline CellAndEdgeIterator::CellAndEdgeIterator(const ConstBoard& brd)
-    : VectorIterator<int>(brd.m_cells_edges)
+    : VectorIterator<cell_t>(brd.m_cells_edges)
 {
 }
     

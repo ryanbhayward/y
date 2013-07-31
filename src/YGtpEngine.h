@@ -61,9 +61,8 @@ public:
     void CmdBoardStatistics(GtpCommand& cmd);
 
     void CmdCellInfo(GtpCommand& cmd);
-    void CmdCellFullConnectedWith(GtpCommand& cmd);
-    void CmdCellSemiConnectedWith(GtpCommand& cmd);
-    void CmdTableConnected(GtpCommand& cmd);
+    void CmdFullConnectedWith(GtpCommand& cmd);
+    void CmdSemiConnectedWith(GtpCommand& cmd);
     void CmdTableCarrier(GtpCommand& cmd);
 
     void CmdBlockInfo(GtpCommand& cmd);

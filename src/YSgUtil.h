@@ -38,9 +38,9 @@ namespace YSgUtil
     /** Puts the position in the given vectors. */
     void GetSetupPosition(const SgNode* node, 
                           const ConstBoard& cbrd,
-                          std::vector<int>& black,
-                          std::vector<int>& white,
-                          std::vector<int>& empty);
+                          std::vector<cell_t>& black,
+                          std::vector<cell_t>& white,
+                          std::vector<cell_t>& empty);
 
 #if 0
     /** Adds the move to the sg node; does proper conversions. */

@@ -66,11 +66,10 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("board_statistics", &YGtpEngine::CmdBoardStatistics);
     
     RegisterCmd("cell_info", &YGtpEngine::CmdCellInfo);
-    RegisterCmd("cell_full_connected_with", 
-                &YGtpEngine::CmdCellFullConnectedWith);
-    RegisterCmd("cell_semi_connected_with",
-		&YGtpEngine::CmdCellSemiConnectedWith);
-    RegisterCmd("table_connected", &YGtpEngine::CmdTableConnected);
+    RegisterCmd("full_connected_with", 
+                &YGtpEngine::CmdFullConnectedWith);
+    RegisterCmd("semi_connected_with",
+		&YGtpEngine::CmdSemiConnectedWith);
     RegisterCmd("table_carrier", &YGtpEngine::CmdTableCarrier);
 
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
@@ -110,9 +109,8 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "string/Playout Statistics/playout_statistics\n"
         "pspairs/Playout Weights/playout_weights\n"
 	"string/Cell Info/cell_info %p\n"
-        "plist/Cell Full Connected With/cell_full_connected_with %p %c\n"
-	"plist/Cell Semi Connected With/cell_semi_connected_with %p %c\n"
-	"plist/Table Connections/table_connected %p\n"
+        "plist/Full Connected With/full_connected_with %p %c\n"
+	"plist/Semi Connected With/semi_connected_with %p %c\n"
 	"plist/Table Carrier/table_carrier %P\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
@@ -228,7 +226,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
     {
         if (m_brd.HasWinningVC()) {
             std::cerr << "VC Win Detected! Playing into carrier...\n";
-            vector<int> carrier = m_brd.GroupCarrier(m_brd.WinningVCGroup());
+            vector<cell_t> carrier = m_brd.GroupCarrier(m_brd.WinningVCGroup());
             return carrier[SgRandom::Global().Int(carrier.size())];
         }
 
@@ -266,7 +264,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
     else if (m_playerName == "random")
     {
 #if 0
-        std::vector<int> empty;
+        std::vector<cell_t> empty;
         for (CellIterator it(m_brd); it; ++it)
             if (m_brd.IsEmpty(*it))
                 empty.push_back(*it);
@@ -675,39 +673,25 @@ void YGtpEngine::CmdCellInfo(GtpCommand& cmd)
     cmd << m_brd.CellInfo(p);
 }
 
-void YGtpEngine::CmdCellFullConnectedWith(GtpCommand& cmd)
+void YGtpEngine::CmdFullConnectedWith(GtpCommand& cmd)
 {
     cmd.CheckNuArg(2);
     int p = CellArg(cmd, 0);
-    if (m_brd.IsOccupied(p))
-        throw GtpFailure("Invalid cell");
     SgBlackWhite color = ColorArg(cmd, 1);
-    std::vector<int> blocks = m_brd.CellFullConnectedTo(p, color);
+    std::vector<cell_t> blocks = m_brd.FullConnectedTo(p, color);
     for (size_t i = 0; i < blocks.size(); ++i) {
         cmd << ' ' << m_brd.ToString(blocks[i]);
     }
 }
 
-void YGtpEngine::CmdCellSemiConnectedWith(GtpCommand& cmd)
+void YGtpEngine::CmdSemiConnectedWith(GtpCommand& cmd)
 {
     cmd.CheckNuArg(2);
     int p = CellArg(cmd, 0);
-    if (m_brd.IsOccupied(p))
-        throw GtpFailure("Invalid cell");
     SgBlackWhite color = ColorArg(cmd, 1);
-    std::vector<int> blocks = m_brd.CellSemiConnectedTo(p, color);
+    std::vector<cell_t> blocks = m_brd.SemiConnectedTo(p, color);
     for (size_t i = 0; i < blocks.size(); ++i) {
         cmd << ' ' << m_brd.ToString(blocks[i]);
-    }
-}
-
-void YGtpEngine::CmdTableConnected(GtpCommand& cmd)
-{
-    cmd.CheckNuArg(1);
-    int p = CellArg(cmd, 0);
-    std::vector<int> cells = m_brd.GetConnectedToFromTable(p);
-    for (size_t i = 0; i < cells.size(); ++i) {
-        cmd << ' ' << m_brd.ToString(cells[i]);
     }
 }
 
@@ -716,7 +700,7 @@ void YGtpEngine::CmdTableCarrier(GtpCommand& cmd)
     cmd.CheckNuArg(2);
     int p1 = CellArg(cmd, 0);
     int p2 = CellArg(cmd, 1);
-    std::vector<int> cells = m_brd.GetConnectionCarrier(p1, p2);
+    std::vector<cell_t> cells = m_brd.GetConnectionCarrier(p1, p2);
     for (size_t i = 0; i < cells.size(); ++i) {
         cmd << ' ' << m_brd.ToString(cells[i]);
     }
@@ -787,7 +771,7 @@ void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    std::vector<int> blocks = m_brd.GetBlocksInGroup(p);
+    std::vector<cell_t> blocks = m_brd.GetBlocksInGroup(p);
     std::stable_sort(blocks.begin(), blocks.end());
     for(size_t i = 0; i < blocks.size(); ++i)
 	cmd << ' ' << m_brd.ToString(blocks[i]);
@@ -808,7 +792,7 @@ void YGtpEngine::CmdGroupCarrier(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    std::vector<int> carrier = m_brd.GroupCarrier(p);
+    std::vector<cell_t> carrier = m_brd.GroupCarrier(p);
     std::stable_sort(carrier.begin(), carrier.end());
     for(size_t i = 0; i < carrier.size(); ++i)
 	cmd << ' ' << m_brd.ToString(carrier[i]);
@@ -818,9 +802,9 @@ void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)
 {
     cmd.CheckNuArg(1);
     int p1 = CellArg(cmd, 0);
-    std::vector<int> liberties = m_brd.GetLibertiesWith(p1);
+    std::vector<cell_t> liberties = m_brd.GetLibertiesWith(p1);
     std::stable_sort(liberties.begin(), liberties.end());
-    for(std::vector<int>::size_type i = 0; i != liberties.size(); ++i)
+    for(std::vector<cell_t>::size_type i = 0; i != liberties.size(); ++i)
 	cmd << ' ' << m_brd.ToString(liberties[i]);
 }
 
@@ -892,7 +876,7 @@ void YGtpEngine::CmdPlayoutWeights(GtpCommand& cmd)
     are adding/removing stones this will break horribly. */
 void YGtpEngine::SetPosition(const SgNode* node)
 {
-    std::vector<int> black, white, empty;
+    std::vector<cell_t> black, white, empty;
     YSgUtil::GetSetupPosition(node, m_brd.Size(), black, white, empty);
     for (std::size_t i = 0; ; ++i)
     {

@@ -42,9 +42,9 @@ bool YSgUtil::NodeHasSetupInfo(SgNode* node)
 
 void YSgUtil::GetSetupPosition(const SgNode* node, 
                                const ConstBoard& cbrd,
-                               std::vector<int>& black,
-                               std::vector<int>& white,
-                               std::vector<int>& empty)
+                               std::vector<cell_t>& black,
+                               std::vector<cell_t>& white,
+                               std::vector<cell_t>& empty)
 {
     black.clear();
     white.clear();
