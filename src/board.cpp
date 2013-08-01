@@ -158,7 +158,7 @@ void Board::SetSize(int size)
         b.m_anchor = Const().WEST;
         b.m_border = BORDER_LEFT;
         b.m_stones.Clear();
-        b.m_shared.clear();
+        b.m_con.clear();
 	Group& g = m_state.m_groupList[Const().WEST];
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
@@ -177,7 +177,7 @@ void Board::SetSize(int size)
         b.m_anchor = Const().EAST;
         b.m_border = BORDER_RIGHT;
         b.m_stones.Clear();
-        b.m_shared.clear();
+        b.m_con.clear();
 	Group& g = m_state.m_groupList[Const().EAST];
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
@@ -196,7 +196,7 @@ void Board::SetSize(int size)
         b.m_anchor = Const().SOUTH;
         b.m_border = BORDER_BOTTOM;
         b.m_stones.Clear();
-        b.m_shared.clear();
+        b.m_con.clear();
 	Group& g = m_state.m_groupList[Const().SOUTH];
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
@@ -281,11 +281,11 @@ void Board::AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip)
         if (b1 == b2)
             continue;
         else if (b2->m_color == b1->m_color) {
-            AddSharedLiberty(b1, b2, p);
+            AddSharedLiberty(b1, b2);
 	    AddCellToConnection(b1->m_anchor, b2->m_anchor, p);
 	}
         else if (b2->m_color == SG_BORDER && ((b2->m_border&b1->m_border)==0)){
-            AddSharedLiberty(b1, b2, p);
+            AddSharedLiberty(b1, b2);
 	    AddCellToConnection(b1->m_anchor, b2->m_anchor, p);
 	}
     }
@@ -299,7 +299,7 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
     b->m_border = border;
     b->m_stones.SetTo(p);
     b->m_liberties.Clear();
-    b->m_shared.clear();
+    b->m_con.clear();
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY) {
             b->m_liberties.PushBack(*it);
@@ -371,7 +371,7 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         const Block* adjBlock = GetBlock(*it);
         if (adjBlock == largestBlock)
             continue;
-	MergeSharedLiberty(adjBlock, largestBlock);
+	MergeBlockConnections(adjBlock, largestBlock);
 	UpdateConnectionsToNewAnchor(adjBlock, largestBlock);
         largestBlock->m_border |= adjBlock->m_border;
         for (Block::StoneIterator stn(adjBlock->m_stones); stn; ++stn)
@@ -398,30 +398,6 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
     ComputeGroupForBlock(largestBlock);
 }
 
-void Board::RemoveSharedLiberty(cell_t p, Block* a, Block* b)
-{
-    // no shared liberties between edge blocks
-    // (if corner cells are marked as shared liberties between pairs of
-    //  edges, they will be removed twice because they occur in oppBlocks
-    //  and adjBlocks)
-    if (a->m_color == SG_BORDER && b->m_color == SG_BORDER)
-        return;
-
-    int i = a->GetConnectionIndex(b);
-    if (i == -1)
-	return;
-    a->m_shared[i].Exclude(p);
-    if (a->m_shared[i].Empty()) {
-        RemoveConnectionAtIndex(a, i);
-    }
-
-    i = b->GetConnectionIndex(a);
-    b->m_shared[i].Exclude(p);
-    if (b->m_shared[i].Empty()) {
-        RemoveConnectionAtIndex(b, i);
-    }
-}
-
 void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
 {
     if (adjBlocks.Length() == 0)
@@ -430,17 +406,16 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
     switch(adjBlocks.Length())
     {
     case 2:
-        RemoveSharedLiberty(p, GetBlock(adjBlocks[0]), GetBlock(adjBlocks[1]));
         RemoveCellFromConnection(adjBlocks[0], adjBlocks[1], p);
+	UpdateBlockConnection(GetBlock(adjBlocks[0]), GetBlock(adjBlocks[1]));
         break;
     case 3:
-        RemoveSharedLiberty(p, GetBlock(adjBlocks[0]), GetBlock(adjBlocks[1]));
-        RemoveSharedLiberty(p, GetBlock(adjBlocks[0]), GetBlock(adjBlocks[2]));
-        RemoveSharedLiberty(p, GetBlock(adjBlocks[1]), GetBlock(adjBlocks[2]));
-
         RemoveCellFromConnection(adjBlocks[0], adjBlocks[1], p);
+	UpdateBlockConnection(GetBlock(adjBlocks[0]), GetBlock(adjBlocks[1]));
         RemoveCellFromConnection(adjBlocks[0], adjBlocks[2], p);
+	UpdateBlockConnection(GetBlock(adjBlocks[0]), GetBlock(adjBlocks[2]));
         RemoveCellFromConnection(adjBlocks[1], adjBlocks[2], p);
+	UpdateBlockConnection(GetBlock(adjBlocks[1]), GetBlock(adjBlocks[2]));
         break;
     }
 
@@ -453,6 +428,16 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
                                          GetColor(adjBlocks[i]));
             }
         }        
+    }
+}
+
+void Board::UpdateBlockConnection(Block* a, Block* b)
+{
+    if (a->m_color == SG_BORDER && b->m_color == SG_BORDER)
+        return;
+    if(m_state.m_con[a->m_anchor][b->m_anchor].Size() == 0) {
+	RemoveConnectionWith(a, b);
+	RemoveConnectionWith(b, a);
     }
 }
 
@@ -496,7 +481,6 @@ void Board::Play(SgBlackWhite color, cell_t p)
     RemoveSharedLiberty(p, adjBlocks);
     RemoveSharedLiberty(p, oppBlocks);
        
-
     // Create/update block containing p (ignores edge blocks)
     {
         SgArrayList<cell_t, 3> realAdjBlocks;
@@ -579,56 +563,41 @@ Board::GetSharedLiberties(const Block* b1, const Block* b2) const
 
     if(b1 == b2 || b1 == 0 || b2 == 0)
 	return EMPTY_SHARED_LIBERTIES;
-    for(size_t i = 0; i < b1->m_shared.size(); ++i) {
-	if(b1->m_shared[i].m_other == b2->m_anchor)
-            return b1->m_shared[i];
-    }
+    if(m_state.m_con[b1->m_anchor][b2->m_anchor].Size() > 0)
+	return m_state.m_con[b1->m_anchor][b2->m_anchor];
     return EMPTY_SHARED_LIBERTIES;
 }
 
 void Board::FixOrderOfConnectionsFromBack(Block* b1)
 {
-    if (!IsBorder(b1->m_shared.back().m_other)) {
+    if (!IsBorder(b1->m_con.back())) {
         // ensure edges appear last in list
-        size_t i = b1->m_shared.size() - 1;
-        while (i > 0 && IsBorder(b1->m_shared[i - 1].m_other)) {
-            std::swap(b1->m_shared[i - 1], b1->m_shared[i]);
+        size_t i = b1->m_con.size() - 1;
+        while (i > 0 && IsBorder(b1->m_con[i - 1])) {
+            std::swap(b1->m_con[i - 1], b1->m_con[i]);
             --i;
         }
     }
 }
 
-void Board::AddSharedLiberty(Block* b1, Block* b2, cell_t p)
+void Board::AddSharedLiberty(Block* b1, Block* b2)
 {
-    int i = b1->GetConnectionIndex(b2);
-    if(i != -1) {
-        int j = b2->GetConnectionIndex(b1);
-        assert(j != -1);
-        b1->m_shared[i].Include(p);
-        b2->m_shared[j].Include(p);
-        Statistics& stats = Statistics::Get();
-        stats.m_maxSharedLiberties 
-            = std::max(stats.m_maxSharedLiberties, b1->m_shared[i].Size());
-    }
-    else {
-	b1->m_shared.push_back(SharedLiberties(b2->m_anchor, p));
-        FixOrderOfConnectionsFromBack(b1);
-
-	b2->m_shared.push_back(SharedLiberties(b1->m_anchor, p));
-        FixOrderOfConnectionsFromBack(b2);
-    }
+    Include(b1->m_con, b2->m_anchor);
+    Include(b2->m_con, b1->m_anchor);
+    FixOrderOfConnectionsFromBack(b1);
+    FixOrderOfConnectionsFromBack(b2);
 }
 
 void Board::RemoveConnectionAtIndex(Block* b, size_t i)
 {
-    b->m_shared[i] = b->m_shared.back();
-    b->m_shared.pop_back();
+    b->m_con[i] = b->m_con.back();
+    b->m_con.pop_back();
     // ensure edges always appear last in list
-    if (IsBorder(b->m_shared[i].m_other)) {
-        while (i + 1 < b->m_shared.size() 
-               && !IsBorder(b->m_shared[i+1].m_other)) 
+    if (IsBorder(b->m_con[i])) {
+        while (i + 1 < b->m_con.size() 
+               && !IsBorder(b->m_con[i+1])) 
         {
-            std::swap(b->m_shared[i], b->m_shared[i+1]);
+            std::swap(b->m_con[i], b->m_con[i+1]);
             ++i;
         }
     }
@@ -642,35 +611,24 @@ void Board::RemoveConnectionWith(Block* b, const Block* other)
 }
 
 // Merge b1 into b2
-void Board::MergeSharedLiberty(const Block* b1, Block* b2)
+void Board::MergeBlockConnections(const Block* b1, Block* b2)
 {
-    for (size_t i = 0; i < b1->m_shared.size(); ++i) {
-        const cell_t otherAnchor = b1->m_shared[i].m_other;
+    for (size_t i = 0; i < b1->m_con.size(); ++i) {
+        const cell_t otherAnchor = b1->m_con[i];
 	if (otherAnchor == b2->m_anchor)
             continue;
         Block* otherBlock = GetBlock(otherAnchor);
         assert(otherBlock);     
         int index = b2->GetConnectionIndex(otherBlock);
         if (index != -1) {
-            int index2 = otherBlock->GetConnectionIndex(b2);
-            assert(index2 != -1);
-            // transfer any new liberties from b1 to b2
-            for (size_t j = 0; j < b1->m_shared[i].Size(); ++j)
-            {
-                const cell_t lib = b1->m_shared[i].m_liberties[j];
-                if(!(b2->m_shared[index]).Contains(lib)) {
-                    b2->m_shared[index].PushBack(lib);
-                    otherBlock->m_shared[index2].PushBack(lib);
-                }
-            }
             RemoveConnectionWith(otherBlock, b1);
         }
         else {
-            b2->m_shared.push_back(b1->m_shared[i]);
+            b2->m_con.push_back(b1->m_con[i]);
             FixOrderOfConnectionsFromBack(b2);
 
             const int j = otherBlock->GetConnectionIndex(b1);
-            otherBlock->m_shared[j].m_other = b2->m_anchor;
+            otherBlock->m_con[j] = b2->m_anchor;
             // No need to worry about order here, since b1 and b2
             // are both not border blocks and otherBlock's list
             // is properly ordered.
@@ -743,12 +701,12 @@ void Board::ComputeGroupForBlock(Block* b)
     SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
     blocks.PushBack(b->m_anchor);
 
-    for (size_t i = 0; i < b->m_shared.size(); ++i)
+    for (size_t i = 0; i < b->m_con.size(); ++i)
     {
-        SharedLiberties& sl = b->m_shared[i];
-        if (IsBorder(sl.m_other))
+	cell_t other = b->m_con[i];
+        if (IsBorder(other))
             continue;
-        cell_t gAnchor = GroupAnchor(sl.m_other);
+        cell_t gAnchor = GroupAnchor(other);
         if (!seenGroups.Contains(gAnchor)) {
             seenGroups.PushBack(gAnchor);
             Group* g = GetGroup(gAnchor);
@@ -797,29 +755,30 @@ void Board::GroupSearch(int* seen, Block* b, int id)
 {
     seen[b->m_anchor] = 1;
     //std::cerr << "Entered: " << ToString(b->m_anchor) << '\n';
-    for (size_t i = 0; i < b->m_shared.size(); ++i)
+    for (size_t i = 0; i < b->m_con.size(); ++i)
     {
         bool visit = false;
-        SharedLiberties& sl = b->m_shared[i];
+	cell_t other = b->m_con[i];
+        SharedLiberties& sl = m_state.m_con[b->m_anchor][other];
 
-	//std::cerr << "Considering: " << ToString(sl.m_other) << '\n';
+	//std::cerr << "Considering: " << ToString(other) << '\n';
         int count = NumUnmarkedSharedLiberties(sl, seen, id);
         // Never seen this block before:
         // visit it if we have a vc and mark it as potential if we have a semi
-	if (seen[sl.m_other] == 0) 
+	if (seen[other] == 0) 
         {
             if (count > 1)
                 visit = true;
             else if (count == 1) {
                 //std::cerr << "Marking as potential!\n";
-                seen[sl.m_other] = id;
+                seen[other] = id;
                 MarkLibertiesAsSeen(sl, seen, id);
             }
         }
         // block is marked as potential:
         // visit it if we have a vc or a semi (since the other semi
         // we found earlier combined with this semi gives a vc)
-        else if (seen[sl.m_other] == id && count >= 1)
+        else if (seen[other] == id && count >= 1)
         {
             visit = true;
         }
@@ -828,15 +787,15 @@ void Board::GroupSearch(int* seen, Block* b, int id)
 	{
 	    //std::cerr << "Inside!\n";
 	    Group* g = GetGroup(b->m_anchor);
-	    g->m_border |= GetBlock(sl.m_other)->m_border;
-            g->m_blocks.PushBack(sl.m_other);
-	    if(GetColor(sl.m_other) != SG_BORDER) {
+	    g->m_border |= GetBlock(other)->m_border;
+            g->m_blocks.PushBack(other);
+	    if(GetColor(other) != SG_BORDER) {
                 // Note that we are not marking liberties with an edge
                 // block: we claim these cannot conflict with group
                 // formation.
                 MarkLibertiesAsSeen(sl, seen, id);
-                m_state.m_group[sl.m_other] = g;
-		GroupSearch(seen, GetBlock(sl.m_other), id);
+                m_state.m_group[other] = g;
+		GroupSearch(seen, GetBlock(other), id);
             }
             //std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
 	}
@@ -926,9 +885,9 @@ void Board::CheckConsistency()
             && GetBlock(*it)->m_anchor == *it) 
         {
             Block* b = GetBlock(*it);
-            for (size_t i = 0; i < b->m_shared.size(); ++i) {
-                if (!Const().IsOnBoard(b->m_shared[i].m_other)
-                    || GetColor(b->m_shared[i].m_other) == SG_EMPTY)
+            for (size_t i = 0; i < b->m_con.size(); ++i) {
+                if (!Const().IsOnBoard(b->m_con[i])
+                    || GetColor(b->m_con[i]) == SG_EMPTY)
                 {
                     std::cerr << ToString()
                               << "SOMETHING WRONG WITH SHARED LIBS!\n";

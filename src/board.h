@@ -31,6 +31,12 @@ void Append(std::vector<T>& v, const SgArrayList<T,SIZE>& a)
     }
 }
 
+template<typename T>
+void Include(std::vector<T>& v, const T& val)
+{
+    if (!Contains(v, val))
+	v.push_back(val);
+}
 
 //                 0  g
 //                1  g g  
@@ -84,7 +90,7 @@ public:
     static inline int board_col(cell_t p)
     {
         p -= 3;
-        int r = board_row(p) + 2;
+        int r = board_row(p+3) + 2;
         return p - r*(r+1)/2 - GUARDS;
     }
 
@@ -331,8 +337,8 @@ struct Board
     std::vector<cell_t> GetLibertiesWith(cell_t p1) const
     {
         std::vector<cell_t> ret;
-        for (size_t i = 0; i < m_state.m_block[p1]->m_shared.size(); ++i)
-            ret.push_back(m_state.m_block[p1]->m_shared[i].m_other);
+        for (size_t i = 0; i < GetBlock(p1)->m_con.size(); ++i)
+            ret.push_back(GetBlock(p1)->m_con[i]);
         return ret;
     }
 
@@ -436,7 +442,7 @@ private:
         SgBlackWhite m_color;
         LibertyList m_liberties;    
         StoneList m_stones;
-	std::vector<SharedLiberties> m_shared;
+	std::vector<cell_t> m_con;
 
         Block()
         { }
@@ -451,25 +457,19 @@ private:
 
         int GetConnectionIndex(const Block* b2) const
         {
-            for(size_t i = 0; i != m_shared.size(); ++i)
-                if (m_shared[i].m_other == b2->m_anchor)
+            for(size_t i = 0; i != m_con.size(); ++i)
+                if (m_con[i] == b2->m_anchor)
                     return i;
             return -1;
         }
 
-        std::string SharedLibertiesToString(const ConstBoard& cbrd) const
+        std::string BlockConnectionsToString(const ConstBoard& cbrd) const
         {
             std::ostringstream os;
             os << "[";
-            for (size_t i = 0; i < m_shared.size(); ++i) {
+            for (size_t i = 0; i < m_con.size(); ++i) {
                 if (i) os << ",";
-                os << "[" << cbrd.ToString(m_shared[i].m_other) << " [";
-                for (size_t j = 0; j < m_shared[i].Size(); ++j)
-                {
-                    if (j) os << ",";
-                    os << cbrd.ToString(m_shared[i].m_liberties[j]);
-                }
-                os << "]]";
+                os << "[" << cbrd.ToString(m_con[i]) << "]";
             }
             os << "]";
             return os.str();
@@ -480,7 +480,7 @@ private:
             os << "[color=" <<  m_color
                << " anchor=" << cbrd.ToString(m_anchor)
                << " border=" << m_border
-               << " shared=" << SharedLibertiesToString(cbrd)
+               << " connected=" << BlockConnectionsToString(cbrd)
                << "]\n";
             return os.str();
         }
@@ -492,6 +492,7 @@ private:
 
 	cell_t m_anchor;
 	int m_border;
+
 	SgArrayList<cell_t, MAX_BLOCKS> m_blocks;
 
 	Group()
@@ -633,7 +634,7 @@ private:
 
     int GetSharedLibertiesIndex(Block* b1, Block* b2) const;
 
-    void AddSharedLiberty(Block* b1, Block* b2, cell_t p);
+    void AddSharedLiberty(Block* b1, Block* b2);
 
     void AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip);
 
@@ -660,9 +661,13 @@ private:
 
     void RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks);
 
+    void UpdateBlockConnection(Block* a, Block* b); 
+
     void RemoveConnectionAtIndex(Block* b, size_t i);
 
     void RemoveConnectionWith(Block* b, const Block* other);
+
+    void MergeBlockConnections(const Block* b1, Block* b2);
 
     void RemoveEdgeSharedLiberties(Block* b);
 
