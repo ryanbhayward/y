@@ -172,6 +172,8 @@ void Board::SetSize(int size)
 	for (int i = 1; i < N; ++i) {
 	    cell_t p = Const().fatten(i, 1);
 	    GetCell(p)->AddBorderConnection(&b);
+	    AddCellToConnection(p, Const().WEST, p-1);
+	    AddCellToConnection(p, Const().WEST, p - Const().board_row(p) - 3);
 	}
     }
     // Create block/group for right edge
@@ -195,6 +197,8 @@ void Board::SetSize(int size)
 	for (int i = 1; i < N; ++i) {
 	    cell_t p = Const().fatten(i, i-1);
 	    GetCell(p)->AddBorderConnection(&b);
+	    AddCellToConnection(p, Const().EAST, p+1);
+	    AddCellToConnection(p, Const().EAST, p - Const().board_row(p) - 2);
 	}
     }
     // Create block/group for bottom edge
@@ -218,6 +222,8 @@ void Board::SetSize(int size)
 	for (int i = 0; i < N-1; ++i) {
 	    cell_t p = Const().fatten(N-2, i);
 	    GetCell(p)->AddBorderConnection(&b);
+	    AddCellToConnection(p, Const().SOUTH, p + Const().board_row(p) + 4);
+	    AddCellToConnection(p, Const().SOUTH, p + Const().board_row(p) + 3);
 	}
     }
     // set guards to point to their border block
