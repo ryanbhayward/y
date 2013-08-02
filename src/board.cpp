@@ -169,6 +169,10 @@ void Board::SetSize(int size)
             b.m_liberties.PushBack(p);
             GetCell(p)->AddBorderConnection(&b);
         }
+	for (int i = 1; i < N; ++i) {
+	    cell_t p = Const().fatten(i, 1);
+	    GetCell(p)->AddBorderConnection(&b);
+	}
     }
     // Create block/group for right edge
     {
@@ -188,6 +192,10 @@ void Board::SetSize(int size)
             b.m_liberties.PushBack(p);
             GetCell(p)->AddBorderConnection(&b);
         }
+	for (int i = 1; i < N; ++i) {
+	    cell_t p = Const().fatten(i, i-1);
+	    GetCell(p)->AddBorderConnection(&b);
+	}
     }
     // Create block/group for bottom edge
     {
@@ -207,6 +215,10 @@ void Board::SetSize(int size)
             b.m_liberties.PushBack(p);
             GetCell(p)->AddBorderConnection(&b);
         }
+	for (int i = 0; i < N-1; ++i) {
+	    cell_t p = Const().fatten(N-2, i);
+	    GetCell(p)->AddBorderConnection(&b);
+	}
     }
     // set guards to point to their border block
     std::vector<Block*>& bptr = m_state.m_block;
