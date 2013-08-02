@@ -441,9 +441,14 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
     for (int i = 0; i < adjBlocks.Length(); ++i) {
         for (CellNbrIterator j(Const(), p); j; ++j) {
             if (IsEmpty(*j)) {
-                if (RemoveCellFromConnection(adjBlocks[i], *j, p))
-                    DemoteConnectionType(*j, GetBlock(adjBlocks[i]), 
-                                         GetColor(adjBlocks[i]));
+                if (RemoveCellFromConnection(adjBlocks[i], *j, p)) {
+		    if(!IsBorder(adjBlocks[i]))
+			DemoteConnectionType(*j, GetBlock(adjBlocks[i]), 
+					     GetColor(adjBlocks[i]));
+		    else
+			DemoteConnectionType(*j, GetBlock(adjBlocks[i]),
+					     SgOppBW(GetColor(p)));
+		}
             }
         }        
     }
