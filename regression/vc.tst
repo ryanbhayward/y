@@ -24,6 +24,22 @@ loadsgf sgf/vc/check-bridge.sgf
 15 group_blocks h10
 #? [h10 g11]
 
+200 full_connected_with c6 black
+#? [b4 c4 a5 b5 c5 d5 e5 b6 e6 b7 c7 e7 f7 d8]
+
+201 full_connected_with e10 black
+#? [d8 c9]
+
+202 semi_connected_with e11 white
+#? [c11 g11]
+
+203 semi_connected_with e11 black
+#? [c9]
+
+204 semi_connected_with d7 white
+#? [b6 e6 b7 f7 c8 f8]
+
+
 #
 # Check basic bridges with edge of board
 #
@@ -48,6 +64,62 @@ loadsgf sgf/vc/check-bridge-with-edge.sgf
 
 26 carrier_between h9 east
 #? [h8 i9]
+
+127 full_connected_with west black
+#? [a1 a2 b2 a3 b3 a4 a5 a7 b7 a8 b8 a9 b9 a10 b10 a11 b11 a12 a13 b13]
+
+128 full_connected_with west white
+#? [a1 a2 b2 a3 a5 a6 a7 a8 b8 a9 b9 a10 b10 a11 b11 a12 b12 a13 b13]
+
+129 full_connected_with a3 black
+#? [west b3 a4]
+
+130 full_connected_with b4 black
+#? [b3 a4]
+
+131 semi_connected_with west black
+#? []
+
+132 semi_connected_with west white
+#? [b4 b5]
+
+133 semi_connected_with b5 white
+#? [west a6]
+
+134 carrier_between f12 south
+#? [f13 g13]
+
+135 carrier_between g12 south
+#? [g13]
+
+136 full_connected_with g12 black
+#? []
+
+137 full_connected_with g12 white
+#? [h13]
+
+138 semi_connected_with g12 black
+#? [south i13]
+
+139 semi_connected_with g12 white
+#? []
+
+140 carrier_between h12 south
+#? []
+
+141 full_connected_with h12 black
+#? [i13]
+
+142 full_connected_with h12 white
+#? [h13]
+
+143 semi_connected_with h12 black
+#? []
+
+144 semi_connected_with h12 white
+#? []
+
+
 
 27 group_blocks b3
 #? [west east b3 a4 b7]

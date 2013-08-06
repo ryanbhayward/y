@@ -675,6 +675,7 @@ void YGtpEngine::CmdFullConnectedWith(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     SgBlackWhite color = ColorArg(cmd, 1);
     std::vector<cell_t> blocks = m_brd.FullConnectedTo(p, color);
+    std::stable_sort(blocks.begin(), blocks.end());
     for (size_t i = 0; i < blocks.size(); ++i) {
         cmd << ' ' << m_brd.ToString(blocks[i]);
     }
@@ -686,6 +687,7 @@ void YGtpEngine::CmdSemiConnectedWith(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     SgBlackWhite color = ColorArg(cmd, 1);
     std::vector<cell_t> blocks = m_brd.SemiConnectedTo(p, color);
+    std::stable_sort(blocks.begin(), blocks.end());
     for (size_t i = 0; i < blocks.size(); ++i) {
         cmd << ' ' << m_brd.ToString(blocks[i]);
     }
