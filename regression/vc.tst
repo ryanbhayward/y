@@ -119,8 +119,6 @@ loadsgf sgf/vc/check-bridge-with-edge.sgf
 144 semi_connected_with h12 white
 #? []
 
-
-
 27 group_blocks b3
 #? [west east b3 a4 b7]
 
@@ -129,6 +127,19 @@ loadsgf sgf/vc/check-bridge-with-edge.sgf
 
 29 group_blocks h9
 #? [east g7 h9 j10]
+
+loadsgf sgf/vc/check-edge-shared-liberties.sgf
+300 carrier_between f7 east
+#? []
+
+301 full_connected_with f7 white
+#? [.*east.*]
+
+302 carrier_between b7 west
+#? []
+
+303 full_connected_with b7 black
+#? [.*west.*]
 
 #
 # Check that blocks with semis to two different members of a group are

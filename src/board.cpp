@@ -675,16 +675,16 @@ void Board::MergeBlockConnections(const Block* b1, Block* b2)
 void Board::RemoveEdgeSharedLiberties(Block* b)
 {
     if (b->m_border & BORDER_LEFT) {
-        RemoveConnectionWith(b, GetBlock(Const().WEST));
-        RemoveConnectionWith(GetBlock(Const().WEST), b);
+        m_state.m_con[b->m_anchor][Const().WEST].Clear();
+        m_state.m_con[Const().WEST][b->m_anchor].Clear();
     }
     if (b->m_border & BORDER_RIGHT) {
-        RemoveConnectionWith(b, GetBlock(Const().EAST));
-        RemoveConnectionWith(GetBlock(Const().EAST), b);
+        m_state.m_con[b->m_anchor][Const().EAST].Clear();
+        m_state.m_con[Const().EAST][b->m_anchor].Clear();
     }
     if (b->m_border & BORDER_BOTTOM) {
-        RemoveConnectionWith(b, GetBlock(Const().SOUTH));
-        RemoveConnectionWith(GetBlock(Const().SOUTH), b);
+        m_state.m_con[b->m_anchor][Const().SOUTH].Clear();
+        m_state.m_con[Const().SOUTH][b->m_anchor].Clear();
     }
 }
 
@@ -1123,15 +1123,28 @@ void Board::DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color)
 std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
 {
     std::vector<cell_t> ret;
-    if (IsEmpty(p)) {
+    if (IsEmpty(p)) 
+    {
         Append(ret, GetCell(p)->m_FullConnects[c]);
         return ret;
     }
     const Block* b = GetBlock(p);
-    for (size_t i = 0; i < b->m_con.size(); ++i) {
-        if (GetBlock(b->m_con[i])->m_color == c
-            && m_state.m_con[b->m_anchor][b->m_con[i]].Size() != 1)
-            ret.push_back(b->m_con[i]);
+    if (IsBorder(p))
+    {
+        // If edge: need to look on for given color
+        for (size_t i = 0; i < b->m_con.size(); ++i) {
+            if (GetBlock(b->m_con[i])->m_color == c
+                && m_state.m_con[b->m_anchor][b->m_con[i]].Size() != 1)
+                ret.push_back(b->m_con[i]);
+        }
+    }
+    else if (c == b->m_color)
+    {
+        // look from block's perspective
+        for (size_t i = 0; i < b->m_con.size(); ++i) {
+            if (m_state.m_con[b->m_anchor][b->m_con[i]].Size() != 1)
+                ret.push_back(b->m_con[i]);
+        }
     }
     for (CellIterator i(Const()); i; ++i) {
         if (IsOccupied(*i))
@@ -1150,10 +1163,20 @@ std::vector<cell_t> Board::SemiConnectedTo(cell_t p, SgBlackWhite c) const
         return ret;
     }
     const Block* b = GetBlock(p);
-    for (size_t i = 0; i < b->m_con.size(); ++i) {
-        if (GetBlock(b->m_con[i])->m_color == c
-            && m_state.m_con[b->m_anchor][b->m_con[i]].Size() == 1)
-            ret.push_back(b->m_con[i]);
+    if (IsBorder(p)) 
+    {
+        for (size_t i = 0; i < b->m_con.size(); ++i) {
+            if (GetBlock(b->m_con[i])->m_color == c
+                && m_state.m_con[b->m_anchor][b->m_con[i]].Size() == 1)
+                ret.push_back(b->m_con[i]);
+        }
+    }
+    else if (c == b->m_color)
+    {
+        for (size_t i = 0; i < b->m_con.size(); ++i) {
+            if (m_state.m_con[b->m_anchor][b->m_con[i]].Size() == 1)
+                ret.push_back(b->m_con[i]);
+        }
     }
     for (CellIterator i(Const()); i; ++i) {
         if (IsOccupied(*i))
