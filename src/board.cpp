@@ -1118,6 +1118,11 @@ std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
         return ret;
     }
     const Block* b = GetBlock(p);
+    for (size_t i = 0; i < b->m_con.size(); ++i) {
+        if (GetBlock(b->m_con[i])->m_color == c
+            && m_state.m_con[b->m_anchor][b->m_con[i]].Size() > 1)
+            ret.push_back(b->m_con[i]);
+    }
     for (CellIterator i(Const()); i; ++i) {
         if (IsOccupied(*i))
             continue;
@@ -1135,6 +1140,11 @@ std::vector<cell_t> Board::SemiConnectedTo(cell_t p, SgBlackWhite c) const
         return ret;
     }
     const Block* b = GetBlock(p);
+    for (size_t i = 0; i < b->m_con.size(); ++i) {
+        if (GetBlock(b->m_con[i])->m_color == c
+            && m_state.m_con[b->m_anchor][b->m_con[i]].Size() == 1)
+            ret.push_back(b->m_con[i]);
+    }
     for (CellIterator i(Const()); i; ++i) {
         if (IsOccupied(*i))
             continue;

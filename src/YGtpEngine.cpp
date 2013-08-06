@@ -75,8 +75,6 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
     RegisterCmd("block_liberties", &YGtpEngine::CmdBlockLiberties);
-    RegisterCmd("block_liberties_with", &YGtpEngine::CmdBlockLibertiesWith);
-    RegisterCmd("block_shared_liberties", &YGtpEngine::CmdSharedLiberties);
 
     RegisterCmd("active_blocks", &YGtpEngine::CmdActiveBlocks);
     RegisterCmd("group", &YGtpEngine::CmdGroup);
@@ -117,8 +115,6 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
 	"group/Group Blocks/group_blocks %p\n"
         "plist/Group Carrier/group_carrier %p\n"
         "plist/Block Liberties/block_liberties %p\n"
-        "plist/Block Liberties With/block_liberties_with %p\n"
-        "plist/Shared Liberties/block_shared_liberties %P\n"
         "string/ShowBoard/showboard\n"
         "string/Final Score/final_score\n"
         "move/Playout Move/playout_move\n"
@@ -796,26 +792,6 @@ void YGtpEngine::CmdGroupCarrier(GtpCommand& cmd)
     std::stable_sort(carrier.begin(), carrier.end());
     for(size_t i = 0; i < carrier.size(); ++i)
 	cmd << ' ' << m_brd.ToString(carrier[i]);
-}
-
-void YGtpEngine::CmdBlockLibertiesWith(GtpCommand& cmd)
-{
-    cmd.CheckNuArg(1);
-    int p1 = CellArg(cmd, 0);
-    std::vector<cell_t> liberties = m_brd.GetLibertiesWith(p1);
-    std::stable_sort(liberties.begin(), liberties.end());
-    for(std::vector<cell_t>::size_type i = 0; i != liberties.size(); ++i)
-	cmd << ' ' << m_brd.ToString(liberties[i]);
-}
-
-void YGtpEngine::CmdSharedLiberties(GtpCommand& cmd)
-{
-    cmd.CheckNuArg(2);
-    int p1 = CellArg(cmd, 0);
-    int p2 = CellArg(cmd, 1);
-    for (CellIterator p(m_brd.Const()); p; ++p)
-        if (m_brd.IsSharedLiberty(p1, p2, *p))
-            cmd << ' ' << m_brd.ToString(*p);
 }
 
 //----------------------------------------------------------------------

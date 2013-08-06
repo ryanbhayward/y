@@ -334,14 +334,6 @@ struct Board
     bool IsSharedLiberty(cell_t p1, cell_t p2, cell_t p) const
     { return GetSharedLiberties(p1, p2).Contains(p); }
 
-    std::vector<cell_t> GetLibertiesWith(cell_t p1) const
-    {
-        std::vector<cell_t> ret;
-        for (size_t i = 0; i < GetBlock(p1)->m_con.size(); ++i)
-            ret.push_back(GetBlock(p1)->m_con[i]);
-        return ret;
-    }
-
     std::vector<cell_t> GetBlocksInGroup(cell_t p) const
     {
 	std::vector<cell_t> ret;
@@ -383,20 +375,13 @@ private:
     {
         static const size_t MAX_LIBERTIES = 8;
 
-	cell_t m_other;
         SgArrayList<cell_t, MAX_LIBERTIES> m_liberties;
 
 	SharedLiberties()
-            : m_other(0)
 	{ }
 
-	SharedLiberties(cell_t anchor)
-	    : m_other(anchor)
-	{ }
-
-        SharedLiberties(cell_t anchor, cell_t liberty)
-	    : m_other(anchor)
-            , m_liberties(liberty)
+        SharedLiberties(cell_t liberty)
+            : m_liberties(liberty)
 	{ }
 
         bool Empty() const
