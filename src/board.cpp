@@ -441,13 +441,21 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
     for (int i = 0; i < adjBlocks.Length(); ++i) {
         for (CellNbrIterator j(Const(), p); j; ++j) {
             if (IsEmpty(*j)) {
+                Block* b = GetBlock(adjBlocks[i]);
                 if (RemoveCellFromConnection(adjBlocks[i], *j, p)) {
 		    if(!IsBorder(adjBlocks[i]))
-			DemoteConnectionType(*j, GetBlock(adjBlocks[i]), 
-					     GetColor(adjBlocks[i]));
+			DemoteConnectionType(*j, b, b->m_color);
 		    else
-			DemoteConnectionType(*j, GetBlock(adjBlocks[i]),
-					     SgOppBW(GetColor(p)));
+                    {
+                        // shrink it for opponent
+			DemoteConnectionType(*j, b, SgOppBW(GetColor(p)));
+                        // nuke it for self
+                        GetCell(*j)->RemoveSemiConnection(b, GetColor(p)); 
+                        GetCell(*j)->RemoveFullConnection(b, GetColor(p));
+                        // NOTE: no connection between p and edge for
+                        // p's color, so table is just tracking opp(p) and
+                        // edge.
+                    }
 		}
             }
         }        

@@ -406,9 +406,10 @@ private:
         }
 
         bool Exclude(cell_t p)
-        {
-            return m_liberties.Exclude(p);
-        }
+        {  return m_liberties.Exclude(p);  }
+
+        void Clear()
+        {  m_liberties.Clear(); }
 
     };
 
