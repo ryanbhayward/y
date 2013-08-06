@@ -69,7 +69,6 @@ public:
     void CmdBlockStones(GtpCommand& cmd);
     void CmdBlockLiberties(GtpCommand& cmd);
 
-    void CmdActiveBlocks(GtpCommand& cmd);
     void CmdGroup(GtpCommand& cmd);
     void CmdGroupBlocks(GtpCommand& cmd);
     void CmdGroupValue(GtpCommand& cmd);

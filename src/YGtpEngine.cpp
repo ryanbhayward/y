@@ -76,7 +76,6 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
     RegisterCmd("block_liberties", &YGtpEngine::CmdBlockLiberties);
 
-    RegisterCmd("active_blocks", &YGtpEngine::CmdActiveBlocks);
     RegisterCmd("group", &YGtpEngine::CmdGroup);
     RegisterCmd("group_blocks", &YGtpEngine::CmdGroupBlocks);
     RegisterCmd("group_value", &YGtpEngine::CmdGroupValue);
@@ -745,14 +744,6 @@ void YGtpEngine::CmdBlockLiberties(GtpCommand& cmd)
             && m_brd.IsLibertyOfBlock(*it, anchor))
             cmd << ' ' << m_brd.ToString(*it);
     }
-}
-
-void YGtpEngine::CmdActiveBlocks(GtpCommand& cmd)
-{
-    cmd.CheckNuArg(1);
-    int color = ColorArg(cmd, 0);
-    if (color == SG_BLACK || color == SG_WHITE)	
-	cmd << m_brd.ActiveBlocksToString(color);
 }
 
 void YGtpEngine::CmdGroup(GtpCommand& cmd)

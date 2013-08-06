@@ -131,10 +131,6 @@ void Board::State::Init(int T)
        m_con[i].resize(T);
        std::fill(m_con[i].begin(), m_con[i].end(), SharedLiberties());
     }
-
-    m_activeBlocks.resize(2);
-    m_activeBlocks[SG_BLACK].resize(0);
-    m_activeBlocks[SG_WHITE].resize(0);
 }
 
 void Board::SetSize(int size)
@@ -327,7 +323,6 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
             AddSharedLiberty(b, GetBlock(*it));
         }
     }
-    m_state.m_activeBlocks[color].push_back(b);
     ComputeGroupForBlock(b);
 }
 
@@ -406,7 +401,6 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
                 largestBlock->m_liberties.PushBack(*lib);
             }
         }
-	m_state.RemoveActiveBlock(adjBlock);
     }
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY && !seen[*it]) {
@@ -891,8 +885,6 @@ void Board::CopyState(Board::State& a, const Board::State& b)
         if (color != SG_EMPTY) {
             a.m_block[*it] = &a.m_blockList[b.m_block[*it]->m_anchor];
 	    a.m_group[*it] = &a.m_groupList[b.m_group[*it]->m_anchor];
-	    if (!a.IsActive(a.m_block[*it]))
-		a.m_activeBlocks[color].push_back(a.m_block[*it]);
 	}
 	else {
 	    a.m_cell[*it] = &a.m_cellList[*it];
@@ -944,15 +936,6 @@ void Board::DumpBlocks()
             std::cerr << "id=" << ToString(i)  << " " << b->ToString(Const()) << '\n';
         }
     }
-}
-
-std::string Board::ActiveBlocksToString(SgBlackWhite color) const
-{
-    ostringstream os;
-    for (size_t i = 0; i < m_state.m_activeBlocks[color].size(); ++i)
-	os << ' ' << ToString(m_state.m_activeBlocks[color][i]->m_anchor);
-    os << '\n';
-    return os.str();
 }
 
 //----------------------------------------------------------------------

@@ -565,8 +565,6 @@ private:
         std::vector<std::vector<SharedLiberties> > m_con;
         //SharedLiberties m_con[Y_MAX_CELL][Y_MAX_CELL];
 
-	std::vector< std::vector<Block*> > m_activeBlocks;
-        
         SgArrayList<cell_t, 3> m_oppBlocks;
                 
         SgBlackWhite m_toPlay;
@@ -577,33 +575,6 @@ private:
 
         void Init(int T);
         void CopyState(const State& other);
-
-	bool IsActive(const Block* b) const
-	{
-	    SgBlackWhite color = b->m_color;
-	    for (size_t i = 0; i < m_activeBlocks[color].size(); ++i)
-		if (m_activeBlocks[color][i]->m_anchor == b->m_anchor)
-		    return true;
-	    return false;
-	}
-	void RemoveActiveBlock(const Block* b)
-	{
-	    SgBlackWhite color = b->m_color;
-	    for (size_t i = 0; i < m_activeBlocks[color].size(); ++i)
-		if(m_activeBlocks[color][i] == b) {
-		    std::swap(m_activeBlocks[color][i], 
-			      m_activeBlocks[color].back());
-		    m_activeBlocks[color].pop_back();
-		    return;
-		}
-	}
-	int GetActiveIndex(const Block* b) const
-	{
-	    for(size_t i = 0; i != m_activeBlocks[b->m_color].size(); ++i)
-		if (m_activeBlocks[b->m_color][i]->m_anchor == b->m_anchor)
-		    return i;
-	    return -1;
-	}
     };
 
     State m_state;
