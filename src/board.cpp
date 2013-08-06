@@ -323,7 +323,9 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
             b->m_liberties.PushBack(*it);
             GetCell(*it)->AddFull(b, color);
             AddSharedLibertiesAroundPoint(b, *it, p);
-	}
+	} else if (GetColor(*it) == SG_BORDER) {
+            AddSharedLiberty(b, GetBlock(*it));
+        }
     }
     m_state.m_activeBlocks[color].push_back(b);
     ComputeGroupForBlock(b);
@@ -1128,7 +1130,7 @@ std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
     const Block* b = GetBlock(p);
     for (size_t i = 0; i < b->m_con.size(); ++i) {
         if (GetBlock(b->m_con[i])->m_color == c
-            && m_state.m_con[b->m_anchor][b->m_con[i]].Size() > 1)
+            && m_state.m_con[b->m_anchor][b->m_con[i]].Size() != 1)
             ret.push_back(b->m_con[i]);
     }
     for (CellIterator i(Const()); i; ++i) {
