@@ -697,6 +697,7 @@ void YGtpEngine::CmdCarrierBetween(GtpCommand& cmd)
     int p1 = CellArg(cmd, 0);
     int p2 = CellArg(cmd, 1);
     std::vector<cell_t> cells = m_brd.GetCarrierBetween(p1, p2);
+    std::stable_sort(cells.begin(), cells.end());
     for (size_t i = 0; i < cells.size(); ++i) {
         cmd << ' ' << m_brd.ToString(cells[i]);
     }

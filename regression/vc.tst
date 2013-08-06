@@ -6,17 +6,17 @@
 # Check basic bridges in middle of board
 #
 loadsgf sgf/vc/check-bridge.sgf
-10 block_shared_liberties h10 g11
+10 carrier_between h10 g11
 #? [g10 h11]
 
-11 block_shared_liberties c9 d8
+11 carrier_between c9 d8
 #? [c8 d9]
 
-12 block_shared_liberties d8 c6
+12 carrier_between d8 c6
 #? [c7 e7]
 
 13 group_blocks a1
-#? [a1 west east]
+#? [west east a1]
 
 14 group_blocks d8
 #? [c6 d8 c9]
@@ -28,35 +28,35 @@ loadsgf sgf/vc/check-bridge.sgf
 # Check basic bridges with edge of board
 #
 loadsgf sgf/vc/check-bridge-with-edge.sgf
-20 block_shared_liberties b3 west
+20 carrier_between b3 west
 #? [a2 a3]
 
-21 block_shared_liberties b3 east
+21 carrier_between b3 east
 #? [b2 c3]
 
-22 block_shared_liberties a4 west
+22 carrier_between a4 west
 #? []
 
-23 block_shared_liberties b7 west
+23 carrier_between b7 west
 #? [a5 a7]
 
-24 block_shared_liberties b12 west
+24 carrier_between b12 west
 #? [a11 a12]
 
-25 block_shared_liberties b12 south
+25 carrier_between b12 south
 #? [b13 c13]
 
-26 block_shared_liberties h9 east
+26 carrier_between h9 east
 #? [h8 i9]
 
 27 group_blocks b3
-#? [b3 a4 b7 west east]
+#? [west east b3 a4 b7]
 
 28 group_blocks b12
-#? [b12 west south]
+#? [west south b12]
 
 29 group_blocks h9
-#? [g7 h9 j10 east]
+#? [east g7 h9 j10]
 
 #
 # Check that blocks with semis to two different members of a group are
@@ -89,7 +89,7 @@ loadsgf sgf/vc/check-friendly-group-break-simple.sgf
 # the group search is correct in such a case.
 loadsgf sgf/vc/check-friendly-group-break-blockmerge.sgf 18
 55 group_blocks c8
-#? [e7 b10 west east south]
+#? [west east south e7 b10]
 
 #
 # Check that opponent groups are recomputed properly
@@ -99,11 +99,11 @@ loadsgf sgf/vc/check-opp-group-break-simple.sgf
 #? [d8 d10]
 
 61 group_blocks e7
-#? [d5 e7 east]
+#? [east d5 e7]
 
 loadsgf sgf/vc/check-opp-group-break-into-three.sgf
 62 group_blocks g9
-#? [g9 east]
+#? [east g9]
 
 63 group_blocks d9
 #? [d9]
