@@ -13,6 +13,8 @@
 #include "VectorIterator.h"
 #include "WeightedRandom.h"
 
+//---------------------------------------------------------------------------
+
 template<typename T>
 bool Contains(const std::vector<T>& v, const T& val)
 {
@@ -37,6 +39,8 @@ void Include(std::vector<T>& v, const T& val)
     if (!Contains(v, val))
 	v.push_back(val);
 }
+
+//---------------------------------------------------------------------------
 
 //                 0  g
 //                1  g g  
@@ -201,6 +205,7 @@ struct LocalMoves
     }
 };
 
+//---------------------------------------------------------------------------
 
 struct Board 
 {
@@ -683,39 +688,27 @@ private:
 class CellIterator : public VectorIterator<cell_t>
 {
 public:
-    CellIterator(const Board& brd);
+    CellIterator(const Board& brd)
+        : VectorIterator<cell_t>(brd.Const().m_cells)
+    { }
 
-    CellIterator(const ConstBoard& brd);
+    CellIterator(const ConstBoard& brd)
+        : VectorIterator<cell_t>(brd.m_cells)
+    { }
 };
-
-inline CellIterator::CellIterator(const Board& brd)
-    : VectorIterator<cell_t>(brd.Const().m_cells)
-{
-}
-
-inline CellIterator::CellIterator(const ConstBoard& brd)
-    : VectorIterator<cell_t>(brd.m_cells)
-{
-}
 
 class CellAndEdgeIterator : public VectorIterator<cell_t>
 {
 public:
-    CellAndEdgeIterator(const Board& brd);
+    CellAndEdgeIterator(const Board& brd)
+        : VectorIterator<cell_t>(brd.Const().m_cells_edges)
+    { }
 
-    CellAndEdgeIterator(const ConstBoard& brd);
+    CellAndEdgeIterator(const ConstBoard& brd)
+        : VectorIterator<cell_t>(brd.m_cells_edges)
+    { }
 };
 
-inline CellAndEdgeIterator::CellAndEdgeIterator(const Board& brd)
-    : VectorIterator<cell_t>(brd.Const().m_cells_edges)
-{
-}
-
-inline CellAndEdgeIterator::CellAndEdgeIterator(const ConstBoard& brd)
-    : VectorIterator<cell_t>(brd.m_cells_edges)
-{
-}
-    
 //----------------------------------------------------------------------
 
 #endif
