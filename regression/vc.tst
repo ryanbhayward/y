@@ -126,7 +126,7 @@ loadsgf sgf/vc/check-bridge-with-edge.sgf
 #? [west south b12]
 
 29 group_blocks h9
-#? [east g7 h9 j10]
+#? [east g7 h9 j10]*
 
 loadsgf sgf/vc/check-edge-shared-liberties.sgf
 300 carrier_between f7 east

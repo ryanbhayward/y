@@ -570,39 +570,16 @@ Board::GetSharedLiberties(const Block* b1, const Block* b2) const
     return EMPTY_SHARED_LIBERTIES;
 }
 
-void Board::FixOrderOfConnectionsFromBack(Block* b1)
-{
-    if (!IsBorder(b1->m_con.back())) {
-        // ensure edges appear last in list
-        size_t i = b1->m_con.size() - 1;
-        while (i > 0 && IsBorder(b1->m_con[i - 1])) {
-            std::swap(b1->m_con[i - 1], b1->m_con[i]);
-            --i;
-        }
-    }
-}
-
 void Board::AddSharedLiberty(Block* b1, Block* b2)
 {
     Include(b1->m_con, b2->m_anchor);
     Include(b2->m_con, b1->m_anchor);
-    FixOrderOfConnectionsFromBack(b1);
-    FixOrderOfConnectionsFromBack(b2);
 }
 
 void Board::RemoveConnectionAtIndex(Block* b, size_t i)
 {
     b->m_con[i] = b->m_con.back();
     b->m_con.pop_back();
-    // ensure edges always appear last in list
-    if (IsBorder(b->m_con[i])) {
-        while (i + 1 < b->m_con.size() 
-               && !IsBorder(b->m_con[i+1])) 
-        {
-            std::swap(b->m_con[i], b->m_con[i+1]);
-            ++i;
-        }
-    }
 }
 
 void Board::RemoveConnectionWith(Block* b, const Block* other)
@@ -627,13 +604,9 @@ void Board::MergeBlockConnections(const Block* b1, Block* b2)
         }
         else {
             b2->m_con.push_back(b1->m_con[i]);
-            FixOrderOfConnectionsFromBack(b2);
 
             const int j = otherBlock->GetConnectionIndex(b1);
             otherBlock->m_con[j] = b2->m_anchor;
-            // No need to worry about order here, since b1 and b2
-            // are both not border blocks and otherBlock's list
-            // is properly ordered.
         }
     }
     // Remove mention of any connections from b2->b1, since b1 is now

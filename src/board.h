@@ -639,8 +639,6 @@ private:
 
     void RemoveEdgeSharedLiberties(Block* b);
 
-    void FixOrderOfConnectionsFromBack(Block* b1);
-
     const SharedLiberties&
     GetSharedLiberties(const Block* b1, const Block* b2) const;
 
