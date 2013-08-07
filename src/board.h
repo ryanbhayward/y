@@ -631,8 +631,6 @@ private:
 
     void UpdateBlockConnection(Block* a, Block* b); 
 
-    void RemoveConnectionAtIndex(Block* b, size_t i);
-
     void RemoveConnectionWith(Block* b, const Block* other);
 
     void MergeBlockConnections(const Block* b1, Block* b2);

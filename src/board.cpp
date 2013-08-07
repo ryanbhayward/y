@@ -433,6 +433,7 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
     }
 }
 
+// TODO: switch to the promote/demote method
 void Board::UpdateBlockConnection(Block* a, Block* b)
 {
     if (a->m_color == SG_BORDER && b->m_color == SG_BORDER)
@@ -576,17 +577,13 @@ void Board::AddSharedLiberty(Block* b1, Block* b2)
     Include(b2->m_con, b1->m_anchor);
 }
 
-void Board::RemoveConnectionAtIndex(Block* b, size_t i)
-{
-    b->m_con[i] = b->m_con.back();
-    b->m_con.pop_back();
-}
-
 void Board::RemoveConnectionWith(Block* b, const Block* other)
 {
     int i = b->GetConnectionIndex(other);
-    if (i != -1)
-        RemoveConnectionAtIndex(b, i);
+    if (i != -1) {
+        b->m_con[i] = b->m_con.back();
+        b->m_con.pop_back();
+    }
 }
 
 // Merge b1 into b2
