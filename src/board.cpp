@@ -112,8 +112,6 @@ void Board::State::Init(int T)
     m_color.resize(T);
     std::fill(m_color.begin(), m_color.end(), SG_BORDER);
 
-    m_cell.resize(T);
-    std::fill(m_cell.begin(), m_cell.end(), (Cell*)0);
     m_block.resize(T);
     std::fill(m_block.begin(), m_block.end(), (Block*)0);
     m_group.resize(T);
@@ -144,7 +142,6 @@ void Board::SetSize(int size)
     // initialize empty cells
     for (CellIterator it(Const()); it; ++it){
         m_state.m_color[*it] = SG_EMPTY;
-	m_state.m_cell[*it] = &m_state.m_cellList[*it];
     }
 
     // Create block/group for left edge
@@ -885,9 +882,6 @@ void Board::CopyState(Board::State& a, const Board::State& b)
         if (color != SG_EMPTY) {
             a.m_block[*it] = &a.m_blockList[b.m_block[*it]->m_anchor];
 	    a.m_group[*it] = &a.m_groupList[b.m_group[*it]->m_anchor];
-	}
-	else {
-	    a.m_cell[*it] = &a.m_cellList[*it];
 	}
     }
 }

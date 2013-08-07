@@ -556,7 +556,6 @@ private:
     struct State 
     {
         std::vector<SgBoardColor> m_color;
-	std::vector<Cell*> m_cell;
 	std::vector<Cell> m_cellList;
         std::vector<Block*> m_block;
         std::vector<Block> m_blockList;
@@ -651,10 +650,10 @@ private:
     { return m_state.m_group[p]; }
 
     Cell* GetCell(cell_t p)
-    { return m_state.m_cell[p]; }
+    { return &m_state.m_cellList[p]; }
 
     const Cell* GetCell(cell_t p) const
-    { return m_state.m_cell[p]; }
+    { return &m_state.m_cellList[p]; }
 
     int NumNeighbours(cell_t p, SgBlackWhite color) const
     { return GetCell(p)->m_NumAdj[color]; }
