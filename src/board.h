@@ -319,7 +319,7 @@ struct Board
     bool IsCellDead(cell_t p) const;
 
     cell_t BlockAnchor(cell_t p) const 
-    { return m_state.m_block[p]->m_anchor; }
+    { return GetBlock(p)->m_anchor; }
 
     bool IsBlockAnchor(cell_t p) const
     { return BlockAnchor(p) == p; } 
@@ -331,10 +331,10 @@ struct Board
     { return GetGroup(BlockAnchor(p))->m_border; }
 
     bool IsInBlock(cell_t p, cell_t anchor) const
-    { return m_state.m_block[p]->m_anchor == anchor; }
+    { return GetBlock(p)->m_anchor == anchor; }
 
     bool IsLibertyOfBlock(cell_t p, cell_t anchor) const
-    { return m_state.m_block[anchor]->m_liberties.Contains(p); }
+    { return GetBlock(anchor)->m_liberties.Contains(p); }
 
     bool IsSharedLiberty(cell_t p1, cell_t p2, cell_t p) const
     { return GetSharedLiberties(p1, p2).Contains(p); }
@@ -562,9 +562,9 @@ private:
     {
         std::vector<SgBoardColor> m_color;
 	std::vector<Cell> m_cellList;
-        std::vector<Block*> m_block;
+        std::vector<cell_t> m_blockIndex;
         std::vector<Block> m_blockList;
-	std::vector<Group*> m_group;
+	std::vector<cell_t> m_groupIndex;
 	std::vector<Group> m_groupList;
         std::vector<std::vector<SharedLiberties> > m_con;
         //SharedLiberties m_con[Y_MAX_CELL][Y_MAX_CELL];
@@ -642,17 +642,20 @@ private:
 
     void CopyState(Board::State& a, const Board::State& b);
 
+    cell_t BlockIndex(cell_t p) const
+    { return m_state.m_blockIndex[p]; }
+
     Block* GetBlock(cell_t p) 
-    { return m_state.m_block[p]; }
+    { return &m_state.m_blockList[BlockIndex(p)]; }
 
     const Block* GetBlock(cell_t p) const
-    { return m_state.m_block[p]; }
+    { return &m_state.m_blockList[BlockIndex(p)]; }
 
     Group* GetGroup(cell_t p)
-    { return m_state.m_group[p]; }
+    { return &m_state.m_groupList[m_state.m_groupIndex[p]]; }
 
     const Group* GetGroup(cell_t p) const
-    { return m_state.m_group[p]; }
+    { return &m_state.m_groupList[m_state.m_groupIndex[p]]; }
 
     Cell* GetCell(cell_t p)
     { return &m_state.m_cellList[p]; }
