@@ -65,8 +65,7 @@ ConstBoard::ConstBoard()
 
 ConstBoard::ConstBoard(int size)
     : m_size(size)
-    , TotalCells(m_size*(m_size+1)/2)
-    , TotalGBCells((m_size+(2*GUARDS+1))*(m_size+(2*GUARDS+1)+1)/2 + 3)
+    , TotalCells(m_size*(m_size+1)/2 + 3)
     , m_cells()
     , m_cell_nbr()
 {
@@ -81,21 +80,18 @@ ConstBoard::ConstBoard(int size)
     m_cells_edges.push_back(EAST);
     m_cells_edges.push_back(SOUTH);
     
-    m_cell_nbr.resize(TotalGBCells);
+    m_cell_nbr.resize(TotalCells);
     for (int r=0; r<Size(); r++) {
         for (int c=0; c<=r; c++) {
             cell_t p = fatten(r,c);
             m_cell_nbr[p].resize(6);
-
-            cell_t rr = r + 2;
-
             // spin clockwise from top left neighbor
-            m_cell_nbr[p][0] = p - rr - 1;
-            m_cell_nbr[p][1] = p - rr;
-            m_cell_nbr[p][2] = p + 1;
-            m_cell_nbr[p][3] = p + (rr + 1) + 1;
-            m_cell_nbr[p][4] = p + (rr + 1);
-            m_cell_nbr[p][5] = p - 1;
+            m_cell_nbr[p][ DIR_NW ] = (c == 0) ? WEST : p - r - 1;
+            m_cell_nbr[p][ DIR_NE ] = (c == r) ? EAST : p - r;
+            m_cell_nbr[p][ DIR_E  ] = (c == r) ? EAST : p + 1;
+            m_cell_nbr[p][ DIR_SE ] = (r == Size()-1) ? SOUTH : p + (r + 1) + 1;
+            m_cell_nbr[p][ DIR_SW ] = (r == Size()-1) ? SOUTH : p + (r + 1);
+            m_cell_nbr[p][ DIR_W  ] = (c == 0) ? WEST : p - 1;
         }
     }
 }
@@ -136,7 +132,7 @@ void Board::SetSize(int size)
     m_constBrd = ConstBoard(size);
 
     const int N = Size();
-    const int T = Const().TotalGBCells;
+    const int T = Const().TotalCells;
     m_state.Init(T);
 
     // initialize empty cells
@@ -147,12 +143,14 @@ void Board::SetSize(int size)
     // Create block/group for left edge
     {
         Block& b = m_state.m_blockList[Const().WEST];
+        m_state.m_blockIndex[Const().WEST] = Const().WEST;
         b.m_color = SG_BORDER;
         b.m_anchor = Const().WEST;
-        b.m_border = BORDER_LEFT;
+        b.m_border = BORDER_WEST;
         b.m_stones.Clear();
         b.m_con.clear();
 	Group& g = m_state.m_groupList[Const().WEST];
+        m_state.m_groupIndex[Const().WEST] = Const().WEST;
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
 	g.m_blocks.Clear();
@@ -165,19 +163,21 @@ void Board::SetSize(int size)
 	for (int i = 1; i < N; ++i) {
 	    cell_t p = Const().fatten(i, 1);
 	    GetCell(p)->AddBorderConnection(&b);
-	    AddCellToConnection(p, Const().WEST, p-1);
-	    AddCellToConnection(p, Const().WEST, p - Const().board_row(p) - 3);
+	    AddCellToConnection(p, Const().WEST, PointInDir(p, Const().DIR_W));
+	    AddCellToConnection(p, Const().WEST, PointInDir(p, Const().DIR_NW));
 	}
     }
     // Create block/group for right edge
     {
         Block& b = m_state.m_blockList[Const().EAST];
+        m_state.m_blockIndex[Const().EAST] = Const().EAST;
         b.m_color = SG_BORDER;
         b.m_anchor = Const().EAST;
-        b.m_border = BORDER_RIGHT;
+        b.m_border = BORDER_EAST;
         b.m_stones.Clear();
         b.m_con.clear();
 	Group& g = m_state.m_groupList[Const().EAST];
+        m_state.m_groupIndex[Const().EAST] = Const().EAST;
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
 	g.m_blocks.Clear();
@@ -190,19 +190,21 @@ void Board::SetSize(int size)
 	for (int i = 1; i < N; ++i) {
 	    cell_t p = Const().fatten(i, i-1);
 	    GetCell(p)->AddBorderConnection(&b);
-	    AddCellToConnection(p, Const().EAST, p+1);
-	    AddCellToConnection(p, Const().EAST, p - Const().board_row(p) - 2);
+	    AddCellToConnection(p, Const().EAST, PointInDir(p, Const().DIR_E));
+	    AddCellToConnection(p, Const().EAST, PointInDir(p, Const().DIR_NE));
 	}
     }
     // Create block/group for bottom edge
     {
         Block& b = m_state.m_blockList[Const().SOUTH];
+        m_state.m_blockIndex[Const().SOUTH] = Const().SOUTH;
         b.m_color = SG_BORDER;
         b.m_anchor = Const().SOUTH;
-        b.m_border = BORDER_BOTTOM;
+        b.m_border = BORDER_SOUTH;
         b.m_stones.Clear();
         b.m_con.clear();
 	Group& g = m_state.m_groupList[Const().SOUTH];
+        m_state.m_groupIndex[Const().SOUTH] = Const().SOUTH;
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
 	g.m_blocks.Clear();
@@ -215,36 +217,10 @@ void Board::SetSize(int size)
 	for (int i = 0; i < N-1; ++i) {
 	    cell_t p = Const().fatten(N-2, i);
 	    GetCell(p)->AddBorderConnection(&b);
-	    AddCellToConnection(p, Const().SOUTH, p + Const().board_row(p) + 4);
-	    AddCellToConnection(p, Const().SOUTH, p + Const().board_row(p) + 3);
+	    AddCellToConnection(p, Const().SOUTH, PointInDir(p,Const().DIR_SW));
+	    AddCellToConnection(p, Const().SOUTH, PointInDir(p,Const().DIR_SE));
 	}
     }
-    // set guards to point to their border block
-    std::vector<cell_t>& bptr = m_state.m_blockIndex;
-    bptr[Const().WEST] = Const().WEST;
-    bptr[Const().EAST] = Const().EAST;
-    bptr[Const().SOUTH] = Const().SOUTH;
-    for (int i = 0; i < N; ++i) { 
-        bptr[Const().fatten(i,0)-1] = Const().WEST;
-        bptr[Const().fatten(i,i)+1] = Const().EAST;
-        bptr[Const().fatten(N,i)] = Const().SOUTH;
-    }
-    bptr[Const().fatten(-1,0)-1] = Const().WEST;
-    bptr[Const().fatten(-1,-1)+1] = Const().EAST;
-    bptr[Const().fatten(N,N)] = Const().SOUTH;
-
-    std::vector<cell_t>& gptr = m_state.m_groupIndex;
-    gptr[Const().WEST] = Const().WEST;
-    gptr[Const().EAST] = Const().EAST;
-    gptr[Const().SOUTH] = Const().SOUTH;
-    for (int i = 0; i < N; ++i) { 
-        gptr[Const().fatten(i,0)-1] = Const().WEST;
-        gptr[Const().fatten(i,i)+1] = Const().EAST;
-        gptr[Const().fatten(N,i)] = Const().SOUTH;
-    }
-    gptr[Const().fatten(-1,0)-1] = Const().WEST;
-    gptr[Const().fatten(-1,-1)+1] = Const().EAST;
-    gptr[Const().fatten(N,N)] = Const().SOUTH;
 
     for (CellIterator i(Const()); i; ++i)
 	for (CellNbrIterator j(Const(), *i); j; ++j)
@@ -548,7 +524,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
             }
         } 
 
-	int seen[Const().TotalGBCells+10];
+	int seen[Const().TotalCells+10];
 	memset(seen, 0, sizeof(seen));
 	for(int i = 0; i < blocks.Length(); ++i) {
             Block* b = GetBlock(blocks[i]);
@@ -667,15 +643,15 @@ void Board::MergeBlockConnections(const Block* b1, Block* b2)
 
 void Board::RemoveEdgeSharedLiberties(Block* b)
 {
-    if (b->m_border & BORDER_LEFT) {
+    if (b->m_border & BORDER_WEST) {
         m_state.m_con[b->m_anchor][Const().WEST].Clear();
         m_state.m_con[Const().WEST][b->m_anchor].Clear();
     }
-    if (b->m_border & BORDER_RIGHT) {
+    if (b->m_border & BORDER_EAST) {
         m_state.m_con[b->m_anchor][Const().EAST].Clear();
         m_state.m_con[Const().EAST][b->m_anchor].Clear();
     }
-    if (b->m_border & BORDER_BOTTOM) {
+    if (b->m_border & BORDER_SOUTH) {
         m_state.m_con[b->m_anchor][Const().SOUTH].Clear();
         m_state.m_con[Const().SOUTH][b->m_anchor].Clear();
     }
@@ -745,7 +721,7 @@ void Board::ComputeGroupForBlock(Block* b)
     }    
 
     ResetBlocksInGroup(b);
-    int seen[Const().TotalGBCells+10];
+    int seen[Const().TotalCells+10];
     memset(seen, 0, sizeof(seen));
     for(int i = 0; i < blocks.Length(); ++i) {
         if (seen[blocks[i]] != 1)
@@ -765,11 +741,11 @@ void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
     //AddNonGroupEdges(seen, g, id);
 
     // Add edge to group if we are touching
-    if ((g->m_border & BORDER_LEFT) && !g->m_blocks.Contains(Const().WEST))
+    if ((g->m_border & BORDER_WEST) && !g->m_blocks.Contains(Const().WEST))
         g->m_blocks.PushBack(Const().WEST);
-    if ((g->m_border & BORDER_RIGHT) && !g->m_blocks.Contains(Const().EAST))
+    if ((g->m_border & BORDER_EAST) && !g->m_blocks.Contains(Const().EAST))
         g->m_blocks.PushBack(Const().EAST);
-    if ((g->m_border & BORDER_BOTTOM) && !g->m_blocks.Contains(Const().SOUTH))
+    if ((g->m_border & BORDER_SOUTH) && !g->m_blocks.Contains(Const().SOUTH))
         g->m_blocks.PushBack(Const().SOUTH);
 }
 
@@ -831,14 +807,14 @@ void Board::AddNonGroupEdges(int* seen, Group* g, int id)
     for(CellIterator it(Const()); it; ++it) {
 	if(seen[*it] == id && GetColor(*it) == ToPlay()) {
 	    int border = GetBlock(*it)->m_border;
-	    if(border == BORDER_LEFT) w++;
-	    else if(border == BORDER_RIGHT) e++;
-	    else if(border == BORDER_BOTTOM) s++;
+	    if(border == BORDER_WEST) w++;
+	    else if(border == BORDER_EAST) e++;
+	    else if(border == BORDER_SOUTH) s++;
 	}
     }
-    if(w > 1) g->m_border |= BORDER_LEFT;
-    if(e > 1) g->m_border |= BORDER_RIGHT;
-    if(s > 1) g->m_border |= BORDER_BOTTOM;
+    if(w > 1) g->m_border |= BORDER_WEST;
+    if(e > 1) g->m_border |= BORDER_EAST;
+    if(s > 1) g->m_border |= BORDER_SOUTH;
 }
 
 void Board::RemoveStone(cell_t p)
@@ -939,7 +915,7 @@ std::string Board::ToString()
 std::string Board::BorderToString() const
 {
     ostringstream os;
-    const int N = Size() + 2*ConstBoard::GUARDS;
+    const int N = Size();
 
     os << "\n";
     for (int j = 0; j < N; j++) {

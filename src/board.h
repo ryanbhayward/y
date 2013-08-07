@@ -42,20 +42,20 @@ void Include(std::vector<T>& v, const T& val)
 
 //---------------------------------------------------------------------------
 
-//                 0  g
-//                1  g g  
-//               2  g * g   
-//              3  g * * g   
-//             4  g * * * g  
-//            5  g * * * * g  
-//           6  g * * * * * g   
-//          7  g g g g g g g g 
+//           WEST, EAST, SOUTH
+//                 0  *
+//                1  * *  
+//               2  * * *   
+//              3  * * * *   
+//             4  * * * * *  
+//            5  * * * * * *  
+//           6  * * * * * * *   
+//          7  * * * * * * * * 
 //
 // T = S*(S+1)/2 + 3
-// first guard of row n = n(n+1)/2
 
 
-static const int Y_MAX_CELL = 192;
+static const int Y_MAX_CELL = 128;
 static const int Y_MAX_SIZE = 15;   // such that TotalCells < Y_MAX_CELL
 
 typedef uint8_t cell_t;
@@ -66,18 +66,16 @@ class ConstBoard
 {
 public:
 
-    static const int GUARDS = 1; // must be at least one
-
     static const int WEST = 0;
     static const int EAST = 1;
     static const int SOUTH = 2;
 
-    int m_size;
-    int TotalCells;
-    int TotalGBCells;
-
-    ConstBoard();
-    ConstBoard(int size);
+    static const int DIR_NW = 0;
+    static const int DIR_NE = 1;
+    static const int DIR_E  = 2;
+    static const int DIR_SE = 3;
+    static const int DIR_SW = 4;
+    static const int DIR_W  = 5;
 
     static char ColorToChar(SgBoardColor color);
     static std::string ColorToString(SgBoardColor color);
@@ -85,32 +83,39 @@ public:
     static inline int board_row(cell_t p)
     {  
         p -= 3;
-        int r = 2;
-        while((r+1)*(r+2)/2 < p)
+        int r = 1;
+        while((r)*(r+1)/2 <= p)
             ++r;
-        return r - 2;
+        return r - 1;
     }
 
     static inline int board_col(cell_t p)
     {
-        p -= 3;
-        int r = board_row(p+3) + 2;
-        return p - r*(r+1)/2 - GUARDS;
+        int r = board_row(p);
+        return p - r*(r+1)/2 - 3;
     }
 
     static inline cell_t fatten(int r, int c)
-    { return (r+GUARDS+1)*(r+GUARDS+2)/2 + c + GUARDS + 3; }
+    { return (r)*(r+1)/2 + c + 3; }
 
     static std::string ToString(cell_t cell);
 
     static cell_t FromString(const std::string& name);
 
-    int Size() const { return m_size; }
+    int m_size;
+    int TotalCells;
 
+    ConstBoard();
+    ConstBoard(int size);
+
+    int Size() const { return m_size; }
     bool IsOnBoard(cell_t cell) const
     {
         return std::find(m_cells.begin(), m_cells.end(), cell) != m_cells.end();
     }
+
+    cell_t PointInDir(cell_t cell, int dir) const
+    { return m_cell_nbr[cell][dir]; }
 
 private:
     std::vector<cell_t> m_cells;
@@ -245,6 +250,8 @@ struct Board
 
     void SetSize(int size);
     int Size() const { return Const().Size(); }
+    cell_t PointInDir(cell_t cell, int dir) const 
+    { return Const().PointInDir(cell, dir); }
 
     void SetPosition(const Board& other);
 
@@ -371,9 +378,9 @@ struct Board
 private:
 
     static const int BORDER_NONE  = 0; // 000   border values, used bitwise
-    static const int BORDER_BOTTOM= 1; // 001
-    static const int BORDER_LEFT  = 2; // 010
-    static const int BORDER_RIGHT = 4; // 100
+    static const int BORDER_SOUTH = 1; // 001
+    static const int BORDER_WEST  = 2; // 010
+    static const int BORDER_EAST  = 4; // 100
     static const int BORDER_ALL   = 7; // 111
 
     struct SharedLiberties

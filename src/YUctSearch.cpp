@@ -142,6 +142,7 @@ SgMove YUctThreadState::GenerateGlobalMove()
     // m_weights[toPlay].Build();
     // move = m_weights[toPlay].Choose(m_random);
     move = m_weights[m_brd.ToPlay()].ChooseLinear(m_random);
+    //std::cerr << "global move = " << m_brd.ToString(move) << '\n';
     YUctSearch::PlayoutStatistics::Get().m_globalMoves++;
 
     if (!m_brd.IsEmpty(move)) {
@@ -169,7 +170,9 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
     {
         move = GenerateGlobalMove();
     }
-    //std::cerr << "Move: " << m_brd.ToString(move) << " Weight: " << m_weights[m_brd.ToPlay()][move] << '\n';
+    // std::cerr << m_brd.ToString() << '\n'
+    //           << "Move: " << m_brd.ToString(move) 
+    //           << " Weight: " << m_weights[m_brd.ToPlay()][move] << '\n';
     return move;
 }
 
