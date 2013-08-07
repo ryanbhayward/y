@@ -669,17 +669,23 @@ private:
     int NumNeighbours(cell_t p, SgBlackWhite color) const
     { return GetCell(p)->m_NumAdj[color]; }
 
-    void AddCellToConnection(cell_t p1, cell_t p2, cell_t cell)
+    SharedLiberties& GetConnection(cell_t p1, cell_t p2)
     {
-	m_state.m_con[p1][p2].Include(cell);
-	m_state.m_con[p2][p1].Include(cell);
+        if (p2 > p1) std::swap(p1,p2);
+        return m_state.m_con[p1][p2];
     }
 
-    bool RemoveCellFromConnection(cell_t p1, cell_t p2, cell_t cell)
+    const SharedLiberties& GetConnection(cell_t p1, cell_t p2) const
     {
-	m_state.m_con[p1][p2].Exclude(cell);
-	return m_state.m_con[p2][p1].Exclude(cell);
+        if (p2 > p1) std::swap(p1,p2);
+        return m_state.m_con[p1][p2];
     }
+
+    void AddCellToConnection(cell_t p1, cell_t p2, cell_t cell)
+    {  GetConnection(p1, p2).Include(cell);  }
+
+    bool RemoveCellFromConnection(cell_t p1, cell_t p2, cell_t cell)
+    {  return GetConnection(p1, p2).Exclude(cell);  }
 
     void UpdateConnectionsToNewAnchor(const Block* from, const Block* to);
     void PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color);
