@@ -650,7 +650,8 @@ private:
     bool RemoveCellFromConnection(cell_t p1, cell_t p2, cell_t cell)
     {  return GetConnection(p1, p2).Exclude(cell);  }
 
-    void UpdateConnectionsToNewAnchor(const Block* from, const Block* to);
+    void UpdateConnectionsToNewAnchor(const Block* from, const Block* to,
+                                      const bool* toLiberties);
     void PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color);
     void DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color);
 

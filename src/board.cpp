@@ -455,7 +455,8 @@ void Board::MergeBlockConnections(const Block* b1, Block* b2)
     RemoveConnectionWith(b2, b1);
 }
 
-void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
+void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to,
+                                         const bool* toLiberties)
 {
     cell_t p1 = from->m_anchor;
     cell_t p2 = to->m_anchor;
@@ -465,18 +466,9 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
         {
             GetCell(*i)->RemoveSemiConnection(from, from->m_color);
             GetCell(*i)->RemoveFullConnection(from, from->m_color);
-
             // Liberties of new captain don't need to be changed
-            if (to->m_liberties.Contains(*i))
+            if (toLiberties[*i])
                 continue;
-            
-            // Liberties of from now are adjacent to to
-            if (from->m_liberties.Contains(*i)) {
-                GetCell(*i)->RemoveSemiConnection(to, to->m_color);
-                GetCell(*i)->AddFull(to, to->m_color);
-                GetConnection(*i, to->m_anchor).Clear();
-                continue;
-            }
         } 
         else 
         {
@@ -529,7 +521,7 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         if (adjBlock == largestBlock)
             continue;
 	MergeBlockConnections(adjBlock, largestBlock);
-	UpdateConnectionsToNewAnchor(adjBlock, largestBlock);
+	UpdateConnectionsToNewAnchor(adjBlock, largestBlock, seen);
         largestBlock->m_border |= adjBlock->m_border;
         for (Block::StoneIterator stn(adjBlock->m_stones); stn; ++stn)
         {
@@ -542,6 +534,11 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
             if (!seen[*lib]) {
                 seen[*lib] = true;
                 largestBlock->m_liberties.PushBack(*lib);
+                // give new liberty an empty full connection
+                GetCell(*lib)->RemoveSemiConnection(largestBlock, 
+                                                    largestBlock->m_color);
+                GetCell(*lib)->AddFull(largestBlock, largestBlock->m_color);
+                GetConnection(*lib, largestBlock->m_anchor).Clear();
             }
         }
     }
