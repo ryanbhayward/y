@@ -471,6 +471,7 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
             if (from->m_liberties.Contains(*i)) {
                 GetCell(*i)->RemoveSemiConnection(to, to->m_color);
                 GetCell(*i)->AddFull(to, to->m_color);
+                GetConnection(*i, to->m_anchor).Clear();
                 continue;
             }
         } 

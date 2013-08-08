@@ -142,6 +142,24 @@ loadsgf sgf/vc/check-edge-shared-liberties.sgf
 #? [.*west.*]
 
 #
+# Check that when merging A into B, all liberties of A now have
+# empty full connections to B.
+# 
+loadsgf sgf/vc/check-connections-after-merge.sgf
+400 carrier_between d7 g9
+#? []
+
+401 full_connected_with d7 black
+#? [g10]
+
+402 carrier_between e9 g9
+#? []
+
+403 full_connected_with e9 black
+#? [g10]
+
+
+#
 # Check that blocks with semis to two different members of a group are
 # added to the group
 #
