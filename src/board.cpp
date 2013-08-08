@@ -733,16 +733,6 @@ void Board::Play(SgBlackWhite color, cell_t p)
     //std::cerr << ToString();
 }
 
-const Board::Carrier& 
-Board::GetCarrier(const Block* b1, const Block* b2) const
-{
-    // FIXME:: IS THIS THREADSAFE!?
-    static Carrier EMPTY_SHARED_LIBERTIES;
-    if (b1 == b2 || b1 == 0 || b2 == 0)
-	return EMPTY_SHARED_LIBERTIES;
-    return GetConnection(b1->m_anchor,b2->m_anchor);
-}
-
 void Board::AddSharedLiberty(Block* b1, Block* b2)
 {
     b1->m_con.Include(b2->m_anchor);
@@ -994,16 +984,16 @@ std::string Board::ToString()
 
 SgMove Board::MaintainConnection(cell_t b1, cell_t b2) const
 {
-    const Carrier& libs = GetCarrier(b1, b2);
-    if (libs.Size() != 1)
+    const Carrier& car = GetConnection(b1, b2);
+    if (car.Size() != 1)
         return SG_NULLMOVE;
     const Group* g1 = GetGroup(b1);
     const Group* g2 = GetGroup(b2);
     if (GetColor(b1) == SG_BORDER || GetColor(b2) == SG_BORDER) {
         if ((g1->m_border & g2->m_border) == 0)
-            return libs[0];
+            return car[0];
     } else if (g1 != g2)
-        return libs[0];
+        return car[0];
     return SG_NULLMOVE;
 }
 

@@ -280,7 +280,7 @@ struct Board
         for (int i = 0; i < g->m_blocks.Length(); ++i) {
             for (int j = i + 1; j < g->m_blocks.Length(); ++j) {
                 const Carrier& sl 
-                    = GetCarrier(g->m_blocks[i], g->m_blocks[j]);
+                    = GetConnection(g->m_blocks[i], g->m_blocks[j]);
                 for (int k = 0; k < sl.Size(); ++k) {
                     if (!Contains(ret, sl[k]))
                         ret.push_back(sl[k]);
@@ -343,7 +343,7 @@ struct Board
     { return GetBlock(anchor)->m_liberties.Contains(p); }
 
     bool IsSharedLiberty(cell_t p1, cell_t p2, cell_t p) const
-    { return GetCarrier(p1, p2).Contains(p); }
+    { return GetConnection(p1, p2).Contains(p); }
 
     std::vector<cell_t> GetBlocksInGroup(cell_t p) const
     {
@@ -624,12 +624,6 @@ private:
 
     void RemoveEdgeSharedLiberties(Block* b);
 
-    const Carrier&
-    GetCarrier(const Block* b1, const Block* b2) const;
-
-    const Carrier& GetCarrier(cell_t p1, cell_t p2) const
-    { return GetCarrier(GetBlock(p1), GetBlock(p2)); }
-
     void CopyState(Board::State& a, const Board::State& b);
 
     cell_t BlockIndex(cell_t p) const
@@ -656,17 +650,9 @@ private:
     int NumNeighbours(cell_t p, SgBlackWhite color) const
     { return GetCell(p)->m_NumAdj[color]; }
 
-    Carrier& GetConnection(cell_t p1, cell_t p2)
-    {
-        if (p1 > p2) std::swap(p1,p2);
-        return m_state.m_con[p1][p2-p1];
-    }
+    Carrier& GetConnection(cell_t p1, cell_t p2);
 
-    const Carrier& GetConnection(cell_t p1, cell_t p2) const
-    {
-        if (p1 > p2) std::swap(p1,p2);
-        return m_state.m_con[p1][p2-p1];
-    }
+    const Carrier& GetConnection(cell_t p1, cell_t p2) const;
 
     void AddCellToConnection(cell_t p1, cell_t p2, cell_t cell)
     {  GetConnection(p1, p2).Include(cell);  }
@@ -681,6 +667,18 @@ private:
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented
 };
+
+inline Board::Carrier& Board::GetConnection(cell_t p1, cell_t p2)
+{
+    if (p1 > p2) std::swap(p1,p2);
+    return m_state.m_con[p1][p2-p1];
+}
+
+inline const Board::Carrier& Board::GetConnection(cell_t p1, cell_t p2) const
+{
+    if (p1 > p2) std::swap(p1,p2);
+    return m_state.m_con[p1][p2-p1];
+}
 
 //----------------------------------------------------------------------
 
