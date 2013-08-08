@@ -596,9 +596,9 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
     }
 
     // now remove between blocks and empty cells
-    for (int i = 0; i < adjBlocks.Length(); ++i) {
-        for (CellNbrIterator j(Const(), p); j; ++j) {
-            if (IsEmpty(*j)) {
+    for (CellNbrIterator j(Const(), p); j; ++j) {
+        if (IsEmpty(*j)) {
+            for (int i = 0; i < adjBlocks.Length(); ++i) {
                 Block* b = GetBlock(adjBlocks[i]);
                 if (RemoveCellFromConnection(adjBlocks[i], *j, p)) {
 		    if(!IsBorder(adjBlocks[i]))
