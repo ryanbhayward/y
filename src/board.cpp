@@ -1066,7 +1066,7 @@ bool Board::IsCellDead(cell_t p) const
     int s = 0;
     for (int j = 0; j < 12; ++j)
     {
-	const int i = j % 6;
+	const int i = (j > 6) ? j - 6 : j;
 	const SgBlackWhite color = GetColor(Const().m_cell_nbr[p][i]);
 	if (s == 0)
 	{
