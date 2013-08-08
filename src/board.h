@@ -279,11 +279,11 @@ struct Board
         const Group* g = GetGroup(GroupAnchor(p));
         for (int i = 0; i < g->m_blocks.Length(); ++i) {
             for (int j = i + 1; j < g->m_blocks.Length(); ++j) {
-                const SharedLiberties& sl 
-                    = GetSharedLiberties(g->m_blocks[i], g->m_blocks[j]);
+                const Carrier& sl 
+                    = GetCarrier(g->m_blocks[i], g->m_blocks[j]);
                 for (int k = 0; k < sl.Size(); ++k) {
-                    if (!Contains(ret, sl.m_liberties[k]))
-                        ret.push_back(sl.m_liberties[k]);
+                    if (!Contains(ret, sl[k]))
+                        ret.push_back(sl[k]);
                 }
             }
         }
@@ -343,7 +343,7 @@ struct Board
     { return GetBlock(anchor)->m_liberties.Contains(p); }
 
     bool IsSharedLiberty(cell_t p1, cell_t p2, cell_t p) const
-    { return GetSharedLiberties(p1, p2).Contains(p); }
+    { return GetCarrier(p1, p2).Contains(p); }
 
     std::vector<cell_t> GetBlocksInGroup(cell_t p) const
     {
@@ -382,47 +382,30 @@ private:
     static const int BORDER_EAST  = 4; // 100
     static const int BORDER_ALL   = 7; // 111
 
-    struct SharedLiberties
+    template<typename T, int SIZE>
+    class CarrierList : public SgArrayList<T, SIZE>
     {
-        static const int MAX_LIBERTIES = 8;
-
-        SgArrayList<cell_t, MAX_LIBERTIES> m_liberties;
-
-	SharedLiberties()
-	{ }
-
-        SharedLiberties(cell_t liberty)
-            : m_liberties(liberty)
-	{ }
-
-        bool Empty() const
-        { return m_liberties.IsEmpty(); }
-
-        int Size() const
-        { return m_liberties.Length(); }
-
-        bool Contains(cell_t p) const
-        { return m_liberties.Contains(p); }
-
-        void PushBack(cell_t p)
-        { 
-            if (Size() < MAX_LIBERTIES)
-                m_liberties.PushBack(p); 
+    public:
+        int Size() const  { return SgArrayList<T,SIZE>::Length(); }
+        
+        void PushBack(T p)
+        {
+            // TODO: currently discards p if already full.
+            // Should probably always keep p and remove something else.
+            if (Size() < SIZE) {
+                SgArrayList<T,SIZE>::PushBack(p); 
+            }
         }
 
-        void Include(cell_t p)
+        void Include(T p)
         {
-            if (!Contains(p))
+            if (!SgArrayList<T,SIZE>::Contains(p))
                 PushBack(p);
         }
-
-        bool Exclude(cell_t p)
-        {  return m_liberties.Exclude(p);  }
-
-        void Clear()
-        {  m_liberties.Clear(); }
-
     };
+
+    static const int MAX_CARRIER_SIZE = 8;
+    typedef CarrierList<cell_t, MAX_CARRIER_SIZE> Carrier;
 
     struct Block
     {
@@ -575,8 +558,8 @@ private:
         boost::scoped_array<Block> m_blockList;
 	boost::scoped_array<cell_t> m_groupIndex;
 	boost::scoped_array<Group> m_groupList;
-        boost::scoped_array<SharedLiberties> m_conData;
-        boost::scoped_array<SharedLiberties*> m_con;
+        boost::scoped_array<Carrier> m_conData;
+        boost::scoped_array<Carrier*> m_con;
 
         SgArrayList<cell_t, 3> m_oppBlocks;
                 
@@ -604,7 +587,7 @@ private:
 
     void MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks);
 
-    int GetSharedLibertiesIndex(Block* b1, Block* b2) const;
+    int GetCarrierIndex(Block* b1, Block* b2) const;
 
     void AddSharedLiberty(Block* b1, Block* b2);
 
@@ -613,10 +596,10 @@ private:
     void MergeSharedLiberty(const Block* b1, Block* b2);
 
     static int
-        NumUnmarkedSharedLiberties(const SharedLiberties& lib, 
+        NumUnmarkedSharedLiberties(const Carrier& lib, 
                                    int* seen, int id);
 
-    static void MarkLibertiesAsSeen(const SharedLiberties& lib, 
+    static void MarkLibertiesAsSeen(const Carrier& lib, 
                                     int* seen, int id);
 
     void ResetBlocksInGroup(Block* b);
@@ -641,11 +624,11 @@ private:
 
     void RemoveEdgeSharedLiberties(Block* b);
 
-    const SharedLiberties&
-    GetSharedLiberties(const Block* b1, const Block* b2) const;
+    const Carrier&
+    GetCarrier(const Block* b1, const Block* b2) const;
 
-    const SharedLiberties& GetSharedLiberties(cell_t p1, cell_t p2) const
-    { return GetSharedLiberties(GetBlock(p1), GetBlock(p2)); }
+    const Carrier& GetCarrier(cell_t p1, cell_t p2) const
+    { return GetCarrier(GetBlock(p1), GetBlock(p2)); }
 
     void CopyState(Board::State& a, const Board::State& b);
 
@@ -673,13 +656,13 @@ private:
     int NumNeighbours(cell_t p, SgBlackWhite color) const
     { return GetCell(p)->m_NumAdj[color]; }
 
-    SharedLiberties& GetConnection(cell_t p1, cell_t p2)
+    Carrier& GetConnection(cell_t p1, cell_t p2)
     {
         if (p1 > p2) std::swap(p1,p2);
         return m_state.m_con[p1][p2-p1];
     }
 
-    const SharedLiberties& GetConnection(cell_t p1, cell_t p2) const
+    const Carrier& GetConnection(cell_t p1, cell_t p2) const
     {
         if (p1 > p2) std::swap(p1,p2);
         return m_state.m_con[p1][p2-p1];

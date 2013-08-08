@@ -111,14 +111,14 @@ void Board::State::Init(int T)
     m_blockList.reset(new Block[T]);
     m_groupIndex.reset(new cell_t[T]);
     m_groupList.reset(new Group[T]);
-    m_conData.reset(new SharedLiberties[T*(T+1)/2]);
+    m_conData.reset(new Carrier[T*(T+1)/2]);
 
     for (int i = 0; i < T; ++i)
         m_color[i] = SG_EMPTY;
     memset(m_blockIndex.get(), -1, sizeof(m_blockIndex.get()));
     memset(m_groupIndex.get(), -1, sizeof(m_groupIndex.get()));
 
-    m_con.reset(new SharedLiberties*[T]);
+    m_con.reset(new Carrier*[T]);
     for(int i = 0, j = 0; i < T; ++i) {
         m_con[i] = &m_conData[j];
         j += T - i;
@@ -281,7 +281,7 @@ void Board::CopyState(Board::State& a, const Board::State& b)
     memcpy(a.m_groupIndex.get(), b.m_groupIndex.get(), sizeof(cell_t)*T);
     memcpy(a.m_groupList.get(), b.m_groupList.get(), sizeof(Group)*T);
     memcpy(a.m_conData.get(), b.m_conData.get(),
-           sizeof(SharedLiberties)*T*(T+1)/2);
+           sizeof(Carrier)*T*(T+1)/2);
 
     a.m_oppBlocks = b.m_oppBlocks;
 
@@ -323,7 +323,7 @@ void Board::DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color)
                       << " b = " << ToString(b->m_anchor) 
                       << '\n';
             for (int i =0; i < GetConnection(p, b->m_anchor).Size(); ++i) {
-                std::cerr << ' ' << ToString(GetConnection(p, b->m_anchor).m_liberties[i]);
+                std::cerr << ' ' << ToString(GetConnection(p, b->m_anchor)[i]);
                 std::cerr << '\n';
             }
             abort();
@@ -488,7 +488,7 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
             continue;
 
         for(int j = 0; j < GetConnection(p1,*i).Size(); ++j) {
-            AddCellToConnection(p2, *i, GetConnection(p1, *i).m_liberties[j]);
+            AddCellToConnection(p2, *i, GetConnection(p1, *i)[j]);
         }
         if (IsEmpty(*i)) {
             PromoteConnectionType(*i, to, to->m_color);
@@ -733,11 +733,11 @@ void Board::Play(SgBlackWhite color, cell_t p)
     //std::cerr << ToString();
 }
 
-const Board::SharedLiberties& 
-Board::GetSharedLiberties(const Block* b1, const Block* b2) const
+const Board::Carrier& 
+Board::GetCarrier(const Block* b1, const Block* b2) const
 {
     // FIXME:: IS THIS THREADSAFE!?
-    static SharedLiberties EMPTY_SHARED_LIBERTIES;
+    static Carrier EMPTY_SHARED_LIBERTIES;
     if (b1 == b2 || b1 == 0 || b2 == 0)
 	return EMPTY_SHARED_LIBERTIES;
     return GetConnection(b1->m_anchor,b2->m_anchor);
@@ -760,20 +760,20 @@ void Board::RemoveConnectionWith(Block* b, const Block* other)
 
 //---------------------------------------------------------------------------
 
-int Board::NumUnmarkedSharedLiberties(const SharedLiberties& lib, 
+int Board::NumUnmarkedSharedLiberties(const Carrier& lib, 
                                       int* seen, int id)
 {
     int count = 0;
     for (int i = 0; i < lib.Size(); ++i)
-        if (seen[lib.m_liberties[i]] != id)
+        if (seen[lib[i]] != id)
             ++count;
     return count;
 }
 
-void Board::MarkLibertiesAsSeen(const SharedLiberties& lib, int* seen, int id)
+void Board::MarkLibertiesAsSeen(const Carrier& lib, int* seen, int id)
 {
     for (int j = 0; j < lib.Size(); ++j)
-        seen[lib.m_liberties[j]] = id;
+        seen[lib[j]] = id;
 }
 
 void Board::ResetBlocksInGroup(Block* b)
@@ -860,7 +860,7 @@ void Board::GroupSearch(int* seen, Block* b, int id)
     {
         bool visit = false;
 	cell_t other = b->m_con[i];
-        SharedLiberties& sl = GetConnection(b->m_anchor, other);
+        Carrier& sl = GetConnection(b->m_anchor, other);
 
 	//std::cerr << "Considering: " << ToString(other) << '\n';
         int count = NumUnmarkedSharedLiberties(sl, seen, id);
@@ -994,16 +994,16 @@ std::string Board::ToString()
 
 SgMove Board::MaintainConnection(cell_t b1, cell_t b2) const
 {
-    const SharedLiberties& libs = GetSharedLiberties(b1, b2);
+    const Carrier& libs = GetCarrier(b1, b2);
     if (libs.Size() != 1)
         return SG_NULLMOVE;
     const Group* g1 = GetGroup(b1);
     const Group* g2 = GetGroup(b2);
     if (GetColor(b1) == SG_BORDER || GetColor(b2) == SG_BORDER) {
         if ((g1->m_border & g2->m_border) == 0)
-            return libs.m_liberties[0];
+            return libs[0];
     } else if (g1 != g2)
-        return libs.m_liberties[0];
+        return libs[0];
     return SG_NULLMOVE;
 }
 
@@ -1186,7 +1186,7 @@ std::vector<cell_t> Board::GetCarrierBetween(cell_t p1, cell_t p2) const
     if (IsOccupied(p2))
         p2 = GetBlock(p2)->m_anchor;
     std::vector<cell_t> ret;
-    Append(ret, GetConnection(p1, p2).m_liberties);
+    Append(ret, GetConnection(p1, p2));
     return ret;
 }
 
