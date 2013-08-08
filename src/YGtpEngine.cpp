@@ -37,8 +37,6 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("play", &YGtpEngine::CmdPlay);
     RegisterCmd("boardsize", &YGtpEngine::CmdBoardSize);
     RegisterCmd("showboard", &YGtpEngine::CmdShowBoard);
-    RegisterCmd("showborders", &YGtpEngine::CmdShowBorders);
-    RegisterCmd("showanchors", &YGtpEngine::CmdShowAnchors);
     RegisterCmd("clear_board", &YGtpEngine::CmdClearBoard);
     RegisterCmd("genmove", &YGtpEngine::CmdGenMove);
     RegisterCmd("loadsgf", &YGtpEngine::CmdLoadSgf);
@@ -356,18 +354,6 @@ void YGtpEngine::CmdShowBoard(GtpCommand& cmd)
 {
     SG_UNUSED(cmd);
     cmd << m_brd.ToString() << '\n';
-}
-
-void YGtpEngine::CmdShowBorders(GtpCommand& cmd)
-{
-    SG_UNUSED(cmd);
-    cmd << m_brd.BorderToString() << '\n';
-}
-
-void YGtpEngine::CmdShowAnchors(GtpCommand& cmd)
-{
-    SG_UNUSED(cmd);
-    cmd << m_brd.AnchorsToString() << '\n';
 }
 
 void YGtpEngine::CmdFinalScore(GtpCommand& cmd)

@@ -259,9 +259,6 @@ struct Board
 
     std::string ToString();
     static std::string ToString(cell_t p) { return ConstBoard::ToString(p); }
-    std::string BorderToString() const;
-    std::string AnchorsToString() const;
-    std::string ActiveBlocksToString(SgBlackWhite color) const;
 
     SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };
 

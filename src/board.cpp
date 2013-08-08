@@ -245,6 +245,101 @@ void Board::SetPosition(const Board& other)
     m_state.m_lastMove = other.m_state.m_lastMove;
 }
 
+void Board::RemoveStone(cell_t p)
+{
+    boost::scoped_array<SgBoardColor> 
+        m_oldColor(new SgBoardColor[Const().TotalCells]);
+    memcpy(m_oldColor.get(), m_state.m_color.get(), 
+           sizeof(SgBoardColor)*Const().TotalCells);
+    m_oldColor[p] = SG_EMPTY;
+    SetSize(Size());
+    for (CellIterator it(Const()); it; ++it)
+        if (m_oldColor[*it] != SG_EMPTY)
+            Play(m_oldColor[*it],*it);
+}
+
+void Board::Swap()
+{
+    for (CellIterator it(Const()); it; ++it) {
+	if(GetColor(*it) != SG_EMPTY) {
+            m_state.m_color[*it] = SgOppBW(GetColor(*it));
+            if (*it == BlockAnchor(*it)) {
+                Block* b = GetBlock(*it);
+                b->m_color = SgOppBW(b->m_color);
+            }
+        }
+    }
+}
+
+void Board::CopyState(Board::State& a, const Board::State& b)
+{
+    const int T = Const().TotalCells;
+    memcpy(a.m_color.get(), b.m_color.get(), sizeof(SgBoardColor)*T);
+    memcpy(a.m_cellList.get(), b.m_cellList.get(), sizeof(Cell)*T);
+    memcpy(a.m_blockIndex.get(), b.m_blockIndex.get(), sizeof(cell_t)*T);
+    memcpy(a.m_blockList.get(), b.m_blockList.get(), sizeof(Block)*T);
+    memcpy(a.m_groupIndex.get(), b.m_groupIndex.get(), sizeof(cell_t)*T);
+    memcpy(a.m_groupList.get(), b.m_groupList.get(), sizeof(Group)*T);
+    memcpy(a.m_conData.get(), b.m_conData.get(),
+           sizeof(SharedLiberties)*T*(T+1)/2);
+
+    a.m_oppBlocks = b.m_oppBlocks;
+
+    a.m_toPlay = b.m_toPlay;
+    a.m_winner = b.m_winner;
+    a.m_vcWinner = b.m_vcWinner;
+    a.m_vcGroupAnchor = b.m_vcGroupAnchor;
+    a.m_lastMove = b.m_lastMove;
+}
+
+//---------------------------------------------------------------------------
+
+void Board::PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color)
+{
+    Cell* cell = GetCell(p);
+    if (cell->IsFullConnected(b, color))
+        return;
+    int size = (int)GetConnection(p, b->m_anchor).Size();
+    if (size == 1) {
+	cell->AddSemi(b, color);
+    }
+    else {        
+        cell->RemoveSemiConnection(b, color);
+        cell->AddFull(b, color);
+    }
+}
+
+void Board::DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color)
+{
+    // Just removed a cell from this connection
+    Cell* cell = GetCell(p);
+    int size = (int)GetConnection(p, b->m_anchor).Size();
+    if (size >= 2) {
+        if (!cell->IsFullConnected(b, color))
+        {
+            std::cerr << "MORE THAN 2 LIBERTIES BUT NOT FULL CONNECTED!!\n";
+            std::cerr << ToString() << '\n'
+                      << " p = " << ToString(p)
+                      << " b = " << ToString(b->m_anchor) 
+                      << '\n';
+            for (int i =0; i < GetConnection(p, b->m_anchor).Size(); ++i) {
+                std::cerr << ' ' << ToString(GetConnection(p, b->m_anchor).m_liberties[i]);
+                std::cerr << '\n';
+            }
+            abort();
+        }
+        return;
+    }
+    if (size == 0) {
+        cell->RemoveSemiConnection(b, color);
+        
+    }
+    else if(size == 1) {
+        cell->RemoveFullConnection(b, color);
+	cell->AddSemi(b, color);
+    }
+}
+
 void Board::AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip)
 {
     for (CellNbrIterator it(Const(), p); it; ++it) {
@@ -332,6 +427,75 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
     ComputeGroupForBlock(b);
 }
 
+// Merge b1 into b2
+void Board::MergeBlockConnections(const Block* b1, Block* b2)
+{
+    for (int i = 0; i < b1->m_con.Length(); ++i) {
+        const cell_t otherAnchor = b1->m_con[i];
+	if (otherAnchor == b2->m_anchor)
+            continue;
+        Block* otherBlock = GetBlock(otherAnchor);
+        assert(otherBlock);     
+        int index = b2->GetConnectionIndex(otherBlock);
+        if (index != -1) {
+            RemoveConnectionWith(otherBlock, b1);
+        }
+        else {
+            b2->m_con.PushBack(b1->m_con[i]);
+
+            const int j = otherBlock->GetConnectionIndex(b1);
+            otherBlock->m_con[j] = b2->m_anchor;
+        }
+    }
+    // Remove mention of any connections from b2->b1, since b1 is now
+    // part of b2. 
+    RemoveConnectionWith(b2, b1);
+}
+
+void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
+{
+    cell_t p1 = from->m_anchor;
+    cell_t p2 = to->m_anchor;
+    for(CellAndEdgeIterator i(Const()); i; ++i) 
+    {
+        if (GetColor(*i) == SG_EMPTY) 
+        {
+            GetCell(*i)->RemoveSemiConnection(from, from->m_color);
+            GetCell(*i)->RemoveFullConnection(from, from->m_color);
+
+            // Liberties of new captain don't need to be changed
+            if (to->m_liberties.Contains(*i))
+                continue;
+            
+            // Liberties of from now are adjacent to to
+            if (from->m_liberties.Contains(*i)) {
+                GetCell(*i)->RemoveSemiConnection(to, to->m_color);
+                GetCell(*i)->AddFull(to, to->m_color);
+                continue;
+            }
+        } 
+        else 
+        {
+            if (GetColor(*i) != to->m_color)
+                continue;
+            if (!IsBlockAnchor(*i))
+                continue;
+            // TODO: remove mention to connection to from in this block
+        }
+        
+        // No liberties to transfer
+        if (GetConnection(p1,*i).Size() == 0)
+            continue;
+
+        for(int j = 0; j < GetConnection(p1,*i).Size(); ++j) {
+            AddCellToConnection(p2, *i, GetConnection(p1, *i).m_liberties[j]);
+        }
+        if (IsEmpty(*i)) {
+            PromoteConnectionType(*i, to, to->m_color);
+        }
+    }
+}
+
 void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
 {
     Block* largestBlock = 0;
@@ -387,6 +551,28 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
     ComputeGroupForBlock(largestBlock);
 }
 
+// TODO: switch to the promote/demote method
+void Board::UpdateBlockConnection(Block* a, Block* b)
+{
+    if (a->m_color == SG_BORDER && b->m_color == SG_BORDER)
+        return;
+    if (GetConnection(a->m_anchor, b->m_anchor).Size() == 0) {
+	RemoveConnectionWith(a, b);
+	RemoveConnectionWith(b, a);
+    }
+}
+
+
+void Board::RemoveEdgeSharedLiberties(Block* b)
+{
+    if (b->m_border & BORDER_WEST)
+        GetConnection(Const().WEST, b->m_anchor).Clear();
+    if (b->m_border & BORDER_EAST)
+        GetConnection(Const().EAST, b->m_anchor).Clear();
+    if (b->m_border & BORDER_SOUTH)
+        GetConnection(Const().SOUTH, b->m_anchor).Clear();
+}
+
 void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
 {
     if (adjBlocks.Length() == 0)
@@ -430,17 +616,6 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
 		}
             }
         }        
-    }
-}
-
-// TODO: switch to the promote/demote method
-void Board::UpdateBlockConnection(Block* a, Block* b)
-{
-    if (a->m_color == SG_BORDER && b->m_color == SG_BORDER)
-        return;
-    if (GetConnection(a->m_anchor, b->m_anchor).Size() == 0) {
-	RemoveConnectionWith(a, b);
-	RemoveConnectionWith(b, a);
     }
 }
 
@@ -583,40 +758,7 @@ void Board::RemoveConnectionWith(Block* b, const Block* other)
     }
 }
 
-// Merge b1 into b2
-void Board::MergeBlockConnections(const Block* b1, Block* b2)
-{
-    for (int i = 0; i < b1->m_con.Length(); ++i) {
-        const cell_t otherAnchor = b1->m_con[i];
-	if (otherAnchor == b2->m_anchor)
-            continue;
-        Block* otherBlock = GetBlock(otherAnchor);
-        assert(otherBlock);     
-        int index = b2->GetConnectionIndex(otherBlock);
-        if (index != -1) {
-            RemoveConnectionWith(otherBlock, b1);
-        }
-        else {
-            b2->m_con.PushBack(b1->m_con[i]);
-
-            const int j = otherBlock->GetConnectionIndex(b1);
-            otherBlock->m_con[j] = b2->m_anchor;
-        }
-    }
-    // Remove mention of any connections from b2->b1, since b1 is now
-    // part of b2. 
-    RemoveConnectionWith(b2, b1);
-}
-
-void Board::RemoveEdgeSharedLiberties(Block* b)
-{
-    if (b->m_border & BORDER_WEST)
-        GetConnection(Const().WEST, b->m_anchor).Clear();
-    if (b->m_border & BORDER_EAST)
-        GetConnection(Const().EAST, b->m_anchor).Clear();
-    if (b->m_border & BORDER_SOUTH)
-        GetConnection(Const().SOUTH, b->m_anchor).Clear();
-}
+//---------------------------------------------------------------------------
 
 int Board::NumUnmarkedSharedLiberties(const SharedLiberties& lib, 
                                       int* seen, int id)
@@ -778,69 +920,8 @@ void Board::AddNonGroupEdges(int* seen, Group* g, int id)
     if(s > 1) g->m_border |= BORDER_SOUTH;
 }
 
-void Board::RemoveStone(cell_t p)
-{
-    boost::scoped_array<SgBoardColor> 
-        m_oldColor(new SgBoardColor[Const().TotalCells]);
-    memcpy(m_oldColor.get(), m_state.m_color.get(), 
-           sizeof(SgBoardColor)*Const().TotalCells);
-    m_oldColor[p] = SG_EMPTY;
-    SetSize(Size());
-    for (CellIterator it(Const()); it; ++it)
-        if (m_oldColor[*it] != SG_EMPTY)
-            Play(m_oldColor[*it],*it);
-}
+//---------------------------------------------------------------------------
 
-void Board::Swap()
-{
-    for (CellIterator it(Const()); it; ++it) {
-	if(GetColor(*it) != SG_EMPTY) {
-            m_state.m_color[*it] = SgOppBW(GetColor(*it));
-            if (*it == BlockAnchor(*it)) {
-                Block* b = GetBlock(*it);
-                b->m_color = SgOppBW(b->m_color);
-            }
-        }
-    }
-}
-
-        // boost::scoped_array<SgBoardColor> m_color;
-	// boost::scoped_array<Cell> m_cellList;
-        // boost::scoped_array<cell_t> m_blockIndex;
-        // boost::scoped_array<Block> m_blockList;
-	// boost::scoped_array<cell_t> m_groupIndex;
-	// boost::scoped_array<Group> m_groupList;
-        // boost::scoped_array<SharedLiberties> m_conData;
-        // boost::scoped_array<SharedLiberties*> m_con;
-
-        // SgArrayList<cell_t, 3> m_oppBlocks;
-                
-        // SgBlackWhite m_toPlay;
-        // SgBoardColor m_winner;
-        // SgBoardColor m_vcWinner;
-        // cell_t       m_vcGroupAnchor;
-        // cell_t       m_lastMove;
-
-void Board::CopyState(Board::State& a, const Board::State& b)
-{
-    const int T = Const().TotalCells;
-    memcpy(a.m_color.get(), b.m_color.get(), sizeof(SgBoardColor)*T);
-    memcpy(a.m_cellList.get(), b.m_cellList.get(), sizeof(Cell)*T);
-    memcpy(a.m_blockIndex.get(), b.m_blockIndex.get(), sizeof(cell_t)*T);
-    memcpy(a.m_blockList.get(), b.m_blockList.get(), sizeof(Block)*T);
-    memcpy(a.m_groupIndex.get(), b.m_groupIndex.get(), sizeof(cell_t)*T);
-    memcpy(a.m_groupList.get(), b.m_groupList.get(), sizeof(Group)*T);
-    memcpy(a.m_conData.get(), b.m_conData.get(),
-           sizeof(SharedLiberties)*T*(T+1)/2);
-
-    a.m_oppBlocks = b.m_oppBlocks;
-
-    a.m_toPlay = b.m_toPlay;
-    a.m_winner = b.m_winner;
-    a.m_vcWinner = b.m_vcWinner;
-    a.m_vcGroupAnchor = b.m_vcGroupAnchor;
-    a.m_lastMove = b.m_lastMove;
-}
 
 void Board::CheckConsistency()
 {
@@ -899,7 +980,7 @@ std::string Board::ToString()
             os << ' ';
         os << (j+1<10?" ":"") << j+1 << "  "; 
         for (int k = 0; k <= j ; k++) 
-            os << ConstBoard::ColorToChar(GetColor(Const().fatten(j,k))) << "  ";
+            os << ConstBoard::ColorToChar(GetColor(Const().fatten(j,k)))<< "  ";
         os << "\n";
     }
     os << "   ";
@@ -909,232 +990,7 @@ std::string Board::ToString()
     return os.str();
 }
 
-std::string Board::BorderToString() const
-{
-    ostringstream os;
-    const int N = Size();
-
-    os << "\n";
-    for (int j = 0; j < N; j++) {
-        for (int k = 0; k < N-j; k++) 
-            os << ' ';
-        os << (j+1<10?" ":"") << j+1 << "  "; 
-        for (int k = 0; k <= j+1 ; k++) 
-        {
-            char c = '*';
-            cell_t p =  Const().fatten(j-1,k-1);
-	    if (GetColor(p) != SG_EMPTY) {
-                if (GetBlock(p)->m_border != BORDER_NONE)
-                    c = '0' + GetBlock(p)->m_border;
-            }
-            os << "  " << c;
-            
-        }
-        os << "\n";
-    }
-    os << "   ";
-    for (char ch='a'; ch < 'a'+N; ch++) 
-        os << ' ' << ch << ' '; 
-    return os.str();
-}
-
-std::string Board::AnchorsToString() const
-{
-    ostringstream os;
-    const int N = Size();
-    os << "\n" << "Block Anchors for cells:\n\n";
-    for (int j = 0; j < N; j++) {
-	int psn = Const().fatten(j,0);
-	for (int k = 0; k < N-j; k++) 
-	    os << ' ';
-	for (int k = 0; k <= j; k++) {
-	    if(GetColor(psn) != SG_EMPTY) {
-		if(Const().board_row(psn)+1 < 10)
-		    os << ' ';
-		os << ToString(BlockAnchor(psn));
-	    }
-	    else
-		os << " * ";
-	    psn++;
-	}
-	os << "\n";
-    }
-    return os.str();
-}
-
-//////////////////////////////////////////////////////////////////////
-
-void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to)
-{
-    cell_t p1 = from->m_anchor;
-    cell_t p2 = to->m_anchor;
-    for(CellAndEdgeIterator i(Const()); i; ++i) 
-    {
-        if (GetColor(*i) == SG_EMPTY) 
-        {
-            GetCell(*i)->RemoveSemiConnection(from, from->m_color);
-            GetCell(*i)->RemoveFullConnection(from, from->m_color);
-
-            // Liberties of new captain don't need to be changed
-            if (to->m_liberties.Contains(*i))
-                continue;
-            
-            // Liberties of from now are adjacent to to
-            if (from->m_liberties.Contains(*i)) {
-                GetCell(*i)->RemoveSemiConnection(to, to->m_color);
-                GetCell(*i)->AddFull(to, to->m_color);
-                continue;
-            }
-        } 
-        else 
-        {
-            if (GetColor(*i) != to->m_color)
-                continue;
-            if (!IsBlockAnchor(*i))
-                continue;
-            // TODO: remove mention to connection to from in this block
-        }
-        
-        // No liberties to transfer
-        if (GetConnection(p1,*i).Size() == 0)
-            continue;
-
-        for(int j = 0; j < GetConnection(p1,*i).Size(); ++j) {
-            AddCellToConnection(p2, *i, GetConnection(p1, *i).m_liberties[j]);
-        }
-        if (IsEmpty(*i)) {
-            PromoteConnectionType(*i, to, to->m_color);
-        }
-    }
-}
-
-void Board::PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color)
-{
-    Cell* cell = GetCell(p);
-    if (cell->IsFullConnected(b, color))
-        return;
-    int size = (int)GetConnection(p, b->m_anchor).Size();
-    if (size == 1) {
-	cell->AddSemi(b, color);
-    }
-    else {        
-        cell->RemoveSemiConnection(b, color);
-        cell->AddFull(b, color);
-    }
-}
-
-void Board::DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color)
-{
-    // Just removed a cell from this connection
-    Cell* cell = GetCell(p);
-    int size = (int)GetConnection(p, b->m_anchor).Size();
-    if (size >= 2) {
-        if (!cell->IsFullConnected(b, color))
-        {
-            std::cerr << "MORE THAN 2 LIBERTIES BUT NOT FULL CONNECTED!!\n";
-            std::cerr << ToString() << '\n'
-                      << " p = " << ToString(p)
-                      << " b = " << ToString(b->m_anchor) 
-                      << '\n';
-            for (int i =0; i < GetConnection(p, b->m_anchor).Size(); ++i) {
-                std::cerr << ' ' << ToString(GetConnection(p, b->m_anchor).m_liberties[i]);
-                std::cerr << '\n';
-            }
-            abort();
-        }
-        return;
-    }
-    if (size == 0) {
-        cell->RemoveSemiConnection(b, color);
-        
-    }
-    else if(size == 1) {
-        cell->RemoveFullConnection(b, color);
-	cell->AddSemi(b, color);
-    }
-}
-
-//////////////////////////////////////////////////////////////////////
-
-std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
-{
-    std::vector<cell_t> ret;
-    if (IsEmpty(p)) 
-    {
-        Append(ret, GetCell(p)->m_FullConnects[c]);
-        return ret;
-    }
-    const Block* b = GetBlock(p);
-    if (IsBorder(p))
-    {
-        // If edge: need to look on for given color
-        for (int i = 0; i < b->m_con.Length(); ++i) {
-            if (GetBlock(b->m_con[i])->m_color == c
-                && GetConnection(b->m_anchor, b->m_con[i]).Size() != 1)
-                ret.push_back(b->m_con[i]);
-        }
-    }
-    else if (c == b->m_color)
-    {
-        // look from block's perspective
-        for (int i = 0; i < b->m_con.Length(); ++i) {
-            if (GetConnection(b->m_anchor, b->m_con[i]).Size() != 1)
-                ret.push_back(b->m_con[i]);
-        }
-    }
-    for (CellIterator i(Const()); i; ++i) {
-        if (IsOccupied(*i))
-            continue;
-        if (GetCell(*i)->IsFullConnected(b, c))
-            ret.push_back(*i);
-    }
-    return ret;
-}
-
-std::vector<cell_t> Board::SemiConnectedTo(cell_t p, SgBlackWhite c) const
-{
-    std::vector<cell_t> ret;
-    if (IsEmpty(p)) {
-        Append(ret, GetCell(p)->m_SemiConnects[c]);
-        return ret;
-    }
-    const Block* b = GetBlock(p);
-    if (IsBorder(p)) 
-    {
-        for (int i = 0; i < b->m_con.Length(); ++i) {
-            if (GetBlock(b->m_con[i])->m_color == c
-                && GetConnection(b->m_anchor, b->m_con[i]).Size() == 1)
-                ret.push_back(b->m_con[i]);
-        }
-    }
-    else if (c == b->m_color)
-    {
-        for (int i = 0; i < b->m_con.Length(); ++i) {
-            if (GetConnection(b->m_anchor, b->m_con[i]).Size() == 1)
-                ret.push_back(b->m_con[i]);
-        }
-    }
-    for (CellIterator i(Const()); i; ++i) {
-        if (IsOccupied(*i))
-            continue;
-        if (GetCell(*i)->IsSemiConnected(b, c))
-            ret.push_back(*i);
-    }
-    return ret;
-}
-
-std::vector<cell_t> Board::GetCarrierBetween(cell_t p1, cell_t p2) const 
-{
-    if (IsOccupied(p1))
-        p1 = GetBlock(p1)->m_anchor;
-    if (IsOccupied(p2))
-        p2 = GetBlock(p2)->m_anchor;
-    std::vector<cell_t> ret;
-    Append(ret, GetConnection(p1, p2).m_liberties);
-    return ret;
-}
-
-//////////////////////////////////////////////////////////////////////
+//---------------------------------------------------------------------------
 
 SgMove Board::MaintainConnection(cell_t b1, cell_t b2) const
 {
@@ -1252,5 +1108,85 @@ bool Board::IsCellDead(cell_t p) const
 	lastColor = color;
     }
     return false;
+}
+
+//---------------------------------------------------------------------------
+
+std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
+{
+    std::vector<cell_t> ret;
+    if (IsEmpty(p)) 
+    {
+        Append(ret, GetCell(p)->m_FullConnects[c]);
+        return ret;
+    }
+    const Block* b = GetBlock(p);
+    if (IsBorder(p))
+    {
+        // If edge: need to look on for given color
+        for (int i = 0; i < b->m_con.Length(); ++i) {
+            if (GetBlock(b->m_con[i])->m_color == c
+                && GetConnection(b->m_anchor, b->m_con[i]).Size() != 1)
+                ret.push_back(b->m_con[i]);
+        }
+    }
+    else if (c == b->m_color)
+    {
+        // look from block's perspective
+        for (int i = 0; i < b->m_con.Length(); ++i) {
+            if (GetConnection(b->m_anchor, b->m_con[i]).Size() != 1)
+                ret.push_back(b->m_con[i]);
+        }
+    }
+    for (CellIterator i(Const()); i; ++i) {
+        if (IsOccupied(*i))
+            continue;
+        if (GetCell(*i)->IsFullConnected(b, c))
+            ret.push_back(*i);
+    }
+    return ret;
+}
+
+std::vector<cell_t> Board::SemiConnectedTo(cell_t p, SgBlackWhite c) const
+{
+    std::vector<cell_t> ret;
+    if (IsEmpty(p)) {
+        Append(ret, GetCell(p)->m_SemiConnects[c]);
+        return ret;
+    }
+    const Block* b = GetBlock(p);
+    if (IsBorder(p)) 
+    {
+        for (int i = 0; i < b->m_con.Length(); ++i) {
+            if (GetBlock(b->m_con[i])->m_color == c
+                && GetConnection(b->m_anchor, b->m_con[i]).Size() == 1)
+                ret.push_back(b->m_con[i]);
+        }
+    }
+    else if (c == b->m_color)
+    {
+        for (int i = 0; i < b->m_con.Length(); ++i) {
+            if (GetConnection(b->m_anchor, b->m_con[i]).Size() == 1)
+                ret.push_back(b->m_con[i]);
+        }
+    }
+    for (CellIterator i(Const()); i; ++i) {
+        if (IsOccupied(*i))
+            continue;
+        if (GetCell(*i)->IsSemiConnected(b, c))
+            ret.push_back(*i);
+    }
+    return ret;
+}
+
+std::vector<cell_t> Board::GetCarrierBetween(cell_t p1, cell_t p2) const 
+{
+    if (IsOccupied(p1))
+        p1 = GetBlock(p1)->m_anchor;
+    if (IsOccupied(p2))
+        p2 = GetBlock(p2)->m_anchor;
+    std::vector<cell_t> ret;
+    Append(ret, GetConnection(p1, p2).m_liberties);
+    return ret;
 }
 
