@@ -13,6 +13,8 @@
 #include "VectorIterator.h"
 #include "WeightedRandom.h"
 
+#include <boost/scoped_array.hpp>
+
 //---------------------------------------------------------------------------
 
 template<typename T>
@@ -282,7 +284,7 @@ struct Board
             for (int j = i + 1; j < g->m_blocks.Length(); ++j) {
                 const SharedLiberties& sl 
                     = GetSharedLiberties(g->m_blocks[i], g->m_blocks[j]);
-                for (size_t k = 0; k < sl.Size(); ++k) {
+                for (int k = 0; k < sl.Size(); ++k) {
                     if (!Contains(ret, sl.m_liberties[k]))
                         ret.push_back(sl.m_liberties[k]);
                 }
@@ -385,7 +387,7 @@ private:
 
     struct SharedLiberties
     {
-        static const size_t MAX_LIBERTIES = 8;
+        static const int MAX_LIBERTIES = 8;
 
         SgArrayList<cell_t, MAX_LIBERTIES> m_liberties;
 
@@ -399,7 +401,7 @@ private:
         bool Empty() const
         { return m_liberties.IsEmpty(); }
 
-        size_t Size() const
+        int Size() const
         { return m_liberties.Length(); }
 
         bool Contains(cell_t p) const
@@ -429,18 +431,21 @@ private:
     {
         static const int MAX_STONES = Y_MAX_CELL;
         static const int MAX_LIBERTIES = Y_MAX_CELL;
+        static const int MAX_CONNECTIONS = Y_MAX_CELL;
 
         typedef SgArrayList<int, MAX_LIBERTIES> LibertyList;
         typedef LibertyList::Iterator LibertyIterator;
         typedef SgArrayList<int, MAX_STONES> StoneList;
         typedef StoneList::Iterator StoneIterator;
+        typedef SgArrayList<int, MAX_CONNECTIONS> ConnectionList;
+        typedef ConnectionList::Iterator ConnectionIterator;
 
         cell_t m_anchor;
         int m_border;
         SgBlackWhite m_color;
         LibertyList m_liberties;    
         StoneList m_stones;
-	std::vector<cell_t> m_con;
+        ConnectionList m_con;
 
         Block()
         { }
@@ -455,7 +460,7 @@ private:
 
         int GetConnectionIndex(const Block* b2) const
         {
-            for(size_t i = 0; i != m_con.size(); ++i)
+            for(int i = 0; i != m_con.Length(); ++i)
                 if (m_con[i] == b2->m_anchor)
                     return i;
             return -1;
@@ -465,7 +470,7 @@ private:
         {
             std::ostringstream os;
             os << "[";
-            for (size_t i = 0; i < m_con.size(); ++i) {
+            for (int i = 0; i < m_con.Length(); ++i) {
                 if (i) os << ",";
                 os << "[" << cbrd.ToString(m_con[i]) << "]";
             }
@@ -567,14 +572,14 @@ private:
 
     struct State 
     {
-        std::vector<SgBoardColor> m_color;
-	std::vector<Cell> m_cellList;
-        std::vector<cell_t> m_blockIndex;
-        std::vector<Block> m_blockList;
-	std::vector<cell_t> m_groupIndex;
-	std::vector<Group> m_groupList;
-        std::vector<std::vector<SharedLiberties> > m_con;
-        //SharedLiberties m_con[Y_MAX_CELL][Y_MAX_CELL];
+        boost::scoped_array<SgBoardColor> m_color;
+	boost::scoped_array<Cell> m_cellList;
+        boost::scoped_array<cell_t> m_blockIndex;
+        boost::scoped_array<Block> m_blockList;
+	boost::scoped_array<cell_t> m_groupIndex;
+	boost::scoped_array<Group> m_groupList;
+        boost::scoped_array<SharedLiberties> m_conData;
+        boost::scoped_array<SharedLiberties*> m_con;
 
         SgArrayList<cell_t, 3> m_oppBlocks;
                 
@@ -584,6 +589,8 @@ private:
         cell_t       m_vcGroupAnchor;
         cell_t       m_lastMove;
 
+        State() { };
+        State(int T);
         void Init(int T);
         void CopyState(const State& other);
     };
@@ -671,14 +678,14 @@ private:
 
     SharedLiberties& GetConnection(cell_t p1, cell_t p2)
     {
-        if (p2 > p1) std::swap(p1,p2);
-        return m_state.m_con[p1][p2];
+        if (p1 > p2) std::swap(p1,p2);
+        return m_state.m_con[p1][p2-p1];
     }
 
     const SharedLiberties& GetConnection(cell_t p1, cell_t p2) const
     {
-        if (p2 > p1) std::swap(p1,p2);
-        return m_state.m_con[p1][p2];
+        if (p1 > p2) std::swap(p1,p2);
+        return m_state.m_con[p1][p2-p1];
     }
 
     void AddCellToConnection(cell_t p1, cell_t p2, cell_t cell)
