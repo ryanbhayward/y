@@ -520,8 +520,6 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         const Block* adjBlock = GetBlock(*it);
         if (adjBlock == largestBlock)
             continue;
-	MergeBlockConnections(adjBlock, largestBlock);
-	UpdateConnectionsToNewAnchor(adjBlock, largestBlock, seen);
         largestBlock->m_border |= adjBlock->m_border;
         for (Block::StoneIterator stn(adjBlock->m_stones); stn; ++stn)
         {
@@ -541,6 +539,8 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
                 GetConnection(*lib, largestBlock->m_anchor).Clear();
             }
         }
+	MergeBlockConnections(adjBlock, largestBlock);
+	UpdateConnectionsToNewAnchor(adjBlock, largestBlock, seen);
     }
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY && !seen[*it]) {
