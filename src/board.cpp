@@ -347,7 +347,7 @@ void Board::AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip)
             continue;
         if (GetColor(*it) == SgOppBW(b1->m_color))
             continue;
-        if (GetColor(*it) == SG_EMPTY){
+        if (GetColor(*it) == SG_EMPTY) {
             if (!IsAdjacent(*it, b1)) {
                 AddCellToConnection(b1->m_anchor, *it, p);
                 PromoteConnectionType(*it, b1, b1->m_color);
@@ -408,20 +408,23 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
 {
     b->m_border |= border;
     b->m_stones.PushBack(p);
+    SgArrayList<cell_t, 6> newlib;
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY) {
             if (!IsAdjacent(*it, b)) {
                 b->m_liberties.PushBack(*it);
-
-                GetCell(*it)->AddFull(b, b->m_color);
-                GetCell(*it)->RemoveSemiConnection(b, b->m_color);
-                GetConnection(*it, b->m_anchor).Clear();
-
-                AddSharedLibertiesAroundPoint(b, *it, p);
+                newlib.PushBack(*it);
             }
         }
     }
     m_state.m_blockIndex[p] = b->m_anchor;
+    for (int i = 0; i < newlib.Length(); ++i) {
+        cell_t c = newlib[i];
+        GetCell(c)->AddFull(b, b->m_color);
+        GetCell(c)->RemoveSemiConnection(b, b->m_color);
+        GetConnection(c, b->m_anchor).Clear();
+        AddSharedLibertiesAroundPoint(b, c, p);
+    }
     m_state.m_groupIndex[p] = m_state.m_groupIndex[b->m_anchor];
     RemoveEdgeSharedLiberties(b);
     ComputeGroupForBlock(b);
