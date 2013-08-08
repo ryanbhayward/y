@@ -250,17 +250,18 @@ struct Board
 
     const ConstBoard& Const() const { return m_constBrd; }
 
+    void SetPosition(const Board& other);
     void SetSize(int size);
     int Size() const { return Const().Size(); }
+
     cell_t PointInDir(cell_t cell, int dir) const 
     { return Const().PointInDir(cell, dir); }
-
-    void SetPosition(const Board& other);
-
     std::string ToString();
     static std::string ToString(cell_t p) { return ConstBoard::ToString(p); }
 
     SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };
+
+    //------------------------------------------------------------
 
     bool IsGameOver() const { return m_state.m_winner != SG_EMPTY; }
     SgBoardColor GetWinner() const { return m_state.m_winner; }
@@ -273,24 +274,7 @@ struct Board
     { return player == m_state.m_vcWinner; }
     cell_t WinningVCGroup() const { return m_state.m_vcGroupAnchor; }
 
-    std::vector<cell_t> GroupCarrier(cell_t p) const
-    {
-        std::vector<cell_t> ret;
-        const Group* g = GetGroup(GroupAnchor(p));
-        for (int i = 0; i < g->m_blocks.Length(); ++i) {
-            for (int j = i + 1; j < g->m_blocks.Length(); ++j) {
-                const Carrier& sl 
-                    = GetConnection(g->m_blocks[i], g->m_blocks[j]);
-                for (int k = 0; k < sl.Size(); ++k) {
-                    if (!Contains(ret, sl[k]))
-                        ret.push_back(sl[k]);
-                }
-            }
-        }
-        return ret;
-    }
-
-    void Swap();
+    //------------------------------------------------------------
 
     bool IsOccupied(cell_t cell) const 
     { return m_state.m_color[cell] != SG_EMPTY; }
@@ -310,31 +294,15 @@ struct Board
 
     void RemoveStone(cell_t lcn);
     cell_t LastMove() const { return m_state.m_lastMove; }
-    void SetLastMove(cell_t lcn) { m_state.m_lastMove = lcn; } // used after undo
+    void SetLastMove(cell_t lcn) { m_state.m_lastMove = lcn; }
+
+    //------------------------------------------------------------
+
+    void Swap();
     void Play(SgBlackWhite color, cell_t p);
 
-    // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
-    // a move to reestablish the connection.
-    int SaveBridge(cell_t lastMove, const SgBlackWhite toPlay, 
-                   SgRandom& random) const;
-
-    SgMove MaintainConnection(cell_t b1, cell_t b2) const;
-    // Returns SG_NULLMOVE if no savebridge pattern matches last move played
-    void GeneralSaveBridge(LocalMoves& local) const;
-
-    bool IsCellDead(cell_t p) const;
-
-    cell_t BlockAnchor(cell_t p) const 
-    { return GetBlock(p)->m_anchor; }
-
-    bool IsBlockAnchor(cell_t p) const
-    { return BlockAnchor(p) == p; } 
-
-    cell_t GroupAnchor(cell_t p) const
-    { return GetGroup(BlockAnchor(p))->m_anchor; }
-
-    int GroupBorder(cell_t p) const
-    { return GetGroup(BlockAnchor(p))->m_border; }
+    //------------------------------------------------------------
+    // Blocks
 
     bool IsInBlock(cell_t p, cell_t anchor) const
     { return GetBlock(p)->m_anchor == anchor; }
@@ -342,40 +310,61 @@ struct Board
     bool IsLibertyOfBlock(cell_t p, cell_t anchor) const
     { return GetBlock(anchor)->m_liberties.Contains(p); }
 
-    bool IsSharedLiberty(cell_t p1, cell_t p2, cell_t p) const
-    { return GetConnection(p1, p2).Contains(p); }
+    cell_t BlockAnchor(cell_t p) const 
+    { return GetBlock(p)->m_anchor; }
 
-    std::vector<cell_t> GetBlocksInGroup(cell_t p) const
-    {
-	std::vector<cell_t> ret;
-        const Group* g = GetGroup(BlockAnchor(p));
-        for (int i = 0; i < g->m_blocks.Length(); ++i) {
-            ret.push_back(g->m_blocks[i]);
-            if (g->m_blocks[i] == g->m_anchor)
-                std::swap(ret.back(), ret[0]);
-        }
-	return ret;
-    }
+    bool IsBlockAnchor(cell_t p) const
+    { return BlockAnchor(p) == p; } 
 
     std::string BlockInfo(cell_t p) const
     { return GetBlock(p)->ToString(Const()); }
 
-    std::string CellInfo(cell_t p) const
-    { return GetCell(p)->ToString(Const()); }
+    //------------------------------------------------------------
+    // Groups
+
+    cell_t GroupAnchor(cell_t p) const
+    { return GetGroup(BlockAnchor(p))->m_anchor; }
+
+    int GroupBorder(cell_t p) const
+    { return GetGroup(BlockAnchor(p))->m_border; }
+
+    //------------------------------------------------------------
+    // Gui access functions
 
     std::vector<cell_t> FullConnectedTo(cell_t p, SgBlackWhite c) const;
     std::vector<cell_t> SemiConnectedTo(cell_t p, SgBlackWhite c) const;
     std::vector<cell_t> GetCarrierBetween(cell_t p1, cell_t p2) const;
-    
+    std::vector<cell_t> GetBlocksInGroup(cell_t p) const;
+    std::vector<cell_t> GroupCarrier(cell_t p) const;
+
+    // ------------------------------------------------------------
+
+    std::string CellInfo(cell_t p) const
+    { return GetCell(p)->ToString(Const()); }
+
+    bool IsCellDead(cell_t p) const;
+
+    // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
+    // a move to reestablish the connection.
+    int SaveBridge(cell_t lastMove, const SgBlackWhite toPlay, 
+                   SgRandom& random) const;
+
+    // Returns SG_NULLMOVE if no savebridge pattern matches last move played
+    void GeneralSaveBridge(LocalMoves& local) const;
+
+    // ------------------------------------------------------------
+
     void SetSavePoint1()      { CopyState(m_savePoint1, m_state); }
     void SetSavePoint2()      { CopyState(m_savePoint2, m_state); }
     void RestoreSavePoint1()  { CopyState(m_state, m_savePoint1); }
     void RestoreSavePoint2()  { CopyState(m_state, m_savePoint2); }
 
+    // ------------------------------------------------------------
+
     void CheckConsistency();
     void DumpBlocks() ;
-private:
 
+private:
     static const int BORDER_NONE  = 0; // 000   border values, used bitwise
     static const int BORDER_SOUTH = 1; // 001
     static const int BORDER_WEST  = 2; // 010
@@ -413,11 +402,11 @@ private:
         static const int MAX_LIBERTIES = Y_MAX_CELL;
         static const int MAX_CONNECTIONS = Y_MAX_CELL;
 
-        typedef SgArrayList<int, MAX_LIBERTIES> LibertyList;
+        typedef SgArrayList<cell_t, MAX_LIBERTIES> LibertyList;
         typedef LibertyList::Iterator LibertyIterator;
-        typedef SgArrayList<int, MAX_STONES> StoneList;
+        typedef SgArrayList<cell_t, MAX_STONES> StoneList;
         typedef StoneList::Iterator StoneIterator;
-        typedef SgArrayList<int, MAX_CONNECTIONS> ConnectionList;
+        typedef SgArrayList<cell_t, MAX_CONNECTIONS> ConnectionList;
         typedef ConnectionList::Iterator ConnectionIterator;
 
         cell_t m_anchor;
@@ -625,6 +614,8 @@ private:
     void RemoveEdgeSharedLiberties(Block* b);
 
     void CopyState(Board::State& a, const Board::State& b);
+
+    SgMove MaintainConnection(cell_t b1, cell_t b2) const;
 
     cell_t BlockIndex(cell_t p) const
     { return m_state.m_blockIndex[p]; }

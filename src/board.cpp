@@ -1180,3 +1180,31 @@ std::vector<cell_t> Board::GetCarrierBetween(cell_t p1, cell_t p2) const
     return ret;
 }
 
+std::vector<cell_t> Board::GetBlocksInGroup(cell_t p) const
+{
+    std::vector<cell_t> ret;
+    const Group* g = GetGroup(BlockAnchor(p));
+    for (int i = 0; i < g->m_blocks.Length(); ++i) {
+        ret.push_back(g->m_blocks[i]);
+        if (g->m_blocks[i] == g->m_anchor)
+            std::swap(ret.back(), ret[0]);
+    }
+    return ret;
+}
+
+std::vector<cell_t> Board::GroupCarrier(cell_t p) const
+{
+    std::vector<cell_t> ret;
+    const Group* g = GetGroup(GroupAnchor(p));
+    for (int i = 0; i < g->m_blocks.Length(); ++i) {
+        for (int j = i + 1; j < g->m_blocks.Length(); ++j) {
+            const Carrier& sl 
+                = GetConnection(g->m_blocks[i], g->m_blocks[j]);
+            for (int k = 0; k < sl.Size(); ++k) {
+                if (!Contains(ret, sl[k]))
+                        ret.push_back(sl[k]);
+            }
+        }
+    }
+    return ret;
+}
