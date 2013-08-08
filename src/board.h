@@ -400,7 +400,7 @@ private:
     {
         static const int MAX_STONES = Y_MAX_CELL;
         static const int MAX_LIBERTIES = Y_MAX_CELL;
-        static const int MAX_CONNECTIONS = Y_MAX_CELL;
+        static const int MAX_CONNECTIONS = Y_MAX_CELL / 2;
 
         typedef SgArrayList<cell_t, MAX_LIBERTIES> LibertyList;
         typedef LibertyList::Iterator LibertyIterator;
@@ -460,11 +460,10 @@ private:
 
     struct Group
     {
-	static const size_t MAX_BLOCKS = Y_MAX_CELL/4;
+	static const size_t MAX_BLOCKS = Y_MAX_CELL/2;
 
 	cell_t m_anchor;
 	int m_border;
-
 	SgArrayList<cell_t, MAX_BLOCKS> m_blocks;
 
 	Group()
