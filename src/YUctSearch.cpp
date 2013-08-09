@@ -210,6 +210,9 @@ void YUctThreadState::InitializeWeights()
             } else {
                 m_weights[SG_BLACK][*it] = 1.0;
                 m_weights[SG_WHITE][*it] = 1.0;
+		float w = m_brd.WeightCell(*it);
+		m_weights[SG_BLACK][*it] += w;
+		m_weights[SG_WHITE][*it] += w;
             }
         }
     }

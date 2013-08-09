@@ -69,6 +69,8 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("semi_connected_with",
 		&YGtpEngine::CmdSemiConnectedWith);
     RegisterCmd("carrier_between", &YGtpEngine::CmdCarrierBetween);
+    RegisterCmd("full_connects_multiple", 
+		&YGtpEngine::CmdFullConnectsMultipleBlocks);
 
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
@@ -107,6 +109,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "plist/Full Connected With/full_connected_with %p %c\n"
 	"plist/Semi Connected With/semi_connected_with %p %c\n"
 	"plist/Carrier Between/carrier_between %P\n"
+	"plist/Full Connects Multiple Blocks/full_connects_multiple %c\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
 	"group/Group Blocks/group_blocks %p\n"
@@ -687,6 +690,17 @@ void YGtpEngine::CmdCarrierBetween(GtpCommand& cmd)
     std::stable_sort(cells.begin(), cells.end());
     for (size_t i = 0; i < cells.size(); ++i) {
         cmd << ' ' << m_brd.ToString(cells[i]);
+    }
+}
+
+void YGtpEngine::CmdFullConnectsMultipleBlocks(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    SgBlackWhite color = ColorArg(cmd, 0);
+    std::vector<cell_t> blocks = m_brd.FullConnectsMultipleBlocks(color);
+    std::stable_sort(blocks.begin(), blocks.end());
+    for (size_t i = 0; i < blocks.size(); ++i) {
+        cmd << ' ' << m_brd.ToString(blocks[i]);
     }
 }
 

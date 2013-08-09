@@ -62,6 +62,7 @@ public:
     void CmdFullConnectedWith(GtpCommand& cmd);
     void CmdSemiConnectedWith(GtpCommand& cmd);
     void CmdCarrierBetween(GtpCommand& cmd);
+    void CmdFullConnectsMultipleBlocks(GtpCommand& cmd);
 
     void CmdBlockInfo(GtpCommand& cmd);
     void CmdBlockStones(GtpCommand& cmd);

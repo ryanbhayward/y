@@ -1101,6 +1101,17 @@ bool Board::IsCellDead(cell_t p) const
     return false;
 }
 
+float Board::WeightCell(cell_t p) const
+{
+    float ret = 0;
+    const Cell* cell = GetCell(p);
+    ret += cell->m_FullConnects[SG_BLACK].Length();
+    ret += cell->m_FullConnects[SG_WHITE].Length();
+    ret += (0.5) * cell->m_SemiConnects[SG_BLACK].Length();
+    ret += (0.5) * cell->m_SemiConnects[SG_WHITE].Length();
+    return ret;
+}
+
 //---------------------------------------------------------------------------
 
 std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
@@ -1133,6 +1144,18 @@ std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
         if (IsOccupied(*i))
             continue;
         if (GetCell(*i)->IsFullConnected(b, c))
+            ret.push_back(*i);
+    }
+    return ret;
+}
+
+std::vector<cell_t> Board::FullConnectsMultipleBlocks(SgBlackWhite c) const
+{
+    std::vector<cell_t> ret;
+    for (CellIterator i(Const()); i; ++i) {
+        if (IsOccupied(*i))
+            continue;
+        if (GetCell(*i)->m_FullConnects[c].Length() > 1)
             ret.push_back(*i);
     }
     return ret;

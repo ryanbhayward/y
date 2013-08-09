@@ -336,6 +336,7 @@ struct Board
     std::vector<cell_t> GetCarrierBetween(cell_t p1, cell_t p2) const;
     std::vector<cell_t> GetBlocksInGroup(cell_t p) const;
     std::vector<cell_t> GroupCarrier(cell_t p) const;
+    std::vector<cell_t> FullConnectsMultipleBlocks(SgBlackWhite c) const;
 
     // ------------------------------------------------------------
 
@@ -351,6 +352,8 @@ struct Board
 
     // Returns SG_NULLMOVE if no savebridge pattern matches last move played
     void GeneralSaveBridge(LocalMoves& local) const;
+
+    float WeightCell(cell_t p) const;
 
     // ------------------------------------------------------------
 
