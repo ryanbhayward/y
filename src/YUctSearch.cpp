@@ -53,37 +53,24 @@ YUctThreadState::~YUctThreadState()
     delete [] m_weights;
 }
 
-SgUctValue YUctThreadState::Evaluate()
+void YUctThreadState::StartSearch()
 {
-    SG_ASSERT(m_brd.IsGameOver());
-    return m_brd.IsWinner(m_brd.ToPlay()) ? 1.0 : 0.0;
+    m_brd.SetPosition(m_search.GetBoard());
+    m_brd.SetSavePoint1();
 }
 
-void YUctThreadState::Execute(SgMove move)
+void YUctThreadState::GameStart()
 {
-    // std::cerr << m_brd.ToString() << '\n'
-    //           << "move=" << m_brd.ToString(move) << '\n';
-    m_brd.Play(m_brd.ToPlay(), move);
+    m_brd.RestoreSavePoint1();
 }
 
-void YUctThreadState::ExecutePlayout(SgMove move)
-{
-    // std::cerr << m_brd.ToString() << '\n'
-    //           << "move=" << m_brd.ToString(move) << '\n';
-    m_brd.Play(m_brd.ToPlay(), move);
-    m_weights[SG_BLACK].SetWeight(move, 0.0f);
-    m_weights[SG_WHITE].SetWeight(move, 0.0f);
 
-    // find dead cells
-    for (CellNbrIterator it(m_brd.Const(), move); it; ++it){
-	if(m_brd.IsEmpty(*it)) {
-            if (m_brd.IsCellDead(*it)) {
-                m_weights[SG_BLACK].SetWeight(*it,LocalMoves::WEIGHT_DEAD_CELL);
-                m_weights[SG_WHITE].SetWeight(*it,LocalMoves::WEIGHT_DEAD_CELL);
-                m_brd.MarkCellAsDead(*it);
-            }
-	}
-    }
+//---------------------------------------------------------------------------
+// Tree stuff
+
+void YUctThreadState::TakeBackInTree(std::size_t nuMoves)
+{
+    SG_UNUSED(nuMoves);
 }
 
 bool YUctThreadState::GenerateAllMoves(SgUctValue count, 
@@ -116,6 +103,22 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
     }
     provenType = SG_NOT_PROVEN;
     return false;
+}
+
+void YUctThreadState::Execute(SgMove move)
+{
+    // std::cerr << m_brd.ToString() << '\n'
+    //           << "move=" << m_brd.ToString(move) << '\n';
+    m_brd.Play(m_brd.ToPlay(), move);
+}
+
+//---------------------------------------------------------------------------
+// Playout stuff
+
+SgUctValue YUctThreadState::Evaluate()
+{
+    SG_ASSERT(m_brd.IsGameOver());
+    return m_brd.IsWinner(m_brd.ToPlay()) ? 1.0 : 0.0;
 }
 
 SgMove YUctThreadState::GenerateLocalMove()
@@ -179,15 +182,32 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
     return move;
 }
 
-void YUctThreadState::StartSearch()
+void YUctThreadState::ExecutePlayout(SgMove move)
 {
-    m_brd.SetPosition(m_search.GetBoard());
-    m_brd.SetSavePoint1();
+    // std::cerr << m_brd.ToString() << '\n'
+    //           << "move=" << m_brd.ToString(move) << '\n';
+    m_brd.Play(m_brd.ToPlay(), move);
+    m_weights[SG_BLACK].SetWeight(move, 0.0f);
+    m_weights[SG_WHITE].SetWeight(move, 0.0f);
+
+    for (CellNbrIterator it(m_brd.Const(), move); it; ++it) {
+	if(m_brd.IsEmpty(*it)) {
+            ComputeWeight(*it);
+	}
+    }
 }
 
-void YUctThreadState::TakeBackInTree(std::size_t nuMoves)
+void YUctThreadState::InitializeWeights()
 {
-    SG_UNUSED(nuMoves);
+    m_weights[SG_BLACK].Clear();
+    m_weights[SG_WHITE].Clear();
+    for (CellIterator it(m_brd.Const()); it; ++it) {
+        if (m_brd.IsEmpty(*it)) {
+            ComputeWeight(*it);
+        }
+    }
+    m_weights[SG_BLACK].Build();
+    m_weights[SG_WHITE].Build();
 }
 
 void YUctThreadState::TakeBackPlayout(std::size_t nuMoves)
@@ -195,34 +215,8 @@ void YUctThreadState::TakeBackPlayout(std::size_t nuMoves)
     SG_UNUSED(nuMoves);
 }
 
-void YUctThreadState::GameStart()
-{
-    m_brd.RestoreSavePoint1();
-}
+//---------------------------------------------------------------------------
 
-void YUctThreadState::InitializeWeights()
-{
-    m_weights[SG_BLACK].Clear();
-    m_weights[SG_WHITE].Clear();
-    for (CellIterator it(m_brd.Const()); it; ++it)
-    {
-        if (m_brd.IsEmpty(*it)) {
-            if (m_brd.IsCellDead(*it)) {
-                m_weights[SG_BLACK][*it] = LocalMoves::WEIGHT_DEAD_CELL;
-                m_weights[SG_WHITE][*it] = LocalMoves::WEIGHT_DEAD_CELL;
-                m_brd.MarkCellAsDead(*it);
-            } else {
-                m_weights[SG_BLACK][*it] = 1.0;
-                m_weights[SG_WHITE][*it] = 1.0;
-		float w = m_brd.WeightCell(*it);
-		m_weights[SG_BLACK][*it] += w;
-		m_weights[SG_WHITE][*it] += w;
-            }
-        }
-    }
-    m_weights[SG_BLACK].Build();
-    m_weights[SG_WHITE].Build();
-}
 
 void YUctThreadState::StartPlayouts()
 {
@@ -261,6 +255,19 @@ void YUctThreadState::EndPlayout()
 }
 
 //----------------------------------------------------------------------------
+
+void YUctThreadState::ComputeWeight(cell_t p)
+{
+    if (m_brd.IsCellDead(p)) {
+        m_weights[SG_BLACK].SetWeight(p, LocalMoves::WEIGHT_DEAD_CELL);
+        m_weights[SG_WHITE].SetWeight(p, LocalMoves::WEIGHT_DEAD_CELL);
+        m_brd.MarkCellAsDead(p);
+    } else {
+        float w = m_brd.WeightCell(p);
+        m_weights[SG_BLACK].SetWeight(p, w);
+        m_weights[SG_WHITE].SetWeight(p, w);
+    }
+}
 
 void YUctThreadState::GetWeightsForLastMove
 (std::vector<float>& weights, SgBlackWhite toPlay) const

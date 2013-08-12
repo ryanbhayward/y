@@ -81,6 +81,7 @@ public:
 
     LocalMoves m_localMoves;
 
+    void ComputeWeight(cell_t p);
     void InitializeWeights();
     SgMove GenerateLocalMove();
     SgMove GenerateGlobalMove();

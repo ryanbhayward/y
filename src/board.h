@@ -549,7 +549,8 @@ private:
             os << "[Empty=" << this->m_NumAdj[SG_EMPTY]
                << " Black=" << this->m_NumAdj[SG_BLACK]
                << " White=" << this->m_NumAdj[SG_WHITE]
-               << " Fulls=[ ";
+               << " Flags=" << this->m_flags
+               << "]";
             // FullConnectionList& fulls = m_FullConnects[from->m_color];
             // for (int i = 0; i < fulls.Length(); ++i) {
             //     if (i) os << ',';

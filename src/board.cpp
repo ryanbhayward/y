@@ -1105,7 +1105,7 @@ bool Board::IsCellDead(cell_t p) const
 
 float Board::WeightCell(cell_t p) const
 {
-    float ret = 0;
+    float ret = 1.0;
     const Cell* cell = GetCell(p);
     ret += cell->m_FullConnects[SG_BLACK].Length();
     ret += cell->m_FullConnects[SG_WHITE].Length();
