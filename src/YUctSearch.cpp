@@ -190,10 +190,12 @@ void YUctThreadState::ExecutePlayout(SgMove move)
     m_weights[SG_BLACK].SetWeight(move, 0.0f);
     m_weights[SG_WHITE].SetWeight(move, 0.0f);
 
-    for (CellNbrIterator it(m_brd.Const(), move); it; ++it) {
-	if(m_brd.IsEmpty(*it)) {
-            ComputeWeight(*it);
-	}
+    const MarkedCellsWithList& dirty = m_brd.GetAllDirtyCells();
+    Board::Statistics::Get().m_numDirtyCellsPerMove += dirty.m_list.Length();
+    for (MarkedCellsWithList::Iterator i(dirty.m_list); i; ++i) {
+        cell_t p = *i;
+        ComputeWeight(p);
+        m_brd.MarkCellNotDirty(p);
     }
 }
 

@@ -63,6 +63,45 @@ static const int Y_MAX_SIZE = 15;   // such that TotalCells < Y_MAX_CELL
 typedef uint8_t cell_t;
 
 static const int Y_SWAP = -2;  // SG_NULLMOVE == -1
+
+struct MarkedCellsWithList
+{
+    typedef SgArrayList<cell_t, Y_MAX_CELL> ListType;
+    typedef ListType::Iterator Iterator;
+
+    cell_t m_marked[Y_MAX_CELL];
+    SgArrayList<cell_t, Y_MAX_CELL> m_list;
+
+    MarkedCellsWithList()
+    {
+        Clear();
+    }
+
+    void Clear()
+    {
+        memset(m_marked, 0, sizeof(m_marked));
+        m_list.Clear();
+    }
+
+    bool Mark(cell_t p)
+    {
+        if (!m_marked[p]) {
+            m_marked[p] = true;
+            m_list.PushBack(p);
+            return true;
+        }
+        return false;
+    }
+
+    void Unmark(cell_t p) 
+    {
+        if (m_marked[p]) {
+            m_marked[p] = false;
+            m_list.Exclude(p);
+        }
+    }
+};
+
  
 class ConstBoard 
 {
@@ -220,6 +259,10 @@ struct Board
     {
         size_t m_maxSharedLiberties;
 
+        size_t m_numMovesPlayed;
+        
+        size_t m_numDirtyCellsPerMove;
+
         Statistics()
         { 
             Clear(); 
@@ -228,6 +271,8 @@ struct Board
         void Clear()
         {
             m_maxSharedLiberties = 0;
+            m_numMovesPlayed = 0;
+            m_numDirtyCellsPerMove = 0;
         }
 
         std::string ToString() const
@@ -235,6 +280,8 @@ struct Board
             std::ostringstream os;
             os << '['
                << "max_shared_liberties=" << m_maxSharedLiberties
+               << " num_moves_played=" << m_numMovesPlayed
+               << " num_dirty_cells_per_move=" << m_numDirtyCellsPerMove
                << ']';
             return os.str();
         }
@@ -345,6 +392,10 @@ struct Board
 
     bool IsCellDead(cell_t p) const;
     void MarkCellAsDead(cell_t p);
+
+    void MarkCellNotDirty(cell_t p);
+    void MarkCellDirty(cell_t p); 
+    const MarkedCellsWithList& GetAllDirtyCells() const;
 
     // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
     // a move to reestablish the connection.
@@ -503,31 +554,26 @@ private:
         {
             m_FullConnects[SG_BLACK].Include(b->m_anchor);
             m_FullConnects[SG_WHITE].Include(b->m_anchor);
-            SetFlags(FLAG_DIRTY);
         }
 
         void AddFull(const Block* b, SgBlackWhite color)
         {   
             m_FullConnects[color].Include(b->m_anchor); 
-            SetFlags(FLAG_DIRTY); 
         }
 
 	void AddSemi(const Block* b, SgBlackWhite color)
 	{  
             m_SemiConnects[color].Include(b->m_anchor); 
-            SetFlags(FLAG_DIRTY); 
         }
 
-	void RemoveSemiConnection(const Block* b, SgBlackWhite color) 
+	bool RemoveSemiConnection(const Block* b, SgBlackWhite color) 
         {  
-            m_SemiConnects[color].Exclude(b->m_anchor); 
-            SetFlags(FLAG_DIRTY); 
+            return m_SemiConnects[color].Exclude(b->m_anchor); 
         }
 
-	void RemoveFullConnection(const Block* b, SgBlackWhite color) 
+	bool RemoveFullConnection(const Block* b, SgBlackWhite color) 
 	{  
-            m_FullConnects[color].Exclude(b->m_anchor); 
-            SetFlags(FLAG_DIRTY);
+            return m_FullConnects[color].Exclude(b->m_anchor); 
         }
 
 	bool IsSemiConnected(const Block* b, SgBlackWhite color ) const
@@ -580,7 +626,7 @@ private:
         boost::scoped_array<Carrier*> m_con;
 
         SgArrayList<cell_t, 3> m_oppBlocks;
-                
+
         SgBlackWhite m_toPlay;
         SgBoardColor m_winner;
         SgBoardColor m_vcWinner;
@@ -596,6 +642,8 @@ private:
     State m_state;
     State m_savePoint1;
     State m_savePoint2;
+
+    MarkedCellsWithList m_dirtyCells;
 
     void CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border);
 
@@ -692,6 +740,25 @@ private:
 inline void Board::MarkCellAsDead(cell_t p) 
 { 
     GetCell(p)->SetFlags(Cell::FLAG_DEAD);
+}
+
+inline void Board::MarkCellNotDirty(cell_t p)
+{
+    GetCell(p)->ClearFlags(Cell::FLAG_DIRTY);
+    //m_dirtyCells.Unmark(p);
+    // NOTE: no need to call unmark since Board::Play() clears it 
+}
+
+inline void Board::MarkCellDirty(cell_t p) 
+{
+    if (m_dirtyCells.Mark(p)) {
+        GetCell(p)->SetFlags(Cell::FLAG_DIRTY);
+    }
+}
+
+inline const MarkedCellsWithList& Board::GetAllDirtyCells() const
+{
+    return m_dirtyCells;
 }
 
 inline Board::Carrier& Board::GetConnection(cell_t p1, cell_t p2)

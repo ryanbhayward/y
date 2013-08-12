@@ -302,10 +302,12 @@ void Board::PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color)
     int size = (int)GetConnection(p, b->m_anchor).Size();
     if (size == 1) {
 	cell->AddSemi(b, color);
+        MarkCellDirty(p);
     }
     else {        
         cell->RemoveSemiConnection(b, color);
         cell->AddFull(b, color);
+        MarkCellDirty(p);
     }
 }
 
@@ -332,11 +334,12 @@ void Board::DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color)
     }
     if (size == 0) {
         cell->RemoveSemiConnection(b, color);
-        
+        MarkCellDirty(p);        
     }
     else if(size == 1) {
         cell->RemoveFullConnection(b, color);
 	cell->AddSemi(b, color);
+        MarkCellDirty(p);
     }
 }
 
@@ -385,7 +388,10 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY) {
             b->m_liberties.PushBack(*it);
+
             GetCell(*it)->AddFull(b, color);
+            MarkCellDirty(*it);
+
             AddSharedLibertiesAroundPoint(b, *it, p);
 	} else if (GetColor(*it) == SG_BORDER) {
             AddSharedLiberty(b, GetBlock(*it));
@@ -420,11 +426,30 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
     m_state.m_blockIndex[p] = b->m_anchor;
     for (int i = 0; i < newlib.Length(); ++i) {
         cell_t c = newlib[i];
+
         GetCell(c)->AddFull(b, b->m_color);
         GetCell(c)->RemoveSemiConnection(b, b->m_color);
         GetConnection(c, b->m_anchor).Clear();
+        MarkCellDirty(c);
+
         AddSharedLibertiesAroundPoint(b, c, p);
     }
+
+    // NOTE: Need to do this because block has changed, so weights
+    // of any empty cells connecting to b possibly need to change.
+    // This is expensive and stupid.
+    // TODO: have blocks store list of empty cells they are connected to.
+    for(CellIterator i(Const()); i; ++i) 
+    {
+        if (GetColor(*i) == SG_EMPTY) 
+        {
+            Cell* cell = GetCell(*i);
+            if (   cell->IsFullConnected(b, b->m_color) 
+                || cell->IsSemiConnected(b, b->m_color))
+                MarkCellDirty(*i);
+        } 
+    }
+
     m_state.m_groupIndex[p] = m_state.m_groupIndex[b->m_anchor];
     RemoveEdgeSharedLiberties(b);
     ComputeGroupForBlock(b);
@@ -464,8 +489,12 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to,
     {
         if (GetColor(*i) == SG_EMPTY) 
         {
-            GetCell(*i)->RemoveSemiConnection(from, from->m_color);
-            GetCell(*i)->RemoveFullConnection(from, from->m_color);
+            bool removed = false;
+            removed |= GetCell(*i)->RemoveSemiConnection(from, from->m_color);
+            removed |= GetCell(*i)->RemoveFullConnection(from, from->m_color);
+            if (removed)
+                MarkCellDirty(*i);
+
             // Liberties of new captain don't need to be changed
             if (toLiberties[*i])
                 continue;
@@ -537,6 +566,7 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
                                                     largestBlock->m_color);
                 GetCell(*lib)->AddFull(largestBlock, largestBlock->m_color);
                 GetConnection(*lib, largestBlock->m_anchor).Clear();
+                MarkCellDirty(*lib);                
             }
         }
 	MergeBlockConnections(adjBlock, largestBlock);
@@ -610,6 +640,7 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
                         // nuke it for self
                         GetCell(*j)->RemoveSemiConnection(b, GetColor(p)); 
                         GetCell(*j)->RemoveFullConnection(b, GetColor(p));
+                        MarkCellDirty(*j);
                         // NOTE: no connection between p and edge for
                         // p's color, so table is just tracking opp(p) and
                         // edge.
@@ -622,9 +653,12 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
 
 void Board::Play(SgBlackWhite color, cell_t p) 
 {
-    // std::cerr << ToString() << '\n'
+    // std::cerr << "=============================\n"
+    //           << ToString() << '\n'
     //           << "p=" << ToString(p) << '\n'
     //           << "pval=" << (int)p << '\n';
+    Statistics::Get().m_numMovesPlayed++;
+    m_dirtyCells.Clear();
     m_state.m_lastMove = p;    
     m_state.m_toPlay = color;
     m_state.m_color[p] = color;
