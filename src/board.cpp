@@ -1055,6 +1055,8 @@ int Board::SaveBridge(cell_t lastMove, const SgBlackWhite toPlay,
 
 bool Board::IsCellDead(cell_t p) const
 {
+    if (GetCell(p)->IsDead())
+        return false;
     if (NumNeighbours(p, SG_EMPTY) > 2)
         return false;
     if (NumNeighbours(p, SG_BLACK) >= 4)

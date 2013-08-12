@@ -76,9 +76,12 @@ void YUctThreadState::ExecutePlayout(SgMove move)
 
     // find dead cells
     for (CellNbrIterator it(m_brd.Const(), move); it; ++it){
-	if(m_brd.IsEmpty(*it) && m_brd.IsCellDead(*it)) {
-	    m_weights[SG_BLACK].SetWeight(*it, LocalMoves::WEIGHT_DEAD_CELL);
-	    m_weights[SG_WHITE].SetWeight(*it, LocalMoves::WEIGHT_DEAD_CELL);
+	if(m_brd.IsEmpty(*it)) {
+            if (m_brd.IsCellDead(*it)) {
+                m_weights[SG_BLACK].SetWeight(*it,LocalMoves::WEIGHT_DEAD_CELL);
+                m_weights[SG_WHITE].SetWeight(*it,LocalMoves::WEIGHT_DEAD_CELL);
+                m_brd.MarkCellAsDead(*it);
+            }
 	}
     }
 }
@@ -207,6 +210,7 @@ void YUctThreadState::InitializeWeights()
             if (m_brd.IsCellDead(*it)) {
                 m_weights[SG_BLACK][*it] = LocalMoves::WEIGHT_DEAD_CELL;
                 m_weights[SG_WHITE][*it] = LocalMoves::WEIGHT_DEAD_CELL;
+                m_brd.MarkCellAsDead(*it);
             } else {
                 m_weights[SG_BLACK][*it] = 1.0;
                 m_weights[SG_WHITE][*it] = 1.0;

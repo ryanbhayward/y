@@ -344,6 +344,7 @@ struct Board
     { return GetCell(p)->ToString(Const()); }
 
     bool IsCellDead(cell_t p) const;
+    void MarkCellAsDead(cell_t p);
 
     // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
     // a move to reestablish the connection.
@@ -481,13 +482,19 @@ private:
 
     struct Cell
     {
-	int m_NumAdj[3];
-        typedef SgArrayList<cell_t, 6> SemiConnectionList;        
-        typedef SgArrayList<cell_t, 6> FullConnectionList;        
+        typedef SgArrayList<cell_t, 6> SemiConnectionList;
+        typedef SgArrayList<cell_t, 6> FullConnectionList;
+
+        static const int FLAG_DIRTY = 1;
+        static const int FLAG_DEAD  = 2;
+
 	SemiConnectionList m_SemiConnects[2];
 	FullConnectionList m_FullConnects[2];
+	int m_NumAdj[3];
+        int m_flags;
 
 	Cell()
+            : m_flags(0)
 	{
 	    memset(m_NumAdj, 0, sizeof(m_NumAdj));
         }
@@ -496,25 +503,44 @@ private:
         {
             m_FullConnects[SG_BLACK].Include(b->m_anchor);
             m_FullConnects[SG_WHITE].Include(b->m_anchor);
+            SetFlags(FLAG_DIRTY);
         }
 
         void AddFull(const Block* b, SgBlackWhite color)
-        {  m_FullConnects[color].Include(b->m_anchor); }
+        {   
+            m_FullConnects[color].Include(b->m_anchor); 
+            SetFlags(FLAG_DIRTY); 
+        }
 
 	void AddSemi(const Block* b, SgBlackWhite color)
-	{  m_SemiConnects[color].Include(b->m_anchor); }
+	{  
+            m_SemiConnects[color].Include(b->m_anchor); 
+            SetFlags(FLAG_DIRTY); 
+        }
 
 	void RemoveSemiConnection(const Block* b, SgBlackWhite color) 
-        {  m_SemiConnects[color].Exclude(b->m_anchor); }
+        {  
+            m_SemiConnects[color].Exclude(b->m_anchor); 
+            SetFlags(FLAG_DIRTY); 
+        }
 
 	void RemoveFullConnection(const Block* b, SgBlackWhite color) 
-	{  m_FullConnects[color].Exclude(b->m_anchor); }
+	{  
+            m_FullConnects[color].Exclude(b->m_anchor); 
+            SetFlags(FLAG_DIRTY);
+        }
 
 	bool IsSemiConnected(const Block* b, SgBlackWhite color ) const
 	{  return m_SemiConnects[color].Contains(b->m_anchor); }
 
 	bool IsFullConnected(const Block* b, SgBlackWhite color) const
 	{  return m_FullConnects[color].Contains(b->m_anchor); }
+
+        int Flags() const { return m_flags; }
+        void SetFlags(int f) { m_flags |= f; }
+        void ClearFlags(int f) { m_flags &= ~f; }
+        bool IsDirty() const { return m_flags & FLAG_DIRTY; } 
+        bool IsDead() const { return m_flags & FLAG_DEAD; }
 
 	std::string ToString(const ConstBoard& cbrd) const
         {
@@ -661,6 +687,11 @@ private:
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented
 };
+
+inline void Board::MarkCellAsDead(cell_t p) 
+{ 
+    GetCell(p)->SetFlags(Cell::FLAG_DEAD);
+}
 
 inline Board::Carrier& Board::GetConnection(cell_t p1, cell_t p2)
 {
