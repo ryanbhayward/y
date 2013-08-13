@@ -489,15 +489,23 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to,
     {
         if (GetColor(*i) == SG_EMPTY) 
         {
+            Cell* cell = GetCell(*i);
             bool removed = false;
-            removed |= GetCell(*i)->RemoveSemiConnection(from, from->m_color);
-            removed |= GetCell(*i)->RemoveFullConnection(from, from->m_color);
+            removed |= cell->RemoveSemiConnection(from, from->m_color);
+            removed |= cell->RemoveFullConnection(from, from->m_color);
             if (removed)
                 MarkCellDirty(*i);
 
             // Liberties of new captain don't need to be changed
-            if (toLiberties[*i])
+            if (toLiberties[*i]) {
+                // Mark anything connected to 'to' as dirty
+                MarkCellDirty(*i);
                 continue;
+            }
+                // Mark anything connected to 'to' as dirty
+            if (   cell->IsFullConnected(to, to->m_color) 
+                || cell->IsSemiConnected(to, to->m_color))
+                MarkCellDirty(*i);
         } 
         else 
         {
