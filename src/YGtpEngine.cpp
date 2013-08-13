@@ -225,8 +225,10 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
     {
         if (m_brd.HasWinningVC()) {
             std::cerr << "VC Win Detected! Playing into carrier...\n";
-            vector<cell_t> carrier = m_brd.GroupCarrier(m_brd.WinningVCGroup());
-            return carrier[SgRandom::Global().Int(carrier.size())];
+            MarkedCells carrier = m_brd.GroupCarrier(m_brd.WinningVCGroup());
+            std::vector<cell_t> car;
+            Include(car, carrier);
+            return car[SgRandom::Global().Int(car.size())];
         }
 
         m_brd.SetToPlay(toPlay);        
@@ -793,10 +795,9 @@ void YGtpEngine::CmdGroupCarrier(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    std::vector<cell_t> carrier = m_brd.GroupCarrier(p);
-    std::stable_sort(carrier.begin(), carrier.end());
-    for(size_t i = 0; i < carrier.size(); ++i)
-	cmd << ' ' << m_brd.ToString(carrier[i]);
+    MarkedCells carrier = m_brd.GroupCarrier(p);
+    for(MarkedCells::Iterator i(carrier); i; ++i)
+	cmd << ' ' << m_brd.ToString(*i);
 }
 
 //----------------------------------------------------------------------

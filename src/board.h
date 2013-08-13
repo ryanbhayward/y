@@ -64,6 +64,74 @@ typedef uint8_t cell_t;
 
 static const int Y_SWAP = -2;  // SG_NULLMOVE == -1
 
+typedef std::pair<cell_t, cell_t> CellPair;
+
+struct MarkedCells
+{
+    cell_t m_marked[Y_MAX_CELL];
+    MarkedCells()
+    {
+        Clear();
+    }
+
+    void Clear()
+    {
+        memset(m_marked, 0, sizeof(m_marked));
+    }
+
+    bool Marked(cell_t p) const
+    { 
+        return m_marked[p];
+    }
+
+    bool Mark(cell_t p)
+    {
+        bool ret = !m_marked[p];
+        m_marked[p] = true;
+        return ret;
+    }
+
+    void Unmark(cell_t p) 
+    {
+        m_marked[p] = false;
+    }
+
+    class Iterator
+    {
+    public:
+        Iterator(const MarkedCells& marked)
+            : m_cur(-1)
+            , m_marked(marked)
+        {
+            operator++();
+        }
+
+        cell_t operator*() const
+        { return m_cur; }
+
+        void operator++()
+        { 
+            do {
+                ++m_cur;
+            } while (m_cur < Y_MAX_CELL && !m_marked.Marked(m_cur));
+        }
+
+        operator bool() const
+        { return m_cur < Y_MAX_CELL; }
+
+    private:
+        cell_t m_cur;
+        const MarkedCells& m_marked;
+    };
+};
+
+template<typename T>
+void Include(std::vector<T>& v, const MarkedCells& a)
+{
+    for (MarkedCells::Iterator i(a); i; ++i)
+        Include(v, *i);
+}
+
 struct MarkedCellsWithList
 {
     typedef SgArrayList<cell_t, Y_MAX_CELL> ListType;
@@ -382,8 +450,8 @@ struct Board
     std::vector<cell_t> SemiConnectedTo(cell_t p, SgBlackWhite c) const;
     std::vector<cell_t> GetCarrierBetween(cell_t p1, cell_t p2) const;
     std::vector<cell_t> GetBlocksInGroup(cell_t p) const;
-    std::vector<cell_t> GroupCarrier(cell_t p) const;
     std::vector<cell_t> FullConnectsMultipleBlocks(SgBlackWhite c) const;
+    const MarkedCells&  GroupCarrier(cell_t p) const;
 
     // ------------------------------------------------------------
 
@@ -520,6 +588,7 @@ private:
 	cell_t m_anchor;
 	int m_border;
 	SgArrayList<cell_t, MAX_BLOCKS> m_blocks;
+        MarkedCells m_carrier;
 
 	Group()
 	{ }
@@ -528,6 +597,7 @@ private:
 	    : m_anchor(anchor)
 	    , m_border(border)
 	    , m_blocks(anchor)
+            , m_carrier()
 	{ }
     };
 
@@ -644,6 +714,7 @@ private:
     State m_savePoint2;
 
     MarkedCellsWithList m_dirtyCells;
+    std::vector<CellPair> m_groupSearchPotStack;
 
     void CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border);
 
@@ -661,12 +732,8 @@ private:
 
     void MergeSharedLiberty(const Block* b1, Block* b2);
 
-    static int
-        NumUnmarkedSharedLiberties(const Carrier& lib, 
-                                   int* seen, int id);
-
-    static void MarkLibertiesAsSeen(const Carrier& lib, 
-                                    int* seen, int id);
+    static int NumUnmarkedSharedLiberties(const Carrier& lib, int* seen, 
+                                          int id, Carrier& unmarked);
 
     void ResetBlocksInGroup(Block* b);
 
@@ -674,7 +741,8 @@ private:
 
     void ComputeGroupForBlock(Block* b, int* seen, int id);
 
-    void GroupSearch(int* seen, Block* b, int id);
+    void GroupSearch(int* seen, Block* b, int id, 
+                     std::vector<CellPair>& potStack);
 
     void AddNonGroupEdges(int* seen, Group* g, int id);
 
@@ -771,6 +839,11 @@ inline const Board::Carrier& Board::GetConnection(cell_t p1, cell_t p2) const
 {
     if (p1 > p2) std::swap(p1,p2);
     return m_state.m_con[p1][p2-p1];
+}
+
+inline const MarkedCells& Board::GroupCarrier(cell_t p) const
+{
+    return GetGroup(BlockAnchor(p))->m_carrier;
 }
 
 //----------------------------------------------------------------------

@@ -152,6 +152,7 @@ void Board::SetSize(int size)
         m_state.m_groupIndex[Const().WEST] = Const().WEST;
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
+        g.m_carrier.Clear();
 	g.m_blocks.Clear();
 	g.m_blocks.PushBack(b.m_anchor);
         for (int i = 0; i < N; ++i) {
@@ -180,6 +181,7 @@ void Board::SetSize(int size)
         m_state.m_groupIndex[Const().EAST] = Const().EAST;
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
+        g.m_carrier.Clear();
 	g.m_blocks.Clear();
 	g.m_blocks.PushBack(b.m_anchor);
         for (int i = 0; i < N; ++i) {
@@ -208,6 +210,7 @@ void Board::SetSize(int size)
         m_state.m_groupIndex[Const().SOUTH] = Const().SOUTH;
 	g.m_anchor = b.m_anchor;
 	g.m_border = b.m_border;
+        g.m_carrier.Clear();
 	g.m_blocks.Clear();
 	g.m_blocks.PushBack(b.m_anchor);
         for (int i = 0; i < N; ++i) {
@@ -507,9 +510,11 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to,
                 || cell->IsSemiConnected(to, to->m_color))
                 MarkCellDirty(*i);
         } 
-        else 
+        else  
         {
-            if (GetColor(*i) != to->m_color)
+            // Skips opponents blocks; note that edges are not
+            // caught by this check and so will always transfer to 'to'
+            if (GetColor(*i) == SgOppBW(to->m_color))
                 continue;
             if (!IsBlockAnchor(*i))
                 continue;
@@ -793,22 +798,6 @@ void Board::RemoveConnectionWith(Block* b, const Block* other)
 
 //---------------------------------------------------------------------------
 
-int Board::NumUnmarkedSharedLiberties(const Carrier& lib, 
-                                      int* seen, int id)
-{
-    int count = 0;
-    for (int i = 0; i < lib.Size(); ++i)
-        if (seen[lib[i]] != id)
-            ++count;
-    return count;
-}
-
-void Board::MarkLibertiesAsSeen(const Carrier& lib, int* seen, int id)
-{
-    for (int j = 0; j < lib.Size(); ++j)
-        seen[lib[j]] = id;
-}
-
 void Board::ResetBlocksInGroup(Block* b)
 {
     Group* g = GetGroup(b->m_anchor);
@@ -821,11 +810,13 @@ void Board::ResetBlocksInGroup(Block* b)
         Group* g2 = GetGroup(b2->m_anchor);
         g2->m_anchor = b2->m_anchor;
         g2->m_border = b2->m_border;
+        g2->m_carrier.Clear();
         g2->m_blocks.Clear();
         g2->m_blocks.PushBack(g2->m_anchor);
     }
     g->m_border = b->m_border;
     g->m_anchor = b->m_anchor;
+    g->m_carrier.Clear();
     g->m_blocks.Clear();
     g->m_blocks.PushBack(g->m_anchor);
 }
@@ -867,9 +858,11 @@ void Board::ComputeGroupForBlock(Block* b)
 
 void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
 {
-    //std::cerr << "ComputeGroupForBlock: " << ToString(b->m_anchor) << '\n';
+    // std::cerr << "ComputeGroupForBlock: " 
+    //           << ToString(b->m_anchor) << ' ' << "id=" << id << '\n';
 
-    GroupSearch(seen, b, id);
+    m_groupSearchPotStack.clear();
+    GroupSearch(seen, b, id, m_groupSearchPotStack);
 
     Group* g = GetGroup(b->m_anchor);
 
@@ -883,9 +876,27 @@ void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
         g->m_blocks.PushBack(Const().EAST);
     if ((g->m_border & BORDER_SOUTH) && !g->m_blocks.Contains(Const().SOUTH))
         g->m_blocks.PushBack(Const().SOUTH);
+
+    seen[Const().WEST] = 0;
+    seen[Const().EAST] = 0;
+    seen[Const().SOUTH] = 0;
 }
 
-void Board::GroupSearch(int* seen, Block* b, int id)
+int Board::NumUnmarkedSharedLiberties(const Carrier& lib, int* seen, int id,
+                                      Carrier& ret)
+{
+    int count = 0;
+    for (int i = 0; i < lib.Size(); ++i) {
+        if (seen[lib[i]] != id) {
+            ++count;
+            ret.PushBack(lib[i]);
+        }
+    }
+    return count;
+}
+
+void Board::GroupSearch(int* seen, Block* b, int id, 
+                        std::vector<CellPair>& potStack)
 {
     seen[b->m_anchor] = 1;
     //std::cerr << "Entered: " << ToString(b->m_anchor) << '\n';
@@ -893,20 +904,22 @@ void Board::GroupSearch(int* seen, Block* b, int id)
     {
         bool visit = false;
 	cell_t other = b->m_con[i];
+        Carrier unmarked;
         Carrier& sl = GetConnection(b->m_anchor, other);
 
 	//std::cerr << "Considering: " << ToString(other) << '\n';
-        int count = NumUnmarkedSharedLiberties(sl, seen, id);
+        int count = NumUnmarkedSharedLiberties(sl, seen, id, unmarked);
         // Never seen this block before:
         // visit it if we have a vc and mark it as potential if we have a semi
-	if (seen[other] == 0) 
+	if (seen[other] != 1 && seen[other] != id) 
         {
             if (count > 1)
                 visit = true;
             else if (count == 1) {
                 //std::cerr << "Marking as potential!\n";
                 seen[other] = id;
-                MarkLibertiesAsSeen(sl, seen, id);
+                seen[unmarked[0]] = id;
+                potStack.push_back(std::make_pair(other, unmarked[0]));
             }
         }
         // block is marked as potential:
@@ -915,6 +928,14 @@ void Board::GroupSearch(int* seen, Block* b, int id)
         else if (seen[other] == id && count >= 1)
         {
             visit = true;
+            for (size_t i = 0; i < potStack.size(); ++i) {
+                if (potStack[i].first == other) {
+                    unmarked.Include(potStack[i].second);
+                    potStack[i] = potStack.back();
+                    potStack.pop_back();
+                    break;
+                }
+            }
         }
 
         if (visit)
@@ -923,14 +944,26 @@ void Board::GroupSearch(int* seen, Block* b, int id)
 	    Group* g = GetGroup(b->m_anchor);
 	    g->m_border |= GetBlock(other)->m_border;
             g->m_blocks.PushBack(other);
+            for (int i = 0; i < unmarked.Size(); ++i)
+                g->m_carrier.Mark(unmarked[i]);
+
 	    if(GetColor(other) != SG_BORDER) {
                 // Note that we are not marking liberties with an edge
                 // block: we claim these cannot conflict with group
                 // formation.
-                MarkLibertiesAsSeen(sl, seen, id);
+                for (int i = 0; i < unmarked.Size(); ++i)
+                    seen[unmarked[i]] = id;
                 m_state.m_groupIndex[other] = g->m_anchor;
-		GroupSearch(seen, GetBlock(other), id);
+		GroupSearch(seen, GetBlock(other), id, potStack);
             }
+            else {
+                // Block other blocks from revisiting this edge.  This
+                // will be reset to 0 at the end of
+                // ComputeGroupForBlock() so that group searches from
+                // other dirty blocks can go to the edge
+                seen[other] = 1;
+            }
+
             //std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
 	}
     }
@@ -1256,23 +1289,6 @@ std::vector<cell_t> Board::GetBlocksInGroup(cell_t p) const
         ret.push_back(g->m_blocks[i]);
         if (g->m_blocks[i] == g->m_anchor)
             std::swap(ret.back(), ret[0]);
-    }
-    return ret;
-}
-
-std::vector<cell_t> Board::GroupCarrier(cell_t p) const
-{
-    std::vector<cell_t> ret;
-    const Group* g = GetGroup(GroupAnchor(p));
-    for (int i = 0; i < g->m_blocks.Length(); ++i) {
-        for (int j = i + 1; j < g->m_blocks.Length(); ++j) {
-            const Carrier& sl 
-                = GetConnection(g->m_blocks[i], g->m_blocks[j]);
-            for (int k = 0; k < sl.Size(); ++k) {
-                if (!Contains(ret, sl[k]))
-                        ret.push_back(sl[k]);
-            }
-        }
     }
     return ret;
 }
