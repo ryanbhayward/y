@@ -72,6 +72,8 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("full_connects_multiple", 
 		&YGtpEngine::CmdFullConnectsMultipleBlocks);
 
+    RegisterCmd("dirty_cells", &YGtpEngine::CmdDirtyCells);
+
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
     RegisterCmd("block_liberties", &YGtpEngine::CmdBlockLiberties);
@@ -102,23 +104,24 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
     cmd <<
         "param/Search Parameters/y_param\n"
         "plist/All Legal Moves/all_legal_moves %c\n"
+        "string/Final Score/final_score\n"
+        "varc/Reg GenMove/reg_genmove %c\n"
+        "string/ShowBoard/showboard\n"
         "string/Board Statistics/board_statistics\n"
-        "string/Playout Statistics/playout_statistics\n"
-        "pspairs/Playout Weights/playout_weights\n"
 	"string/Cell Info/cell_info %p\n"
         "plist/Full Connected With/full_connected_with %p %c\n"
 	"plist/Semi Connected With/semi_connected_with %p %c\n"
 	"plist/Carrier Between/carrier_between %P\n"
 	"plist/Full Connects Multiple Blocks/full_connects_multiple %c\n"
+        "plist/Dirty Cells/dirty_cells\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
+        "plist/Block Liberties/block_liberties %p\n"
 	"group/Group Blocks/group_blocks %p\n"
         "plist/Group Carrier/group_carrier %p\n"
-        "plist/Block Liberties/block_liberties %p\n"
-        "string/ShowBoard/showboard\n"
-        "string/Final Score/final_score\n"
-        "move/Playout Move/playout_move\n"
-        "varc/Reg GenMove/reg_genmove %c\n";
+        "string/Playout Statistics/playout_statistics\n"
+        "pspairs/Playout Weights/playout_weights\n"
+        "move/Playout Move/playout_move\n";
 }
 
 SgBlackWhite YGtpEngine::ColorArg(const GtpCommand& cmd, 
@@ -701,6 +704,14 @@ void YGtpEngine::CmdFullConnectsMultipleBlocks(GtpCommand& cmd)
     std::stable_sort(blocks.begin(), blocks.end());
     for (size_t i = 0; i < blocks.size(); ++i) {
         cmd << ' ' << m_brd.ToString(blocks[i]);
+    }
+}
+
+void YGtpEngine::CmdDirtyCells(GtpCommand& cmd)
+{
+    const MarkedCellsWithList& dirty = m_brd.GetAllDirtyCells();
+    for (MarkedCellsWithList::Iterator it(dirty.m_list); it; ++it) {
+        cmd << ' ' << m_brd.ToString(*it);
     }
 }
 
