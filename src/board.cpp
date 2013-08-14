@@ -783,6 +783,8 @@ void Board::Play(SgBlackWhite color, cell_t p)
     //std::cerr << m_state.m_group[p]->m_border << '\n';
     FlipToPlay();
     //std::cerr << ToString();
+
+    //GroupExpand(p);
 }
 
 void Board::AddSharedLiberty(Block* b1, Block* b2)
@@ -990,6 +992,72 @@ void Board::AddNonGroupEdges(int* seen, Group* g, int id)
     if(s > 1) g->m_border |= BORDER_SOUTH;
 }
 
+// TODO: Improve this search. Only a proof of concept for now.
+void Board::GroupExpand(cell_t move)
+{
+    int seen[Const().TotalCells+10];
+    memset(seen, 0, sizeof(seen));
+    SgBlackWhite color = GetColor(move);
+    cell_t gAnchor = GetGroup(BlockAnchor(move))->m_anchor;
+    m_groupSearchPotStack.clear();
+
+    for (MarkedCellsWithList::Iterator it(m_dirtyCells.m_list); it; ++ it) {
+	if(seen[*it]) 
+	    continue;
+	Cell* cell = GetCell(*it);
+	for (int i = 0; i < cell->m_FullConnects[color].Length(); ++i) {
+	    cell_t other = GetGroup(cell->m_FullConnects[color][i])->m_anchor;
+	    if(other != gAnchor) {
+		if(seen[other]) {
+		    for (size_t j = 0; j < m_groupSearchPotStack.size(); ++j) {
+			if (m_groupSearchPotStack[j].first == other) {
+			    // TODO: Deal with overlapping carriers. Check for intersection
+			    //       between carriers of each group and each key, and between
+			    //       this and each group's own carrier. Deal with different
+			    //       combinations of keys leading to a suitable carrier.
+			    MergeGroups(gAnchor, other, 
+					*it, m_groupSearchPotStack[j].second);
+			    m_groupSearchPotStack[i] = 
+				m_groupSearchPotStack.back();
+			    m_groupSearchPotStack.pop_back();
+			    for (MarkedCells::Iterator i(GetGroup(gAnchor)->m_carrier); i; ++i)
+				seen[*i] = 1;
+			    break;
+			}
+		    }
+		}
+		else {
+		    seen[other] = 1;
+		    m_groupSearchPotStack.push_back(std::make_pair(other, *it));
+		}
+	    }
+	}
+	seen[*it] = 1;
+    }
+}
+
+void Board::MergeGroups(cell_t group1, cell_t group2, cell_t key1, cell_t key2)
+{
+    Group* g1 = GetGroup(group1);
+    Group* g2 = GetGroup(group2);
+    g1->m_border |= g2->m_border;
+    for(int i = 0; i < g2->m_blocks.Length(); ++i){
+	g1->m_blocks.Include(g2->m_blocks[i]);
+	m_state.m_groupIndex[g2->m_blocks[i]] = group1;
+    }
+    for(MarkedCells::Iterator i(g2->m_carrier); i; ++i)
+	g1->m_carrier.Mark(*i);
+    g1->m_carrier.Mark(key1);
+    g1->m_carrier.Mark(key2);
+    for(int i = 0; i < GetConnection(key1, group1).Length(); ++i)
+	g1->m_carrier.Mark(GetConnection(key1, group1)[i]);
+    for(int i = 0; i < GetConnection(key2, group1).Length(); ++i)
+	g1->m_carrier.Mark(GetConnection(key2, group1)[i]);
+    for(int i = 0; i < GetConnection(key1, group2).Length(); ++i)
+	g1->m_carrier.Mark(GetConnection(key1, group2)[i]);
+    for(int i = 0; i < GetConnection(key2, group2).Length(); ++i)
+	g1->m_carrier.Mark(GetConnection(key2, group2)[i]);
+}
 //---------------------------------------------------------------------------
 
 

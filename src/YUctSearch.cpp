@@ -110,6 +110,7 @@ void YUctThreadState::Execute(SgMove move)
     // std::cerr << m_brd.ToString() << '\n'
     //           << "move=" << m_brd.ToString(move) << '\n';
     m_brd.Play(m_brd.ToPlay(), move);
+    m_brd.GroupExpand(move);
 }
 
 //---------------------------------------------------------------------------

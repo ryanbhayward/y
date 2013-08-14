@@ -470,6 +470,8 @@ struct Board
 
     const MarkedCellsWithList& GetAllEmptyCells() const;
 
+    void GroupExpand(cell_t move);
+
     // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
     // a move to reestablish the connection.
     int SaveBridge(cell_t lastMove, const SgBlackWhite toPlay, 
@@ -788,6 +790,8 @@ private:
                      std::vector<CellPair>& potStack);
 
     void AddNonGroupEdges(int* seen, Group* g, int id);
+
+    void MergeGroups(cell_t group1, cell_t group2, cell_t key1, cell_t key2);
 
     void RemoveSharedLiberty(cell_t p, Block* a, Block* b);
 
