@@ -468,6 +468,8 @@ struct Board
     void MarkCellDirty(cell_t p); 
     const MarkedCellsWithList& GetAllDirtyCells() const;
 
+    const MarkedCellsWithList& GetAllEmptyCells() const;
+
     // Returns SG_NULLMOVE if no savebridge pattern matches, otherwise
     // a move to reestablish the connection.
     int SaveBridge(cell_t lastMove, const SgBlackWhite toPlay, 
@@ -742,6 +744,7 @@ private:
         SgBoardColor m_vcWinner;
         cell_t       m_vcGroupAnchor;
         cell_t       m_lastMove;
+	MarkedCellsWithList m_emptyCells;
 
         State() { };
         State(int T);
@@ -867,6 +870,11 @@ inline void Board::MarkCellDirty(cell_t p)
 inline const MarkedCellsWithList& Board::GetAllDirtyCells() const
 {
     return m_dirtyCells;
+}
+
+inline const MarkedCellsWithList& Board::GetAllEmptyCells() const
+{
+    return m_state.m_emptyCells;
 }
 
 inline Board::Carrier& Board::GetConnection(cell_t p1, cell_t p2)

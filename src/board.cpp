@@ -123,6 +123,8 @@ void Board::State::Init(int T)
         m_con[i] = &m_conData[j];
         j += T - i;
     }
+    m_emptyCells.Clear();
+
 }
 
 Board::Board(int size)
@@ -226,10 +228,13 @@ void Board::SetSize(int size)
 	}
     }
 
-    for (CellIterator i(Const()); i; ++i)
+    for (CellIterator i(Const()); i; ++i) {
+	if(IsEmpty(*i))
+	    m_state.m_emptyCells.Mark(*i);
 	for (CellNbrIterator j(Const(), *i); j; ++j)
-	    if(GetColor(*j) == SG_EMPTY)
+	    if(IsEmpty(*j))
 		GetCell(*i)->m_NumAdj[SG_EMPTY]++;
+    }
 
     m_state.m_winner   = SG_EMPTY;
     m_state.m_vcWinner = SG_EMPTY;
@@ -293,6 +298,7 @@ void Board::CopyState(Board::State& a, const Board::State& b)
     a.m_vcWinner = b.m_vcWinner;
     a.m_vcGroupAnchor = b.m_vcGroupAnchor;
     a.m_lastMove = b.m_lastMove;
+    a.m_emptyCells = b.m_emptyCells;
 }
 
 //---------------------------------------------------------------------------
@@ -442,15 +448,12 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
     // of any empty cells connecting to b possibly need to change.
     // This is expensive and stupid.
     // TODO: have blocks store list of empty cells they are connected to.
-    for(CellIterator i(Const()); i; ++i) 
+    for(MarkedCellsWithList::Iterator i(m_state.m_emptyCells.m_list); i; ++i) 
     {
-        if (GetColor(*i) == SG_EMPTY) 
-        {
-            Cell* cell = GetCell(*i);
-            if (   cell->IsFullConnected(b, b->m_color) 
-                || cell->IsSemiConnected(b, b->m_color))
-                MarkCellDirty(*i);
-        } 
+	Cell* cell = GetCell(*i);
+	if (   cell->IsFullConnected(b, b->m_color) 
+	       || cell->IsSemiConnected(b, b->m_color))
+	    MarkCellDirty(*i);
     }
 
     m_state.m_groupIndex[p] = m_state.m_groupIndex[b->m_anchor];
@@ -675,6 +678,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     m_state.m_lastMove = p;    
     m_state.m_toPlay = color;
     m_state.m_color[p] = color;
+    m_state.m_emptyCells.Unmark(p);
     int border = 0;
     SgArrayList<cell_t, 3> adjBlocks;
     SgArrayList<cell_t, 3>& oppBlocks = m_state.m_oppBlocks;
@@ -1217,9 +1221,7 @@ std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
                 ret.push_back(b->m_con[i]);
         }
     }
-    for (CellIterator i(Const()); i; ++i) {
-        if (IsOccupied(*i))
-            continue;
+    for (MarkedCellsWithList::Iterator i(m_state.m_emptyCells.m_list); i; ++i) {
         if (GetCell(*i)->IsFullConnected(b, c))
             ret.push_back(*i);
     }
@@ -1229,9 +1231,7 @@ std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
 std::vector<cell_t> Board::FullConnectsMultipleBlocks(SgBlackWhite c) const
 {
     std::vector<cell_t> ret;
-    for (CellIterator i(Const()); i; ++i) {
-        if (IsOccupied(*i))
-            continue;
+    for (MarkedCellsWithList::Iterator i(m_state.m_emptyCells.m_list); i; ++i) {
         if (GetCell(*i)->m_FullConnects[c].Length() > 1)
             ret.push_back(*i);
     }
@@ -1261,9 +1261,7 @@ std::vector<cell_t> Board::SemiConnectedTo(cell_t p, SgBlackWhite c) const
                 ret.push_back(b->m_con[i]);
         }
     }
-    for (CellIterator i(Const()); i; ++i) {
-        if (IsOccupied(*i))
-            continue;
+    for (MarkedCellsWithList::Iterator i(m_state.m_emptyCells.m_list); i; ++i) {
         if (GetCell(*i)->IsSemiConnected(b, c))
             ret.push_back(*i);
     }
