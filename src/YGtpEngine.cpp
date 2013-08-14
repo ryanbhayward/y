@@ -79,6 +79,7 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("block_liberties", &YGtpEngine::CmdBlockLiberties);
 
     RegisterCmd("group", &YGtpEngine::CmdGroup);
+    RegisterCmd("group_info", &YGtpEngine::CmdGroupInfo);
     RegisterCmd("group_blocks", &YGtpEngine::CmdGroupBlocks);
     RegisterCmd("group_value", &YGtpEngine::CmdGroupValue);
     RegisterCmd("group_carrier", &YGtpEngine::CmdGroupCarrier);
@@ -117,6 +118,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
         "plist/Block Liberties/block_liberties %p\n"
+	"string/Group Info/group_info %p\n"
 	"group/Group Blocks/group_blocks %p\n"
         "plist/Group Carrier/group_carrier %p\n"
         "string/Playout Statistics/playout_statistics\n"
@@ -766,6 +768,15 @@ void YGtpEngine::CmdGroup(GtpCommand& cmd)
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
     cmd << m_brd.ToString(m_brd.GroupAnchor(p)) << '\n';
+}
+
+void YGtpEngine::CmdGroupInfo(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(1);
+    int p = CellArg(cmd, 0);
+    if (!m_brd.IsOccupied(p))
+        throw GtpFailure("Invalid group");
+    cmd << m_brd.GroupInfo(p);
 }
 
 void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)

@@ -443,6 +443,9 @@ struct Board
     int GroupBorder(cell_t p) const
     { return GetGroup(BlockAnchor(p))->m_border; }
 
+    std::string GroupInfo(cell_t p) const
+	{ return GetGroup(BlockAnchor(p))->ToString(); }
+
     //------------------------------------------------------------
     // Gui access functions
 
@@ -599,6 +602,43 @@ private:
 	    , m_blocks(anchor)
             , m_carrier()
 	{ }
+
+        std::string GroupBlocksToString() const
+        {
+            std::ostringstream os;
+            os << "[";
+            for (int i = 0; i < m_blocks.Length(); ++i) {
+                if (i) os << ", ";
+                os << ConstBoard::ToString(m_blocks[i]);
+            }
+            os << "]";
+            return os.str();
+        }
+
+	std::string GroupCarrierToString() const
+	{
+            std::ostringstream os;
+            os << "[";
+	    int cnt = 0;
+            for (MarkedCells::Iterator i(m_carrier); i; ++i) {
+                if (cnt) os << ", ";
+                os << ConstBoard::ToString(*i);
+		++cnt;
+            }
+            os << "]";
+            return os.str();
+	}
+
+        std::string ToString() const
+        {
+            std::ostringstream os;
+            os << "[anchor="  << ConstBoard::ToString(m_anchor)
+               << " border="  << m_border
+	       << " blocks="  << GroupBlocksToString()
+	       << " carrier=" << GroupCarrierToString() 
+               << "]\n";
+            return os.str();
+        }
     };
 
     struct Cell
