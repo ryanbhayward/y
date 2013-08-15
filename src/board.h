@@ -369,7 +369,12 @@ struct Board
         }
     };
 
-    
+    struct EmptyIterator : public MarkedCellsWithList::Iterator
+    {
+        EmptyIterator(const Board& brd)
+            : MarkedCellsWithList::Iterator(brd.m_state.m_emptyCells)
+        { };
+    };
 
     explicit Board(int size);
 

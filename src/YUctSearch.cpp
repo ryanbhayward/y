@@ -96,8 +96,7 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
         return false;
     }
     SG_UNUSED(count);
-    const MarkedCellsWithList& empty = m_brd.GetAllEmptyCells();
-    for (MarkedCellsWithList::Iterator it(empty); it; ++it)
+    for (Board::EmptyIterator it(m_brd); it; ++it)
     {
 	moves.push_back(*it);
     }
@@ -204,8 +203,7 @@ void YUctThreadState::InitializeWeights()
 {
     m_weights[SG_BLACK].Clear();
     m_weights[SG_WHITE].Clear();
-    const MarkedCellsWithList& empty = m_brd.GetAllEmptyCells();
-    for (MarkedCellsWithList::Iterator it(empty); it; ++it) {
+    for (Board::EmptyIterator it(m_brd); it; ++it) {
 	ComputeWeight(*it);
     }
     m_weights[SG_BLACK].Build();
