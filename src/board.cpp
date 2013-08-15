@@ -1001,45 +1001,80 @@ void Board::AddNonGroupEdges(int* seen, Group* g, int id)
 // TODO: Improve this search. Only a proof of concept for now.
 void Board::GroupExpand(cell_t move)
 {
-    int seen[Const().TotalCells+10];
-    memset(seen, 0, sizeof(seen));
+    SG_UNUSED(move);
+#if 0
     SgBlackWhite color = GetColor(move);
-    cell_t gAnchor = GetGroup(BlockAnchor(move))->m_anchor;
+
+    // TODO: need a more complicated stack
+    // (key, g2, carrier)
+    // (cell_t, cell_t, MarkedCellsWithList)
     m_groupSearchPotStack.clear();
+
+    Group* g1 = GetGroup(BlockAnchor(move));
+    cell_t g1Anchor = g1->m_anchor;
 
     for (MarkedCellsWithList::Iterator it(m_dirtyCells); it; ++ it) {
 	if(seen[*it]) 
 	    continue;
 	Cell* cell = GetCell(*it);
-	for (int i = 0; i < cell->m_FullConnects[color].Length(); ++i) {
-	    cell_t other = GetGroup(cell->m_FullConnects[color][i])->m_anchor;
-	    if(other != gAnchor) {
-		if(seen[other]) {
-		    for (size_t j = 0; j < m_groupSearchPotStack.size(); ++j) {
-			if (m_groupSearchPotStack[j].first == other) {
-			    // TODO: Deal with overlapping carriers. Check for intersection
-			    //       between carriers of each group and each key, and between
-			    //       this and each group's own carrier. Deal with different
-			    //       combinations of keys leading to a suitable carrier.
-			    MergeGroups(gAnchor, other, 
-					*it, m_groupSearchPotStack[j].second);
-			    m_groupSearchPotStack[i] = 
-				m_groupSearchPotStack.back();
-			    m_groupSearchPotStack.pop_back();
-			    for (MarkedCells::Iterator i(GetGroup(gAnchor)->m_carrier); i; ++i)
-				seen[*i] = 1;
-			    break;
-			}
-		    }
-		}
-		else {
-		    seen[other] = 1;
-		    m_groupSearchPotStack.push_back(std::make_pair(other, *it));
-		}
-	    }
+        if (cell->m_FullConnects[color].Length() < 2)
+            continue;
+        // CHECK: cell not in g1->carrier
+
+        // try all possible connections to g1
+	for (int i1 = 0; i1 < cell->m_FullConnects[color].Length(); ++i1) {
+            if (GetGroup(cell->m_FullConnects[color][i1]) != g1)
+                continue;
+            // construct cell->g1 carrier
+
+            // try all connections to other groups
+            for (int i2 = 0; i2 < cell->m_FullConnects[color].Length(); ++i2) {
+                if (i2 == i1)
+                    continue;
+                Group* g2 = GetGroup(cell->m_FullConnects[color][i2]);
+                if (g2 == g1)
+                    continue;
+                // CHECK: cell not in g2->carrier
+                cell_t g2Anchor = g2->m_anchor;
+                // construct cell->g2 carrier
+
+                // CHECK: cell->g1 does not intersect cell->g2
+                // CHECK: cell->g1 does not intersect g2
+                // CHECK: cell->g2 does not intersect g1
+                
+                // construct g1->cell->g2 carrier
+
+                bool merged = false;
+                bool addToStack = true;
+                for (size_t j = 0; !merged  && j < gstack.size(); ++j) 
+                {
+                    if (gstack[j].key == cell)
+                        continue;
+                    if (gstack[j].group == g2Anchor) {
+
+                        // if gstack[j].carrier interset g1cellg2
+                        // {
+                        //   if (gstack[j].carrier == g1cellg2
+                        //      addToStack = false;
+                        //   break;
+                        // }
+                        merged = true;
+                        MergeGroups(gAnchor, other, gstack[j].carrier, 
+                                    g1cellg2);
+
+                    }
+                }
+                if (merged) {
+                    // REMOVE ALL MENTION OF G2 ON STACK
+                }
+                else if (addToStack) {
+                    // PUSH NEW ENTRY ON STACK
+                    // (g2, cell, g1cellg2)
+                }
+            }
 	}
-	seen[*it] = 1;
     }
+#endif
 }
 
 void Board::MergeGroups(cell_t group1, cell_t group2, cell_t key1, cell_t key2)
