@@ -448,7 +448,7 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
     // of any empty cells connecting to b possibly need to change.
     // This is expensive and stupid.
     // TODO: have blocks store list of empty cells they are connected to.
-    for(MarkedCellsWithList::Iterator i(m_state.m_emptyCells.m_list); i; ++i) 
+    for(MarkedCellsWithList::Iterator i(m_state.m_emptyCells); i; ++i) 
     {
 	Cell* cell = GetCell(*i);
 	if (   cell->IsFullConnected(b, b->m_color) 
@@ -1001,7 +1001,7 @@ void Board::GroupExpand(cell_t move)
     cell_t gAnchor = GetGroup(BlockAnchor(move))->m_anchor;
     m_groupSearchPotStack.clear();
 
-    for (MarkedCellsWithList::Iterator it(m_dirtyCells.m_list); it; ++ it) {
+    for (MarkedCellsWithList::Iterator it(m_dirtyCells); it; ++ it) {
 	if(seen[*it]) 
 	    continue;
 	Cell* cell = GetCell(*it);
@@ -1289,7 +1289,7 @@ std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
                 ret.push_back(b->m_con[i]);
         }
     }
-    for (MarkedCellsWithList::Iterator i(m_state.m_emptyCells.m_list); i; ++i) {
+    for (MarkedCellsWithList::Iterator i(m_state.m_emptyCells); i; ++i) {
         if (GetCell(*i)->IsFullConnected(b, c))
             ret.push_back(*i);
     }
@@ -1299,7 +1299,7 @@ std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
 std::vector<cell_t> Board::FullConnectsMultipleBlocks(SgBlackWhite c) const
 {
     std::vector<cell_t> ret;
-    for (MarkedCellsWithList::Iterator i(m_state.m_emptyCells.m_list); i; ++i) {
+    for (MarkedCellsWithList::Iterator i(m_state.m_emptyCells); i; ++i) {
         if (GetCell(*i)->m_FullConnects[c].Length() > 1)
             ret.push_back(*i);
     }
@@ -1329,7 +1329,7 @@ std::vector<cell_t> Board::SemiConnectedTo(cell_t p, SgBlackWhite c) const
                 ret.push_back(b->m_con[i]);
         }
     }
-    for (MarkedCellsWithList::Iterator i(m_state.m_emptyCells.m_list); i; ++i) {
+    for (MarkedCellsWithList::Iterator i(m_state.m_emptyCells); i; ++i) {
         if (GetCell(*i)->IsSemiConnected(b, c))
             ret.push_back(*i);
     }

@@ -97,7 +97,7 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
     }
     SG_UNUSED(count);
     const MarkedCellsWithList& empty = m_brd.GetAllEmptyCells();
-    for (MarkedCellsWithList::Iterator it(empty.m_list); it; ++it)
+    for (MarkedCellsWithList::Iterator it(empty); it; ++it)
     {
 	moves.push_back(*it);
     }
@@ -110,7 +110,7 @@ void YUctThreadState::Execute(SgMove move)
     // std::cerr << m_brd.ToString() << '\n'
     //           << "move=" << m_brd.ToString(move) << '\n';
     m_brd.Play(m_brd.ToPlay(), move);
-    m_brd.GroupExpand(move);
+    //m_brd.GroupExpand(move);
 }
 
 //---------------------------------------------------------------------------
@@ -193,7 +193,7 @@ void YUctThreadState::ExecutePlayout(SgMove move)
 
     const MarkedCellsWithList& dirty = m_brd.GetAllDirtyCells();
     Board::Statistics::Get().m_numDirtyCellsPerMove += dirty.m_list.Length();
-    for (MarkedCellsWithList::Iterator i(dirty.m_list); i; ++i) {
+    for (MarkedCellsWithList::Iterator i(dirty); i; ++i) {
         cell_t p = *i;
         ComputeWeight(p);
         m_brd.MarkCellNotDirty(p);
@@ -205,7 +205,7 @@ void YUctThreadState::InitializeWeights()
     m_weights[SG_BLACK].Clear();
     m_weights[SG_WHITE].Clear();
     const MarkedCellsWithList& empty = m_brd.GetAllEmptyCells();
-    for (MarkedCellsWithList::Iterator it(empty.m_list); it; ++it) {
+    for (MarkedCellsWithList::Iterator it(empty); it; ++it) {
 	ComputeWeight(*it);
     }
     m_weights[SG_BLACK].Build();

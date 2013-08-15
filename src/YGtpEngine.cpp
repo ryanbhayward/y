@@ -714,7 +714,7 @@ void YGtpEngine::CmdFullConnectsMultipleBlocks(GtpCommand& cmd)
 void YGtpEngine::CmdDirtyCells(GtpCommand& cmd)
 {
     const MarkedCellsWithList& dirty = m_brd.GetAllDirtyCells();
-    for (MarkedCellsWithList::Iterator it(dirty.m_list); it; ++it) {
+    for (MarkedCellsWithList::Iterator it(dirty); it; ++it) {
         cmd << ' ' << m_brd.ToString(*it);
     }
 }

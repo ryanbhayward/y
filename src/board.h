@@ -135,7 +135,15 @@ void Include(std::vector<T>& v, const MarkedCells& a)
 struct MarkedCellsWithList
 {
     typedef SgArrayList<cell_t, Y_MAX_CELL> ListType;
-    typedef ListType::Iterator Iterator;
+    typedef ListType::Iterator ListIterator;
+
+    class Iterator : public ListIterator
+    {
+    public:
+        Iterator(const MarkedCellsWithList& mc)
+            : ListIterator(mc.m_list)
+        { }
+    };
 
     cell_t m_marked[Y_MAX_CELL];
     SgArrayList<cell_t, Y_MAX_CELL> m_list;
@@ -360,6 +368,8 @@ struct Board
             return s_stats;
         }
     };
+
+    
 
     explicit Board(int size);
 
