@@ -93,8 +93,6 @@ private:
 
     Board m_brd;
 
-    std::vector<int> m_history;
-
     YSearch m_search;
 
     SgSearchHashTable m_hashTable;

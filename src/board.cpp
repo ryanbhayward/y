@@ -29,20 +29,22 @@ std::string ConstBoard::ColorToString(SgBoardColor color)
     }
 }
 
-std::string ConstBoard::ToString(cell_t cell)
+std::string ConstBoard::ToString(SgMove move)
 {
-    if (cell == WEST)
+    if (move == Y_SWAP)
+        return "swap";
+    else if (move == WEST)
         return "west";
-    else if (cell == EAST)
+    else if (move == EAST)
         return "east";
-    else if (cell == SOUTH)
+    else if (move == SOUTH)
         return "south";
     char str[16];
-    sprintf(str, "%c%1d",board_col(cell)+'a',board_row(cell)+1); 
+    sprintf(str, "%c%1d",board_col(move)+'a',board_row(move)+1); 
     return str;
 }
 
-cell_t ConstBoard::FromString(const string& name)
+SgMove ConstBoard::FromString(const string& name)
 {
     if (name.size() >= 4 && name.substr(0,4) == "swap")
     	return Y_SWAP;
@@ -236,34 +238,35 @@ void Board::SetSize(int size)
 		GetCell(*i)->m_NumAdj[SG_EMPTY]++;
     }
 
+    m_state.m_history.Clear();
     m_state.m_winner   = SG_EMPTY;
     m_state.m_vcWinner = SG_EMPTY;
-    m_state.m_lastMove = SG_NULLMOVE;
 }
 
 void Board::SetPosition(const Board& other) 
 {
     SetSize(other.Size());
-    for (CellIterator it(Const()); it; ++it) {
-        SgBlackWhite c = other.GetColor(*it);
-        if (c != SG_EMPTY)
-            Play(c, *it);
+    for (int i = 0; i < other.m_state.m_history.m_move.Length(); ++i) {
+        if (other.m_state.m_history.m_move[i] == Y_SWAP)
+            Swap();
+        else
+            Play(other.m_state.m_history.m_color[i], 
+                 other.m_state.m_history.m_move[i]);
     }
     m_state.m_toPlay = other.m_state.m_toPlay;
-    m_state.m_lastMove = other.m_state.m_lastMove;
 }
 
-void Board::RemoveStone(cell_t p)
+void Board::Undo()
 {
-    boost::scoped_array<SgBoardColor> 
-        m_oldColor(new SgBoardColor[Const().TotalCells]);
-    memcpy(m_oldColor.get(), m_state.m_color.get(), 
-           sizeof(SgBoardColor)*Const().TotalCells);
-    m_oldColor[p] = SG_EMPTY;
+    History old(m_state.m_history);
     SetSize(Size());
-    for (CellIterator it(Const()); it; ++it)
-        if (m_oldColor[*it] != SG_EMPTY)
-            Play(m_oldColor[*it],*it);
+    for (int i = 0; i < old.m_move.Length() - 1; ++i) {
+        if (old.m_move[i] == Y_SWAP)
+            Swap();
+        else
+            Play(old.m_color[i], old.m_move[i]);
+    }
+    m_state.m_toPlay = old.m_color.Last();
 }
 
 void Board::Swap()
@@ -277,6 +280,7 @@ void Board::Swap()
             }
         }
     }
+    m_state.m_history.PushBack(SG_EMPTY, Y_SWAP);
 }
 
 void Board::CopyState(Board::State& a, const Board::State& b)
@@ -294,11 +298,13 @@ void Board::CopyState(Board::State& a, const Board::State& b)
     a.m_oppBlocks = b.m_oppBlocks;
 
     a.m_toPlay = b.m_toPlay;
+    a.m_history = b.m_history;
+
+    a.m_emptyCells = b.m_emptyCells;
+
     a.m_winner = b.m_winner;
     a.m_vcWinner = b.m_vcWinner;
     a.m_vcGroupAnchor = b.m_vcGroupAnchor;
-    a.m_lastMove = b.m_lastMove;
-    a.m_emptyCells = b.m_emptyCells;
 }
 
 //---------------------------------------------------------------------------
@@ -675,7 +681,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     //           << "pval=" << (int)p << '\n';
     Statistics::Get().m_numMovesPlayed++;
     m_dirtyCells.Clear();
-    m_state.m_lastMove = p;    
+    m_state.m_history.PushBack(color, p);
     m_state.m_toPlay = color;
     m_state.m_color[p] = color;
     m_state.m_emptyCells.Unmark(p);

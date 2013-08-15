@@ -138,8 +138,8 @@ SgBlackWhite YGtpEngine::ColorArg(const GtpCommand& cmd,
                        << " must be black or white";
 }
 
-int YGtpEngine::CellArg(const GtpCommand& cmd, 
-                        std::size_t number) const
+SgMove YGtpEngine::CellArg(const GtpCommand& cmd, 
+                           std::size_t number) const
 {
     return m_brd.Const().FromString(cmd.ArgToLower(number));
 }
@@ -162,54 +162,39 @@ void YGtpEngine::ApplyTimeSettings()
 void YGtpEngine::NewGame(int size)
 {
     m_brd.SetSize(size);
-    m_history.clear();
     ApplyTimeSettings();
 }
 
 void YGtpEngine::NewGame()
 {
     m_brd.SetSize(m_brd.Size());
-    m_history.clear();
     ApplyTimeSettings();
 }
 
-void YGtpEngine::Play(int color, int cell)
+void YGtpEngine::Play(int color, int move)
 {
-    if (cell == Y_SWAP) {
+    std::cerr << "move=" << move << '\n';
+    if (move == Y_SWAP) {
         if (!m_allowSwap)
             throw GtpFailure("Swap setting is disabled!");
-        if (m_history.size() != 1)
+        if (m_brd.NumMoves() != 1)
             throw GtpFailure("Cannot swap in this position!");
     	m_brd.Swap();
     }
-    else if (cell != SG_RESIGN)
+    else if (move != SG_RESIGN)
     {
-        if (! m_brd.Const().IsOnBoard(cell))
+        if (! m_brd.Const().IsOnBoard(move))
             throw GtpFailure("Cell not on board!");
-        if (m_brd.IsOccupied(cell))
+        if (m_brd.IsOccupied(move))
             throw GtpFailure("Cell is occupied!");
-        m_brd.Play(color,cell);
+        m_brd.Play(color, move);
     }
-    m_history.push_back(cell);
 }
 
 void YGtpEngine::Undo()
 {
-    SG_ASSERT(! m_history.empty());
-    int cell = m_history.back();
-    if (cell == Y_SWAP) {
-    	m_brd.Swap();
-        m_brd.FlipToPlay();
-    }
-    else if (cell != SG_RESIGN)
-    {
-        int color = m_brd.GetColor(cell);
-    	m_brd.RemoveStone(cell);
-        m_brd.SetToPlay(color);
-    }
-    m_history.pop_back();
-    if (!m_history.empty())
-        m_brd.SetLastMove(m_history.back());
+    SG_ASSERT(m_brd.NumMoves() > 0);
+    m_brd.Undo();
 }
 
 int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
@@ -260,7 +245,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
             std::cerr << ' ' << m_brd.ToString(sequence[i]);
         std::cerr << '\n';
 	
-        if (m_allowSwap && m_history.size()==1 && score < 0.5)
+        if (m_allowSwap && m_brd.NumMoves()==1 && score < 0.5)
             return Y_SWAP;
         return sequence[0];
     }
@@ -268,9 +253,8 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
     {
 #if 0
         std::vector<cell_t> empty;
-        for (CellIterator it(m_brd); it; ++it)
-            if (m_brd.IsEmpty(*it))
-                empty.push_back(*it);
+        for (Board::EmptyIterator it(m_brd); it; ++it)
+            empty.push_back(*it);
         return empty[SgRandom::Global().Int(empty.size())];
 #endif
         return 1; // FIXME: IMPLEMENT
@@ -349,8 +333,8 @@ void YGtpEngine::CmdPlay(GtpCommand& cmd)
     //     throw GtpFailure("It is the other player's turn!");
     else
     {
-        int cell = CellArg(cmd, 1);
-        Play(color, cell);
+        SgMove move = CellArg(cmd, 1);
+        Play(color, move);
     }
 }
 
@@ -578,7 +562,7 @@ void YGtpEngine::CmdTimeLeft(GtpCommand& cmd)
 
 void YGtpEngine::CmdTimeSettings(GtpCommand& cmd)
 {
-    if (!m_history.empty())
+    if (m_brd.NumMoves() > 0)
         throw GtpFailure("Cannot change time during game!");
     cmd.CheckNuArg(3);
     double newTime = cmd.FloatArg(0);
@@ -817,7 +801,7 @@ void YGtpEngine::CmdPlayoutMove(GtpCommand& cmd)
 {
     if (m_brd.IsGameOver())
         throw GtpFailure("Game over!");
-    if (m_history.empty())
+    if (m_brd.NumMoves() == 0)
         throw GtpFailure("Must play at least one move first!");
     if (!m_uctSearch.ThreadsCreated())
         m_uctSearch.CreateThreads();
@@ -836,7 +820,7 @@ void YGtpEngine::CmdPlayoutWeights(GtpCommand& cmd)
 {
     if (m_brd.IsGameOver())
         throw GtpFailure("Game over!");
-    if (m_history.empty())
+    if (m_brd.NumMoves() == 0)
         throw GtpFailure("Must play at least one move first!");
     if (!m_uctSearch.ThreadsCreated())
         m_uctSearch.CreateThreads();

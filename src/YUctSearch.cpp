@@ -241,13 +241,7 @@ void YUctThreadState::StartPlayout()
 void YUctThreadState::StartPlayout(const Board& other)
 {
     m_brd.SetPosition(other);
-    int lastMove = m_brd.LastMove();
-    SgBlackWhite color = m_brd.GetColor(lastMove);
-    m_brd.RemoveStone(m_brd.LastMove());
-
     InitializeWeights();
-    m_brd.SetToPlay(color);
-    ExecutePlayout(lastMove);
 }
 
 void YUctThreadState::EndPlayout()

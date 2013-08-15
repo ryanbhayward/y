@@ -215,9 +215,9 @@ public:
     static inline cell_t fatten(int r, int c)
     { return (r)*(r+1)/2 + c + 3; }
 
-    static std::string ToString(cell_t cell);
+    static std::string ToString(SgMove cell);
 
-    static cell_t FromString(const std::string& name);
+    static SgMove FromString(const std::string& name);
 
     int m_size;
     int TotalCells;
@@ -422,9 +422,9 @@ struct Board
     void SetToPlay(SgBlackWhite toPlay) { m_state.m_toPlay = toPlay; }
     void FlipToPlay()          { m_state.m_toPlay = SgOppBW(m_state.m_toPlay); }
 
-    void RemoveStone(cell_t lcn);
-    cell_t LastMove() const { return m_state.m_lastMove; }
-    void SetLastMove(cell_t lcn) { m_state.m_lastMove = lcn; }
+    void Undo();
+
+    int NumMoves() const { return m_state.m_history.NumMoves(); }
 
     //------------------------------------------------------------
 
@@ -743,6 +743,38 @@ private:
 
     ConstBoard m_constBrd;
 
+    struct History
+    {
+        SgArrayList<SgMove, Y_MAX_CELL> m_move;
+        SgArrayList<SgBoardColor, Y_MAX_CELL> m_color;
+
+        int NumMoves() const 
+        { 
+            return m_move.Length();
+        }
+
+        void Clear()
+        {
+            m_move.Clear();
+            m_color.Clear();
+        }
+
+        void PushBack(SgBoardColor color, SgMove move)
+        {
+            m_color.PushBack(color);
+            m_move.PushBack(move);
+        }
+
+        SgMove LastMove() const
+        {
+            if (m_move.IsEmpty())
+                return SG_NULLMOVE;
+            if (m_move.Length() == 1 && m_move.Last() == Y_SWAP)
+                return m_move[0];
+            return m_move.Last();
+        }
+    };
+
     struct State 
     {
         boost::scoped_array<SgBoardColor> m_color;
@@ -757,11 +789,13 @@ private:
         SgArrayList<cell_t, 3> m_oppBlocks;
 
         SgBlackWhite m_toPlay;
+        History m_history;
+
+	MarkedCellsWithList m_emptyCells;
+
         SgBoardColor m_winner;
         SgBoardColor m_vcWinner;
         cell_t       m_vcGroupAnchor;
-        cell_t       m_lastMove;
-	MarkedCellsWithList m_emptyCells;
 
         State() { };
         State(int T);
