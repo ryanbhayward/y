@@ -176,8 +176,35 @@ struct MarkedCellsWithList
             m_list.Exclude(p);
         }
     }
+
+    bool Marked(cell_t p) const
+    { 
+        return m_marked[p];
+    }
+
+    int Size() const
+    { return m_list.Length(); }
+
+    bool Intersects(const MarkedCells& other) const;
+    int  IntersectSize(const MarkedCells& other) const;
+    int  IntersectSize(const MarkedCellsWithList& other) const;
 };
 
+struct PotentialCarrier
+{
+    cell_t m_key;
+    cell_t m_group;
+    MarkedCellsWithList m_carrier;
+
+    PotentialCarrier()
+    { }
+
+    PotentialCarrier(cell_t key, cell_t group, MarkedCellsWithList carrier)
+        : m_key(key)
+	, m_group(group)
+	, m_carrier(carrier)
+    { }
+};
  
 class ConstBoard 
 {
@@ -840,7 +867,8 @@ private:
 
     void AddNonGroupEdges(int* seen, Group* g, int id);
 
-    void MergeGroups(cell_t group1, cell_t group2, cell_t key1, cell_t key2);
+    void MergeGroups(cell_t group1, cell_t group2, MarkedCellsWithList carrier1,
+		     MarkedCellsWithList carrier2);
 
     void RemoveSharedLiberty(cell_t p, Block* a, Block* b);
 
