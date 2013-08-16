@@ -1018,7 +1018,7 @@ void Board::GroupExpand(cell_t move)
 	if (g1->m_carrier.Marked(*it))
 	    continue;
 
-	cerr << "Considering cell: " << ToString(*it) << '\n';
+	//cerr << "Considering cell: " << ToString(*it) << '\n';
         // try all possible connections to g1
 	for (int i1 = 0; i1 < cell->m_FullConnects[color].Length(); ++i1) {
             if (GetGroup(cell->m_FullConnects[color][i1]) != g1)
@@ -1045,7 +1045,7 @@ void Board::GroupExpand(cell_t move)
                 // construct cell->g2 carrier
 		cell_t g2Block = cell->m_FullConnects[color][i2];
 
-		cerr << "Cell connects " << ToString(g1Block) << " to " << ToString(g2Block) << '\n';
+		//cerr << "Cell connects " << ToString(g1Block) << " to " << ToString(g2Block) << '\n';
 		bool intersect = false;
 		// CHECK: cell->g1 does not intersect cell->g2
                 // construct g1->cell->g2 carrier
@@ -1064,7 +1064,7 @@ void Board::GroupExpand(cell_t move)
 		if(g1cellg2.Intersects(g2->m_carrier))
 		    continue;
 
-		cerr << "Passed intersect tests!\n";
+		//cerr << "Passed intersect tests!\n";
                 bool merged = false;
                 bool addToStack = true;
                 for (size_t j = 0; !merged  && j < gStack.size(); ++j) 
@@ -1074,15 +1074,15 @@ void Board::GroupExpand(cell_t move)
                     if (gStack[j].m_group == g2Anchor) {
 			int size = g1cellg2.IntersectSize(gStack[j].m_carrier);	
 			if(size > 0) {
-			    cerr << "Found intersect with: " << ToString(gStack[j].m_key) << '\n';
+			    //cerr << "Found intersect with: " << ToString(gStack[j].m_key) << '\n';
 			    if (size == gStack[j].m_carrier.Size()) {
 				addToStack = false;
-				cerr << "Found same carrier: " << ToString(gStack[j].m_key) << '\n';
+				//cerr << "Found same carrier: " << ToString(gStack[j].m_key) << '\n';
 			    }
 			}
 			else {
 			    merged = true;
-			    cerr << "Found a compatible carrier: " << ToString(gStack[j].m_key) << '\n';
+			    //cerr << "Found a compatible carrier: " << ToString(gStack[j].m_key) << '\n';
 			    MergeGroups(g1Anchor, g2Anchor, gStack[j].m_carrier, 
 					g1cellg2);
 			}
@@ -1090,13 +1090,13 @@ void Board::GroupExpand(cell_t move)
                 }
                 if (merged) {
                     // REMOVE ALL MENTION OF G2 ON STACK
-		    int size = gStack.size();
+		    size_t size = gStack.size();
 		    for (size_t j = 0; j < size; ++j) {
-			cerr << "Key: " << ToString(gStack[j].m_key) 
-			     << " Group: " << ToString(gStack[j].m_group) 
-			     << '\n';
+			// cerr << "Key: " << ToString(gStack[j].m_key) 
+			//      << " Group: " << ToString(gStack[j].m_group) 
+			//      << '\n';
 			if(gStack[j].m_group == g2Anchor) {
-			    cerr << "Popping: " << ToString(gStack[j].m_key) << '\n';
+			    //cerr << "Popping: " << ToString(gStack[j].m_key) << '\n';
 			    gStack[j] = gStack.back();
 			    gStack.pop_back();
 			}
@@ -1106,7 +1106,7 @@ void Board::GroupExpand(cell_t move)
                     // PUSH NEW ENTRY ON STACK
 		    // (cell,g2Anchor, g1cellg2)
 		    gStack.push_back(PotentialCarrier(*it, g2Anchor, g1cellg2));
-		    cerr << "Pushing: " << ToString(*it) << '\n';
+		    //cerr << "Pushing: " << ToString(*it) << '\n';
                 }
             }
 	}
