@@ -1001,7 +1001,6 @@ void Board::AddNonGroupEdges(int* seen, Group* g, int id)
 // TODO: Improve this search.
 void Board::GroupExpand(cell_t move)
 {
-    SG_UNUSED(move);
     SgBlackWhite color = GetColor(move);
 
     std::vector<PotentialCarrier> gStack;
@@ -1045,7 +1044,8 @@ void Board::GroupExpand(cell_t move)
                 // construct cell->g2 carrier
 		cell_t g2Block = cell->m_FullConnects[color][i2];
 
-		//cerr << "Cell connects " << ToString(g1Block) << " to " << ToString(g2Block) << '\n';
+		//cerr << "Cell connects " << ToString(g1Block) 
+                // << " to " << ToString(g2Block) << '\n';
 		bool intersect = false;
 		// CHECK: cell->g1 does not intersect cell->g2
                 // construct g1->cell->g2 carrier
@@ -1074,15 +1074,18 @@ void Board::GroupExpand(cell_t move)
                     if (gStack[j].m_group == g2Anchor) {
 			int size = g1cellg2.IntersectSize(gStack[j].m_carrier);	
 			if(size > 0) {
-			    //cerr << "Found intersect with: " << ToString(gStack[j].m_key) << '\n';
+			    //cerr << "Found intersect with: " 
+                            // << ToString(gStack[j].m_key) << '\n';
 			    if (size == gStack[j].m_carrier.Size()) {
 				addToStack = false;
-				//cerr << "Found same carrier: " << ToString(gStack[j].m_key) << '\n';
+				//cerr << "Found same carrier: " 
+                                // << ToString(gStack[j].m_key) << '\n';
 			    }
 			}
 			else {
 			    merged = true;
-			    //cerr << "Found a compatible carrier: " << ToString(gStack[j].m_key) << '\n';
+			    //cerr << "Found a compatible carrier: " 
+                            //     << ToString(gStack[j].m_key) << '\n';
 			    MergeGroups(g1Anchor, g2Anchor, gStack[j].m_carrier, 
 					g1cellg2);
 			}
