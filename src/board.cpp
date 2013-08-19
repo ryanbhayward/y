@@ -117,8 +117,8 @@ void Board::State::Init(int T)
 
     for (int i = 0; i < T; ++i)
         m_color[i] = SG_EMPTY;
-    memset(m_blockIndex.get(), -1, sizeof(m_blockIndex.get()));
-    memset(m_groupIndex.get(), -1, sizeof(m_groupIndex.get()));
+    memset(m_blockIndex.get(), -1, sizeof(cell_t)*T);
+    memset(m_groupIndex.get(), -1, sizeof(cell_t)*T);
 
     m_con.reset(new Carrier*[T]);
     for(int i = 0, j = 0; i < T; ++i) {
@@ -790,7 +790,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     FlipToPlay();
     //std::cerr << ToString();
 
-    GroupExpand(p);
+    //GroupExpand(p);
 }
 
 void Board::AddSharedLiberty(Block* b1, Block* b2)
