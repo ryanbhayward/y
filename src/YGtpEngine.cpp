@@ -173,7 +173,6 @@ void YGtpEngine::NewGame()
 
 void YGtpEngine::Play(int color, int move)
 {
-    std::cerr << "move=" << move << '\n';
     if (move == Y_SWAP) {
         if (!m_allowSwap)
             throw GtpFailure("Swap setting is disabled!");
