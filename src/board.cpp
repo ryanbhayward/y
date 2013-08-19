@@ -733,7 +733,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     }
 
     // Recompute groups for adjacent opponent blocks.
-    if (oppBlocks.Length() > 1) 
+    if (oppBlocks.Length() > 0) 
     {
         // For each non-edge oppBlock: add all blocks in its group to 
         // list of blocks whose group we need to compute.
@@ -790,7 +790,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     FlipToPlay();
     //std::cerr << ToString();
 
-    //GroupExpand(p);
+    GroupExpand(p);
 }
 
 void Board::AddSharedLiberty(Block* b1, Block* b2)
