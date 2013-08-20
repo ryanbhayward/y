@@ -1086,14 +1086,17 @@ void Board::GroupExpand(cell_t move)
                 bool addToStack = true;
                 for (size_t j = 0; !merged  && j < gStack.size(); ++j) 
                 {
-                    if (gStack[j].m_key == *it)
+                    if (g1cellg2.Marked(gStack[j].m_key))
                         continue;
+		    if (gStack[j].m_carrier.Marked(*it))
+			continue;
                     if (gStack[j].m_group == g2Anchor) {
 			int size = g1cellg2.IntersectSize(gStack[j].m_carrier);	
 			if(size > 0) {
 			    //cerr << "Found intersect with: " 
                             // << ToString(gStack[j].m_key) << '\n';
-			    if (size == gStack[j].m_carrier.Size()) {
+			    if (size == gStack[j].m_carrier.Size() && 
+				size == g1cellg2.Size()) {
 				addToStack = false;
 				//cerr << "Found same carrier: " 
                                 // << ToString(gStack[j].m_key) << '\n';
