@@ -835,6 +835,7 @@ private:
     State m_savePoint2;
 
     MarkedCellsWithList m_dirtyCells;
+    MarkedCellsWithList m_dirtyBlocks;
     std::vector<CellPair> m_groupSearchPotStack;
 
     void CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border);

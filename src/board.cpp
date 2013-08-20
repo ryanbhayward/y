@@ -681,6 +681,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     //           << "pval=" << (int)p << '\n';
     Statistics::Get().m_numMovesPlayed++;
     m_dirtyCells.Clear();
+    m_dirtyBlocks.Clear();
     m_state.m_history.PushBack(color, p);
     m_state.m_toPlay = color;
     m_state.m_color[p] = color;
@@ -789,6 +790,20 @@ void Board::Play(SgBlackWhite color, cell_t p)
     //std::cerr << m_state.m_group[p]->m_border << '\n';
     FlipToPlay();
     //std::cerr << ToString();
+
+    for (EmptyIterator i(*this); i; ++i) {
+	if(!m_dirtyCells.Marked(*i)) {
+	    Cell* cell = GetCell(*i);
+	    for(MarkedCellsWithList::Iterator j(m_dirtyBlocks); j; ++j) {
+		Block* b = GetBlock(*j);
+		if (   cell->IsFullConnected(b, b->m_color) 
+		       || cell->IsSemiConnected(b, b->m_color)) {
+		    MarkCellDirty(*i);
+		    break;
+		}
+	    }
+	}
+    }
 
     GroupExpand(p);
 }
@@ -911,6 +926,8 @@ void Board::GroupSearch(int* seen, Block* b, int id,
                         std::vector<CellPair>& potStack)
 {
     seen[b->m_anchor] = 1;
+    if(b->m_color != SG_BORDER)
+	m_dirtyBlocks.Mark(b->m_anchor);
     //std::cerr << "Entered: " << ToString(b->m_anchor) << '\n';
     for (int i = 0; i < b->m_con.Length(); ++i)
     {
