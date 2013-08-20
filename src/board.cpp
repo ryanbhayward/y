@@ -1034,20 +1034,22 @@ void Board::GroupExpand(cell_t move)
 	if (g1->m_carrier.Marked(*it))
 	    continue;
 
-	//cerr << "Considering cell: " << ToString(*it) << '\n';
+	// cerr << "Considering cell: " << ToString(*it) << '\n';
         // try all possible connections to g1
 	for (int i1 = 0; i1 < cell->m_FullConnects[color].Length(); ++i1) {
             if (GetGroup(cell->m_FullConnects[color][i1]) != g1)
                 continue;
             // construct cell->g1 carrier
 	    cell_t g1Block = cell->m_FullConnects[color][i1];
-	    MarkedCellsWithList g1cellg2;
-	    g1cellg2.Mark(*it);
-	    for(int j = 0; j < GetConnection(*it, g1Block).Length(); ++j)
-		g1cellg2.Mark(GetConnection(*it, g1Block)[j]);
+	    PotentialCarrier g1cellg2(*it, g1Anchor);
+	    for(int j = 0; j < GetConnection(*it, g1Block).Length(); ++j) {
+		g1cellg2.m_fullCarrier.Mark(GetConnection(*it, g1Block)[j]);
+		g1cellg2.m_carrier1.Include(GetConnection(*it, g1Block)[j]);
+	    }
 
             // try all connections to other groups
             for (int i2 = 0; i2 < cell->m_FullConnects[color].Length(); ++i2) {
+		// cerr << "Empty connects to: " << ToString(cell->m_FullConnects[color][i2]) << '\n';;
                 if (i2 == i1)
                     continue;
                 Group* g2 = GetGroup(cell->m_FullConnects[color][i2]);
@@ -1058,68 +1060,99 @@ void Board::GroupExpand(cell_t move)
 		    continue;
 
                 cell_t g2Anchor = g2->m_anchor;
+		g1cellg2.m_endpoint2 = g2Anchor;
+		for(int j = 0; j < g1cellg2.m_carrier2.Length(); ++j)
+		    g1cellg2.m_fullCarrier.Unmark(g1cellg2.m_carrier2[j]);
+		g1cellg2.m_carrier2.Clear();
                 // construct cell->g2 carrier
 		cell_t g2Block = cell->m_FullConnects[color][i2];
 
-		//cerr << "Cell connects " << ToString(g1Block) 
-                // << " to " << ToString(g2Block) << '\n';
+		// cerr << "Cell connects " << ToString(g1Block) 
+                //      << " to " << ToString(g2Block) << '\n';
 		bool intersect = false;
 		// CHECK: cell->g1 does not intersect cell->g2
                 // construct g1->cell->g2 carrier
-		for(int j = 0; j < GetConnection(*it, g2Block).Length(); ++j)
-		    if(!g1cellg2.Mark(GetConnection(*it, g2Block)[j])) {
+		for(int j = 0; j < GetConnection(*it, g2Block).Length(); ++j) {
+		    if(!g1cellg2.m_fullCarrier.Mark(GetConnection(*it, g2Block)[j])) {
 			intersect = true;
 			break;
 		    }
+		    else
+			g1cellg2.m_carrier2.Include(GetConnection(*it, g2Block)[j]);
+		}
 		if(intersect)
 		    continue;
 
                 // CHECK: cell->g1 does not intersect g2
                 // CHECK: cell->g2 does not intersect g1
-		if(g1cellg2.Intersects(g1->m_carrier))
+		if(g1cellg2.m_fullCarrier.Intersects(g1->m_carrier))
 		    continue;
-		if(g1cellg2.Intersects(g2->m_carrier))
+		if(g1cellg2.m_fullCarrier.Intersects(g2->m_carrier))
 		    continue;
 
-		//cerr << "Passed intersect tests!\n";
+		// cerr << "Passed intersect tests!\n";
                 bool merged = false;
                 bool addToStack = true;
+		cell_t mergeKey = -1;
                 for (size_t j = 0; !merged  && j < gStack.size(); ++j) 
                 {
-                    if (g1cellg2.Marked(gStack[j].m_key))
-                        continue;
-		    if (gStack[j].m_carrier.Marked(*it))
+		    // cerr << "gStack key: " << ToString(gStack[j].m_key) << '\n';
+		    if (gStack[j].m_endpoint1 != g1cellg2.m_endpoint1)
 			continue;
-                    if (gStack[j].m_group == g2Anchor) {
-			int size = g1cellg2.IntersectSize(gStack[j].m_carrier);	
-			if(size > 0) {
-			    //cerr << "Found intersect with: " 
-                            // << ToString(gStack[j].m_key) << '\n';
-			    if (size == gStack[j].m_carrier.Size() && 
-				size == g1cellg2.Size()) {
-				addToStack = false;
-				//cerr << "Found same carrier: " 
-                                // << ToString(gStack[j].m_key) << '\n';
-			    }
+                    if (gStack[j].m_endpoint2 != g1cellg2.m_endpoint2)
+			continue;
+                    if (g1cellg2.m_fullCarrier.Marked(gStack[j].m_key))
+                        continue;
+		    if (gStack[j].m_fullCarrier.Marked(*it))
+			continue;
+		    // cerr << "Passed initial tests! \n";
+		    
+		    int size = g1cellg2.m_fullCarrier.IntersectSize(gStack[j].m_fullCarrier);
+		    if (addToStack == true &&
+			size == gStack[j].m_fullCarrier.Size() && 
+			size == g1cellg2.m_fullCarrier.Size()) {
+			// cerr << "Found same carrier: " 
+			//      << ToString(gStack[j].m_key) << '\n';
+			addToStack = false;
+		    }
+
+		    if (g1cellg2.m_carrier1.Length() > 0)
+			if ((g1cellg2.m_carrier1.Length() - 
+			     gStack[j].m_fullCarrier.IntersectSize(g1cellg2.m_carrier1)) < 2) {
+			    continue;
 			}
-			else {
-			    merged = true;
-			    //cerr << "Found a compatible carrier: " 
-                            //     << ToString(gStack[j].m_key) << '\n';
-			    MergeGroups(g1Anchor, g2Anchor, gStack[j].m_carrier, 
-					g1cellg2);
+		    if (g1cellg2.m_carrier2.Length() > 0)
+			if ((g1cellg2.m_carrier2.Length() - 
+			     gStack[j].m_fullCarrier.IntersectSize(g1cellg2.m_carrier2) < 2)) {
+			    continue;
 			}
-                    }
+		    if (gStack[j].m_carrier1.Length() > 0)
+			if ((gStack[j].m_carrier1.Length() - 
+			     g1cellg2.m_fullCarrier.IntersectSize(gStack[j].m_carrier1) < 2)) {
+			    continue;
+			}
+		    if (gStack[j].m_carrier2.Length() > 0)
+			if ((gStack[j].m_carrier1.Length() - 
+			     g1cellg2.m_fullCarrier.IntersectSize(gStack[j].m_carrier1) < 2)) {
+			    continue;
+			}
+
+		    merged = true;
+		    // cerr << "Found a compatible carrier: " 
+		    //      << ToString(gStack[j].m_key) << '\n';
+		    MergeGroups(g1Anchor, g2Anchor, gStack[j].m_fullCarrier, 
+				g1cellg2.m_fullCarrier);
+		    mergeKey = gStack[j].m_key;
                 }
                 if (merged) {
-                    // REMOVE ALL MENTION OF G2 ON STACK
+                    // REMOVE ALL MENTION OF G2 AND KEYS ON STACK
 		    size_t size = gStack.size();
 		    for (size_t j = 0; j < size; ++j) {
-			// cerr << "Key: " << ToString(gStack[j].m_key) 
-			//      << " Group: " << ToString(gStack[j].m_group) 
-			//      << '\n';
-			if(gStack[j].m_group == g2Anchor) {
-			    //cerr << "Popping: " << ToString(gStack[j].m_key) << '\n';
+			 // cerr << "Key: " << ToString(gStack[j].m_key) 
+			 //      << " Endpoint2: " << ToString(gStack[j].m_endpoint2) 
+			 //      << '\n';
+			if(gStack[j].m_endpoint2 == g2Anchor || gStack[j].m_key == *it || gStack[j].m_key == mergeKey) {
+			    // cerr << "Popping: " << ToString(gStack[j].m_key) << '\n';
 			    gStack[j] = gStack.back();
 			    gStack.pop_back();
 			}
@@ -1128,8 +1161,8 @@ void Board::GroupExpand(cell_t move)
                 else if (addToStack) {
                     // PUSH NEW ENTRY ON STACK
 		    // (cell,g2Anchor, g1cellg2)
-		    gStack.push_back(PotentialCarrier(*it, g2Anchor, g1cellg2));
-		    //cerr << "Pushing: " << ToString(*it) << '\n';
+		    gStack.push_back(g1cellg2);
+		    // cerr << "Pushing: " << ToString(*it) << '\n';
                 }
             }
 	}
@@ -1464,6 +1497,14 @@ bool MarkedCellsWithList::Intersects(const MarkedCells& other) const
     return false;
 }
 
+bool MarkedCellsWithList::Intersects(const SgArrayList<cell_t, 6>& other) const
+{
+    for(int i = 0; i < other.Length(); ++i)
+	if(this->Marked(other[i]))
+	    return true;
+    return false;
+}
+
 int MarkedCellsWithList::IntersectSize(const MarkedCellsWithList& other) const
 {
     int count = 0;
@@ -1485,6 +1526,15 @@ int MarkedCellsWithList::IntersectSize(const MarkedCells& other) const
     int count = 0;
     for(Iterator i(*this); i; ++i)
 	if (other.Marked(*i)) 
+	    count++;
+    return count;
+}
+
+int  MarkedCellsWithList::IntersectSize(const SgArrayList<cell_t, 6>& other) const
+{
+    int count = 0;
+    for(int i = 0; i < other.Length(); ++i)
+	if(this->Marked(other[i]))
 	    count++;
     return count;
 }

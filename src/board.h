@@ -186,23 +186,42 @@ struct MarkedCellsWithList
     { return m_list.Length(); }
 
     bool Intersects(const MarkedCells& other) const;
+    bool Intersects(const SgArrayList<cell_t, 6>& other) const;
     int  IntersectSize(const MarkedCells& other) const;
     int  IntersectSize(const MarkedCellsWithList& other) const;
+    int  IntersectSize(const SgArrayList<cell_t, 6>& other) const;
 };
 
 struct PotentialCarrier
 {
     cell_t m_key;
-    cell_t m_group;
-    MarkedCellsWithList m_carrier;
+    cell_t m_endpoint1;
+    cell_t m_endpoint2;
+    SgArrayList<cell_t, 6> m_carrier1;
+    SgArrayList<cell_t, 6> m_carrier2;
+    MarkedCellsWithList m_fullCarrier;
 
     PotentialCarrier()
     { }
 
-    PotentialCarrier(cell_t key, cell_t group, MarkedCellsWithList carrier)
+    PotentialCarrier(cell_t key, cell_t endpoint1)
         : m_key(key)
-	, m_group(group)
-	, m_carrier(carrier)
+	, m_endpoint1(endpoint1)
+    { 
+	m_fullCarrier.Clear();
+	m_fullCarrier.Mark(key);
+    }
+
+    PotentialCarrier(cell_t key, cell_t endpoint1, cell_t endpoint2, 
+		     SgArrayList<cell_t, 6> carrier1,
+		     SgArrayList<cell_t, 6> carrier2, 
+		     MarkedCellsWithList fullCarrier)
+        : m_key(key)
+	, m_endpoint1(endpoint1)
+	, m_endpoint2(endpoint2)
+	, m_carrier1(carrier1)
+	, m_carrier2(carrier2)
+	, m_fullCarrier(fullCarrier)
     { }
 };
  
