@@ -1093,7 +1093,6 @@ void Board::GroupExpand(cell_t move)
 		// cerr << "Passed intersect tests!\n";
                 bool merged = false;
                 bool addToStack = true;
-		cell_t mergeKey = -1;
                 for (size_t j = 0; !merged  && j < gStack.size(); ++j) 
                 {
 		    // cerr << "gStack key: " << ToString(gStack[j].m_key) << '\n';
@@ -1142,7 +1141,6 @@ void Board::GroupExpand(cell_t move)
 		    //      << ToString(gStack[j].m_key) << '\n';
 		    MergeGroups(g1Anchor, g2Anchor, gStack[j].m_fullCarrier, 
 				g1cellg2.m_fullCarrier);
-		    mergeKey = gStack[j].m_key;
                 }
                 if (merged) {
                     // REMOVE ALL MENTION OF G2 AND KEYS ON STACK
@@ -1151,7 +1149,9 @@ void Board::GroupExpand(cell_t move)
 			 // cerr << "Key: " << ToString(gStack[j].m_key) 
 			 //      << " Endpoint2: " << ToString(gStack[j].m_endpoint2) 
 			 //      << '\n';
-			if(gStack[j].m_endpoint2 == g2Anchor || gStack[j].m_key == *it || gStack[j].m_key == mergeKey) {
+			if(   gStack[j].m_endpoint2 == g2Anchor 
+                              || gStack[j].m_fullCarrier.Intersects(g1->m_carrier))
+                        {
 			    // cerr << "Popping: " << ToString(gStack[j].m_key) << '\n';
 			    gStack[j] = gStack.back();
 			    gStack.pop_back();
