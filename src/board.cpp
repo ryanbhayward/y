@@ -733,17 +733,16 @@ void Board::Play(SgBlackWhite color, cell_t p)
             MergeBlocks(p, border, realAdjBlocks);
     }
 
-    // Recompute groups for adjacent opponent blocks.
-    if (oppBlocks.Length() > 0) 
+    // Recompute all opponent groups whose carrier contains p 
     {
-        // For each non-edge oppBlock: add all blocks in its group to 
-        // list of blocks whose group we need to compute.
         SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
-        for (int i = 0; i < oppBlocks.Length(); ++i)
+        for (CellIterator g(*this); g; ++g)
         {
-            if (IsBorder(oppBlocks[i]))
+            if (GetColor(*g) != SgOppBW(color))
                 continue;
-            cell_t gAnchor = GroupAnchor(oppBlocks[i]);
+            const cell_t gAnchor = GroupAnchor(*g);
+            if (gAnchor != *g)
+                continue;
             if (!seenGroups.Contains(gAnchor)) {
                 Group* g = GetGroup(gAnchor);
                 if (g->m_carrier.Marked(p)) {
