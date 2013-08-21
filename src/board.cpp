@@ -745,17 +745,19 @@ void Board::Play(SgBlackWhite color, cell_t p)
                 continue;
             cell_t gAnchor = GroupAnchor(oppBlocks[i]);
             if (!seenGroups.Contains(gAnchor)) {
-                seenGroups.PushBack(gAnchor);
                 Group* g = GetGroup(gAnchor);
-                for (int j = 0; j < g->m_blocks.Length(); ++j) {
-                    if (!IsBorder(g->m_blocks[j])) {
-                        blocks.Include(BlockAnchor(g->m_blocks[j]));
-                        // ^^ Note use of BlockAnchor!!
-                        // We are in a transitionary period where the old
-                        // groups may use out of date block anchors.
+                if (g->m_carrier.Marked(p)) {
+                    seenGroups.PushBack(gAnchor);
+                    for (int j = 0; j < g->m_blocks.Length(); ++j) {
+                        if (!IsBorder(g->m_blocks[j])) {
+                            blocks.Include(BlockAnchor(g->m_blocks[j]));
+                            // ^^ Note use of BlockAnchor!!
+                            // We are in a transitionary period where the old
+                            // groups may use out of date block anchors.
+                        }
                     }
+                    ResetBlocksInGroup(GetBlock(gAnchor));
                 }
-		ResetBlocksInGroup(GetBlock(gAnchor));
             }
         } 
 
