@@ -1132,8 +1132,8 @@ void Board::GroupExpand(cell_t move)
 			    continue;
 			}
 		    if (gStack[j].m_carrier2.Length() > 0)
-			if ((gStack[j].m_carrier1.Length() - 
-			     g1cellg2.m_fullCarrier.IntersectSize(gStack[j].m_carrier1) < 2)) {
+			if ((gStack[j].m_carrier2.Length() - 
+			     g1cellg2.m_fullCarrier.IntersectSize(gStack[j].m_carrier2) < 2)) {
 			    continue;
 			}
 
