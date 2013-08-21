@@ -1037,8 +1037,7 @@ void Board::AddNonGroupEdges(int* seen, Group* g, int id)
 void Board::GroupExpand(cell_t move)
 {
     SgBlackWhite color = GetColor(move);
-
-    std::vector<PotentialCarrier> gStack;
+    std::vector<PotentialCarrier>& gStack = m_groupExpandPotStack;
     gStack.clear();
 
     Group* g1 = GetGroup(BlockAnchor(move));

@@ -856,6 +856,7 @@ private:
     MarkedCellsWithList m_dirtyCells;
     MarkedCellsWithList m_dirtyBlocks;
     std::vector<CellPair> m_groupSearchPotStack;
+    std::vector<PotentialCarrier> m_groupExpandPotStack;
 
     void CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border);
 
