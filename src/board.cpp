@@ -1056,6 +1056,9 @@ void Board::GroupExpand(cell_t move)
                 Group* g2 = GetGroup(cell->m_FullConnects[color][i2]);
                 if (g2 == g1)
                     continue;
+                if (GetColor(g2->m_anchor) == SG_BORDER && g1->m_blocks.Contains(g2->m_anchor))
+                    continue;
+
                 // CHECK: cell not in g2->carrier
 		if (g2->m_carrier.Marked(*it))
 		    continue;
