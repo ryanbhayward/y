@@ -718,7 +718,8 @@ void Board::Play(SgBlackWhite color, cell_t p)
     RemoveSharedLiberty(p, adjBlocks);
     RemoveSharedLiberty(p, oppBlocks);
        
-    // Create/update block containing p (ignores edge blocks)
+    // Create/update block containing p (ignores edge blocks).
+    // Compute group for this block as well.
     {
         SgArrayList<cell_t, 3> realAdjBlocks;
         for (int i = 0; i < adjBlocks.Length(); ++i)
@@ -733,41 +734,71 @@ void Board::Play(SgBlackWhite color, cell_t p)
             MergeBlocks(p, border, realAdjBlocks);
     }
 
-    // Recompute all opponent groups whose carrier contains p 
+    // Find all opponent groups whose carrier contains p
+    SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
+    for (CellIterator g(*this); g; ++g)
     {
-        SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
-        for (CellIterator g(*this); g; ++g)
-        {
-            if (GetColor(*g) != SgOppBW(color))
-                continue;
-            const cell_t gAnchor = GroupAnchor(*g);
-            if (gAnchor != *g)
-                continue;
-            if (!seenGroups.Contains(gAnchor)) {
-                Group* g = GetGroup(gAnchor);
-                if (g->m_carrier.Marked(p)) {
-                    seenGroups.PushBack(gAnchor);
-                    for (int j = 0; j < g->m_blocks.Length(); ++j) {
-                        if (!IsBorder(g->m_blocks[j])) {
-                            blocks.Include(BlockAnchor(g->m_blocks[j]));
-                            // ^^ Note use of BlockAnchor!!
-                            // We are in a transitionary period where the old
-                            // groups may use out of date block anchors.
-                        }
+        if (GetColor(*g) != SgOppBW(color))
+            continue;
+        const cell_t gAnchor = GroupAnchor(*g);
+        if (gAnchor != *g)
+            continue;
+        if (!seenGroups.Contains(gAnchor)) {
+            Group* g = GetGroup(gAnchor);
+            if (g->m_carrier.Marked(p)) {
+                seenGroups.PushBack(gAnchor);
+                for (int j = 0; j < g->m_blocks.Length(); ++j) {
+                    if (!IsBorder(g->m_blocks[j])) {
+                        blocks.Include(BlockAnchor(g->m_blocks[j]));
+                        // ^^ Note use of BlockAnchor!!
+                        // We are in a transitionary period where the old
+                        // groups may use out of date block anchors.
                     }
-                    ResetBlocksInGroup(GetBlock(gAnchor));
                 }
+                ResetBlocksInGroup(GetBlock(gAnchor));
             }
-        } 
+        }
+    } 
 
-	int seen[Const().TotalCells+10];
-	memset(seen, 0, sizeof(seen));
-	for(int i = 0; i < blocks.Length(); ++i) {
-            Block* b = GetBlock(blocks[i]);
-            if (seen[blocks[i]] != 1)
-                ComputeGroupForBlock(b, seen, 100 + i);
+    // Recompute all opponent groups whose carrier contains p 
+    int seen[Const().TotalCells+10];
+    memset(seen, 0, sizeof(seen));
+    for(int i = 0; i < blocks.Length(); ++i) {
+        Block* b = GetBlock(blocks[i]);
+        if (seen[blocks[i]] != 1)
+            ComputeGroupForBlock(b, seen, 100 + i);
+    }
+    
+    // Mark every cell touching a dirty block (a block changed by the group
+    // search, for both colors).
+    for (EmptyIterator i(*this); i; ++i) {
+	if(!m_dirtyCells.Marked(*i)) {
+	    Cell* cell = GetCell(*i);
+	    for(MarkedCellsWithList::Iterator j(m_dirtyBlocks); j; ++j) {
+		Block* b = GetBlock(*j);
+		if (   cell->IsFullConnected(b, b->m_color) 
+		       || cell->IsSemiConnected(b, b->m_color)) {
+		    MarkCellDirty(*i);
+		    break;
+		}
+	    }
+	}
+    }
+
+    // Group expand opponent groups
+    memset(seen, 0, sizeof(seen));
+    for (int i = 0; i < blocks.Length(); ++i) {
+        cell_t gAnchor = GroupAnchor(blocks[i]);
+        if (!seen[gAnchor]) {
+            seen[gAnchor] = true;
+            GroupExpand(gAnchor);
         }
     }
+    // Group expand p's group
+    // TODO: need to also group expand other newly created groups
+    // for this played
+    GroupExpand(p);
+
     
     // Break old win if necessary
     if (HasWinningVC() && GroupBorder(m_state.m_vcGroupAnchor) != BORDER_ALL)
@@ -789,24 +820,10 @@ void Board::Play(SgBlackWhite color, cell_t p)
     }
     
     //std::cerr << m_state.m_group[p]->m_border << '\n';
-    FlipToPlay();
     //std::cerr << ToString();
 
-    for (EmptyIterator i(*this); i; ++i) {
-	if(!m_dirtyCells.Marked(*i)) {
-	    Cell* cell = GetCell(*i);
-	    for(MarkedCellsWithList::Iterator j(m_dirtyBlocks); j; ++j) {
-		Block* b = GetBlock(*j);
-		if (   cell->IsFullConnected(b, b->m_color) 
-		       || cell->IsSemiConnected(b, b->m_color)) {
-		    MarkCellDirty(*i);
-		    break;
-		}
-	    }
-	}
-    }
 
-    GroupExpand(p);
+    FlipToPlay();
 }
 
 void Board::AddSharedLiberty(Block* b1, Block* b2)
