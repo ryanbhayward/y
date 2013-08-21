@@ -272,12 +272,17 @@ void Board::Undo()
 void Board::Swap()
 {
     for (CellIterator it(Const()); it; ++it) {
-	if(GetColor(*it) != SG_EMPTY) {
+	if (GetColor(*it) != SG_EMPTY) {
             m_state.m_color[*it] = SgOppBW(GetColor(*it));
             if (*it == BlockAnchor(*it)) {
                 Block* b = GetBlock(*it);
                 b->m_color = SgOppBW(b->m_color);
             }
+        } else if (GetColor(*it) == SG_EMPTY) {
+            Cell* cell = GetCell(*it);
+            std::swap(cell->m_NumAdj[SG_BLACK], cell->m_NumAdj[SG_WHITE]);
+            std::swap(cell->m_SemiConnects[SG_BLACK], cell->m_SemiConnects[SG_WHITE]);
+            std::swap(cell->m_FullConnects[SG_BLACK], cell->m_FullConnects[SG_WHITE]);
         }
     }
     m_state.m_history.PushBack(SG_EMPTY, Y_SWAP);
