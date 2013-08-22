@@ -327,6 +327,7 @@ struct LocalMoves
 {
     static const float WEIGHT_SAVE_BRIDGE = 1000000.0;
     static const float WEIGHT_DEAD_CELL   = 1e-6;
+    static const float WEIGHT_WIN_THREAT  = 10000000.0;
 
     std::vector<int> move;
     std::vector<float> gamma;
@@ -525,6 +526,9 @@ struct Board
     bool IsCellDead(cell_t p) const;
     void MarkCellAsDead(cell_t p);
 
+    bool IsCellThreat(cell_t p) const;
+    void MarkCellAsThreat(cell_t p);
+
     void MarkCellNotDirty(cell_t p);
     void MarkCellDirty(cell_t p); 
     const MarkedCellsWithList& GetAllDirtyCells() const;
@@ -711,8 +715,9 @@ private:
         typedef SgArrayList<cell_t, 6> SemiConnectionList;
         typedef SgArrayList<cell_t, 6> FullConnectionList;
 
-        static const int FLAG_DIRTY = 1;
-        static const int FLAG_DEAD  = 2;
+        static const int FLAG_DIRTY  = 1;
+        static const int FLAG_DEAD   = 2;
+	static const int FLAG_THREAT = 4;
 
 	SemiConnectionList m_SemiConnects[2];
 	FullConnectionList m_FullConnects[2];
@@ -762,6 +767,7 @@ private:
         void ClearFlags(int f) { m_flags &= ~f; }
         bool IsDirty() const { return m_flags & FLAG_DIRTY; } 
         bool IsDead() const { return m_flags & FLAG_DEAD; }
+	bool IsThreat() const { return m_flags & FLAG_THREAT; }
 
 	std::string ToString(const ConstBoard& cbrd) const
         {
@@ -953,6 +959,11 @@ private:
 inline void Board::MarkCellAsDead(cell_t p) 
 { 
     GetCell(p)->SetFlags(Cell::FLAG_DEAD);
+}
+
+inline void Board::MarkCellAsThreat(cell_t p)
+{
+    GetCell(p)->SetFlags(Cell::FLAG_THREAT);
 }
 
 inline void Board::MarkCellNotDirty(cell_t p)

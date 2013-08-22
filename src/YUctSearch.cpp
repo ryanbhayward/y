@@ -256,7 +256,13 @@ void YUctThreadState::ComputeWeight(cell_t p)
         m_weights[SG_BLACK].SetWeight(p, LocalMoves::WEIGHT_DEAD_CELL);
         m_weights[SG_WHITE].SetWeight(p, LocalMoves::WEIGHT_DEAD_CELL);
         m_brd.MarkCellAsDead(p);
-    } else {
+    } 
+    else if (m_brd.IsCellThreat(p)) {
+    	m_weights[SG_BLACK].SetWeight(p, LocalMoves::WEIGHT_WIN_THREAT);
+    	m_weights[SG_WHITE].SetWeight(p, LocalMoves::WEIGHT_WIN_THREAT);
+    	m_brd.MarkCellAsThreat(p);
+    }
+    else {
         float w = m_brd.WeightCell(p);
         m_weights[SG_BLACK].SetWeight(p, w);
         m_weights[SG_WHITE].SetWeight(p, w);

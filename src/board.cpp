@@ -1403,6 +1403,28 @@ bool Board::IsCellDead(cell_t p) const
     return false;
 }
 
+bool Board::IsCellThreat(cell_t p) const
+{
+    const Cell* cell = GetCell(p);
+    if (cell->IsThreat())
+	return true;
+    int border = 0;
+    for (int i = 0; i < cell->m_FullConnects[SG_BLACK].Length(); ++i) {
+	border |= GetGroup(BlockAnchor(
+			       cell->m_FullConnects[SG_BLACK][i]))->m_border;
+	if ( border == BORDER_ALL)
+	    return true;
+    }
+    border = 0;
+    for (int i = 0; i < cell->m_FullConnects[SG_WHITE].Length(); ++i) {
+	border |= GetGroup(BlockAnchor(
+			       cell->m_FullConnects[SG_WHITE][i]))->m_border;
+	if ( border == BORDER_ALL)
+	    return true;
+    }
+    return false;
+}
+
 float Board::WeightCell(cell_t p) const
 {
     float ret = 1.0;
