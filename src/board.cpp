@@ -1409,7 +1409,6 @@ bool Board::IsCellThreat(cell_t p) const
     if (cell->IsThreat())
 	return true;
     int border;
-    // TODO: Add BlackWhiteIterator
     for (SgBWIterator it; it; ++it) {
 	border = 0;
 	for (int i = 0; i < cell->m_FullConnects[*it].Length(); ++i) {
@@ -1426,10 +1425,25 @@ float Board::WeightCell(cell_t p) const
 {
     float ret = 1.0;
     const Cell* cell = GetCell(p);
-    ret += cell->m_FullConnects[SG_BLACK].Length();
-    ret += cell->m_FullConnects[SG_WHITE].Length();
-    ret += (0.5) * cell->m_SemiConnects[SG_BLACK].Length();
-    ret += (0.5) * cell->m_SemiConnects[SG_WHITE].Length();
+    SgArrayList<cell_t, 12> seenGroups;
+    int border = 0;
+    for (SgBWIterator it; it; ++it) {
+	for (int i = 0; i < cell->m_FullConnects[*it].Length(); ++i) {
+	    ret += GetBlock(cell->m_FullConnects[*it][i])->m_stones.Length();
+	    const Group* g = GetGroup(BlockAnchor(
+					  cell->m_FullConnects[*it][i]));
+	    if (GetColor(g->m_anchor) == SG_BORDER)
+		continue;
+	    if (seenGroups.Contains(g->m_anchor))
+		continue;
+	    if (g->m_carrier.Marked(p))
+		continue;
+	    ret += 2 * g->m_blocks.Length();
+	    border |= g->m_border;
+	    seenGroups.PushBack(g->m_anchor);
+	}
+    }
+    ret += border;
     return ret;
 }
 
