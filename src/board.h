@@ -777,6 +777,9 @@ private:
                << " Black=" << this->m_NumAdj[SG_BLACK]
                << " White=" << this->m_NumAdj[SG_WHITE]
                << " Flags=" << this->m_flags
+               << ((this->m_flags & FLAG_DIRTY) ? "(dirty)" : "")
+               << ((this->m_flags & FLAG_DEAD) ? "(dead)" : "")
+               << ((this->m_flags & FLAG_THREAT) ? "(threat)" : "")
                << "]";
             // FullConnectionList& fulls = m_FullConnects[from->m_color];
             // for (int i = 0; i < fulls.Length(); ++i) {
