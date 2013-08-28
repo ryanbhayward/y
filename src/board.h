@@ -185,11 +185,27 @@ struct MarkedCellsWithList
     int Size() const
     { return m_list.Length(); }
 
+    bool IsEmpty() const
+    { return m_list.IsEmpty(); }
+
     bool Intersects(const MarkedCells& other) const;
     bool Intersects(const SgArrayList<cell_t, 6>& other) const;
     int  IntersectSize(const MarkedCells& other) const;
     int  IntersectSize(const MarkedCellsWithList& other) const;
     int  IntersectSize(const SgArrayList<cell_t, 6>& other) const;
+};
+
+struct SemiConnection
+{
+    cell_t m_key;
+    cell_t m_endpoint1;
+    cell_t m_endpoint2;
+    SgArrayList<cell_t, 6> m_carrier1;
+    SgArrayList<cell_t, 6> m_carrier2;
+    SgArrayList<cell_t, 13> m_fullCarrier;
+
+    SemiConnection()
+    { }
 };
 
 struct PotentialCarrier
@@ -527,7 +543,12 @@ struct Board
     void MarkCellAsDead(cell_t p);
 
     bool IsCellThreat(cell_t p) const;
+    void MarkCellNotThreat(cell_t p);
     void MarkCellAsThreat(cell_t p);
+    void MarkAllThreats(const MarkedCellsWithList& cells,
+                        MarkedCellsWithList& threatInter,
+                        MarkedCellsWithList& threatUnion);
+
 
     void MarkCellNotDirty(cell_t p);
     void MarkCellDirty(cell_t p); 
@@ -962,6 +983,16 @@ private:
 inline void Board::MarkCellAsDead(cell_t p) 
 { 
     GetCell(p)->SetFlags(Cell::FLAG_DEAD);
+}
+
+inline bool Board::IsCellThreat(cell_t p) const
+{
+    return GetCell(p)->IsThreat();
+}
+
+inline void Board::MarkCellNotThreat(cell_t p)
+{
+    GetCell(p)->ClearFlags(Cell::FLAG_THREAT);
 }
 
 inline void Board::MarkCellAsThreat(cell_t p)

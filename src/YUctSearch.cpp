@@ -169,8 +169,8 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
         return SG_NULLMOVE;
 
     YUctSearch::PlayoutStatistics::Get().m_totalMoves++;
-
     SgMove move = SG_NULLMOVE;
+
     move = GenerateLocalMove();
     if (move == SG_NULLMOVE)
     {
@@ -192,6 +192,14 @@ void YUctThreadState::ExecutePlayout(SgMove move)
 
     const MarkedCellsWithList& dirty = m_brd.GetAllDirtyCells();
     Board::Statistics::Get().m_numDirtyCellsPerMove += dirty.m_list.Length();
+
+    // MarkedCellsWithList threatInter, threatUnion;
+    // m_brd.MarkAllThreats(dirty, threatInter, threatUnion);
+    // if (threatInter.IsEmpty()) {
+    //     // store the win carrier; from now on all moves are played
+    //     // into this carrier
+    //     m_winCarrier = threatUnion;
+    // }
     for (MarkedCellsWithList::Iterator i(dirty); i; ++i) {
         cell_t p = *i;
         ComputeWeight(p);
@@ -203,6 +211,9 @@ void YUctThreadState::InitializeWeights()
 {
     m_weights[SG_BLACK].Clear();
     m_weights[SG_WHITE].Clear();
+    //MarkedCellsWithList threatInter, threatUnion;
+    // m_brd.MarkAllThreats(m_brd.GetAllEmptyCells(),
+    //                      threatsInter, threatsUnion);
     for (Board::EmptyIterator it(m_brd); it; ++it) {
 	ComputeWeight(*it);
     }
@@ -263,6 +274,7 @@ void YUctThreadState::ComputeWeight(cell_t p)
     	m_brd.MarkCellAsThreat(p);
     }
     else {
+        m_brd.MarkCellNotThreat(p);
         float w = m_brd.WeightCell(p);
         m_weights[SG_BLACK].SetWeight(p, w);
         m_weights[SG_WHITE].SetWeight(p, w);

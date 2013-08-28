@@ -1403,22 +1403,46 @@ bool Board::IsCellDead(cell_t p) const
     return false;
 }
 
-bool Board::IsCellThreat(cell_t p) const
+// TODO: Mark threats taking into account color.
+// eg: Black to play, both black and white have a single win threat.
+// Black should play his over blocking white's, currently they are
+// treated as the same.
+void Board::MarkAllThreats(const MarkedCellsWithList& cells,
+                           MarkedCellsWithList& threatInter,
+                           MarkedCellsWithList& threatUnion)
 {
-    const Cell* cell = GetCell(p);
-    if (cell->IsThreat())
-	return true;
-    int border;
-    for (SgBWIterator it; it; ++it) {
-	border = 0;
-	for (int i = 0; i < cell->m_FullConnects[*it].Length(); ++i) {
-	    border |= GetGroup(BlockAnchor(
-				   cell->m_FullConnects[*it][i]))->m_border;
-	    if ( border == BORDER_ALL)
-		return true;
-	}
+    threatUnion.Clear();
+    threatInter = m_state.m_emptyCells;
+
+    for (MarkedCellsWithList::Iterator it(cells); it; ++it)
+        GetCell(*it)->ClearFlags(Cell::FLAG_THREAT);
+    for (MarkedCellsWithList::Iterator it(cells); it; ++it) {
+        const Cell* cell = GetCell(*it);
+        if (cell->IsThreat())
+            continue;
+        for (SgBWIterator c; c; ++c) {
+            int border = 0;
+            for (int i = 0; i < cell->m_FullConnects[*c].Length(); ++i) {
+                const Group* g=GetGroup(BlockAnchor(cell->m_FullConnects[*c][i]));
+                // Cell is connected to a winning group; our work here
+                // is done.
+                if (g->m_border == BORDER_ALL) {
+                    for (MarkedCells::Iterator j(g->m_carrier); j; ++j) {
+                        threatUnion.Mark(*j);
+                    }
+                    threatInter.Clear();
+                    return;
+                }
+                
+                border |= g->m_border;
+                if (border == BORDER_ALL) {
+                    MarkCellAsThreat(*it);
+                    
+                    break;
+                }
+            }
+        }
     }
-    return false;
 }
 
 float Board::WeightCell(cell_t p) const
