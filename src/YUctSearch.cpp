@@ -190,7 +190,7 @@ void YUctThreadState::ExecutePlayout(SgMove move)
     m_weights[SG_BLACK].SetWeight(move, 0.0f);
     m_weights[SG_WHITE].SetWeight(move, 0.0f);
 
-    const MarkedCellsWithList& dirty = m_brd.GetAllDirtyCells();
+    const MarkedCellsWithList& dirty = m_brd.GetAllDirtyWeightCells();
     Board::Statistics::Get().m_numDirtyCellsPerMove += dirty.m_list.Length();
 
     // MarkedCellsWithList threatInter, threatUnion;
@@ -203,7 +203,6 @@ void YUctThreadState::ExecutePlayout(SgMove move)
     for (MarkedCellsWithList::Iterator i(dirty); i; ++i) {
         cell_t p = *i;
         ComputeWeight(p);
-        m_brd.MarkCellNotDirty(p);
     }
 }
 

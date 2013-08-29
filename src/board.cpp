@@ -9,95 +9,6 @@
 
 using namespace std;
 
-char ConstBoard::ColorToChar(SgBoardColor color) 
-{
-    switch(color) {
-    case SG_BLACK: return 'b';
-    case SG_WHITE: return 'w';
-    case SG_EMPTY: return '.';
-    default: return '?';
-    }
-}
-
-std::string ConstBoard::ColorToString(SgBoardColor color) 
-{
-    switch(color) {
-    case SG_BLACK: return "black";
-    case SG_WHITE: return "white";
-    case SG_EMPTY: return "empty";
-    default: return "?";
-    }
-}
-
-std::string ConstBoard::ToString(SgMove move)
-{
-    if (move == Y_SWAP)
-        return "swap";
-    else if (move == WEST)
-        return "west";
-    else if (move == EAST)
-        return "east";
-    else if (move == SOUTH)
-        return "south";
-    char str[16];
-    sprintf(str, "%c%1d",board_col(move)+'a',board_row(move)+1); 
-    return str;
-}
-
-SgMove ConstBoard::FromString(const string& name)
-{
-    if (name.size() >= 4 && name.substr(0,4) == "swap")
-    	return Y_SWAP;
-    if (name == "west")
-        return WEST;
-    if (name == "east")
-        return EAST;
-    if (name == "south")
-        return SOUTH;
-    int x = name[0] - 'a' + 1;
-    std::istringstream sin(name.substr(1));
-    int y;
-    sin >> y;
-    return fatten(y-1, x-1);
-}
-
-ConstBoard::ConstBoard()
-    : m_size(-1)
-{ }
-
-ConstBoard::ConstBoard(int size)
-    : m_size(size)
-    , TotalCells(m_size*(m_size+1)/2 + 3)
-    , m_cells()
-    , m_cell_nbr()
-{
-    m_cells.clear();
-    for (int r=0; r<Size(); r++)
-        for (int c=0; c<=r; c++) {
-            m_cells.push_back(fatten(r,c));
-        }
-
-    m_cells_edges = m_cells;
-    m_cells_edges.push_back(WEST);
-    m_cells_edges.push_back(EAST);
-    m_cells_edges.push_back(SOUTH);
-    
-    m_cell_nbr.resize(TotalCells);
-    for (int r=0; r<Size(); r++) {
-        for (int c=0; c<=r; c++) {
-            cell_t p = fatten(r,c);
-            m_cell_nbr[p].resize(6);
-            // spin clockwise from top left neighbor
-            m_cell_nbr[p][ DIR_NW ] = (c == 0) ? WEST : p - r - 1;
-            m_cell_nbr[p][ DIR_NE ] = (c == r) ? EAST : p - r;
-            m_cell_nbr[p][ DIR_E  ] = (c == r) ? EAST : p + 1;
-            m_cell_nbr[p][ DIR_SE ] = (r == Size()-1) ? SOUTH : p + (r + 1) + 1;
-            m_cell_nbr[p][ DIR_SW ] = (r == Size()-1) ? SOUTH : p + (r + 1);
-            m_cell_nbr[p][ DIR_W  ] = (c == 0) ? WEST : p - 1;
-        }
-    }
-}
-
 //----------------------------------------------------------------------
 
 Board::State::State(int T)
@@ -114,6 +25,7 @@ void Board::State::Init(int T)
     m_groupIndex.reset(new cell_t[T]);
     m_groupList.reset(new Group[T]);
     m_conData.reset(new Carrier[T*(T+1)/2]);
+    m_semis.reset(new SemiTable());
 
     for (int i = 0; i < T; ++i)
         m_color[i] = SG_EMPTY;
@@ -299,6 +211,7 @@ void Board::CopyState(Board::State& a, const Board::State& b)
     memcpy(a.m_groupList.get(), b.m_groupList.get(), sizeof(Group)*T);
     memcpy(a.m_conData.get(), b.m_conData.get(),
            sizeof(Carrier)*T*(T+1)/2);
+    memcpy(a.m_semis.get(), b.m_semis.get(), sizeof(SemiTable));
 
     a.m_oppBlocks = b.m_oppBlocks;
 
@@ -322,12 +235,12 @@ void Board::PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color)
     int size = (int)GetConnection(p, b->m_anchor).Size();
     if (size == 1) {
 	cell->AddSemi(b, color);
-        MarkCellDirty(p);
+        MarkCellDirtyCon(p);
     }
     else {        
         cell->RemoveSemiConnection(b, color);
         cell->AddFull(b, color);
-        MarkCellDirty(p);
+        MarkCellDirtyCon(p);
     }
 }
 
@@ -354,12 +267,12 @@ void Board::DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color)
     }
     if (size == 0) {
         cell->RemoveSemiConnection(b, color);
-        MarkCellDirty(p);        
+        MarkCellDirtyCon(p);        
     }
     else if(size == 1) {
         cell->RemoveFullConnection(b, color);
 	cell->AddSemi(b, color);
-        MarkCellDirty(p);
+        MarkCellDirtyCon(p);
     }
 }
 
@@ -410,7 +323,7 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
             b->m_liberties.PushBack(*it);
 
             GetCell(*it)->AddFull(b, color);
-            MarkCellDirty(*it);
+            MarkCellDirtyCon(*it);
 
             AddSharedLibertiesAroundPoint(b, *it, p);
 	} else if (GetColor(*it) == SG_BORDER) {
@@ -419,6 +332,9 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
     }
     m_state.m_groupIndex[p] = p;
     m_state.m_groupList[p] = Group(p, border);
+
+    
+
     ComputeGroupForBlock(b);
 }
 
@@ -450,25 +366,13 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
         GetCell(c)->AddFull(b, b->m_color);
         GetCell(c)->RemoveSemiConnection(b, b->m_color);
         GetConnection(c, b->m_anchor).Clear();
-        MarkCellDirty(c);
+        MarkCellDirtyCon(c);
 
         AddSharedLibertiesAroundPoint(b, c, p);
     }
-
-    // NOTE: Need to do this because block has changed, so weights
-    // of any empty cells connecting to b possibly need to change.
-    // This is expensive and stupid.
-    // TODO: have blocks store list of empty cells they are connected to.
-    for(EmptyIterator i(*this); i; ++i) 
-    {
-	Cell* cell = GetCell(*i);
-	if (   cell->IsFullConnected(b, b->m_color) 
-	       || cell->IsSemiConnected(b, b->m_color))
-	    MarkCellDirty(*i);
-    }
-
     m_state.m_groupIndex[p] = m_state.m_groupIndex[b->m_anchor];
     RemoveEdgeSharedLiberties(b);
+   
     ComputeGroupForBlock(b);
 }
 
@@ -511,18 +415,18 @@ void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to,
             removed |= cell->RemoveSemiConnection(from, from->m_color);
             removed |= cell->RemoveFullConnection(from, from->m_color);
             if (removed)
-                MarkCellDirty(*i);
+                MarkCellDirtyCon(*i);
 
             // Liberties of new captain don't need to be changed
             if (toLiberties[*i]) {
                 // Mark anything connected to 'to' as dirty
-                MarkCellDirty(*i);
+                MarkCellDirtyCon(*i);
                 continue;
             }
                 // Mark anything connected to 'to' as dirty
             if (   cell->IsFullConnected(to, to->m_color) 
                 || cell->IsSemiConnected(to, to->m_color))
-                MarkCellDirty(*i);
+                MarkCellDirtyCon(*i);
         } 
         else  
         {
@@ -593,7 +497,7 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
                                                     largestBlock->m_color);
                 GetCell(*lib)->AddFull(largestBlock, largestBlock->m_color);
                 GetConnection(*lib, largestBlock->m_anchor).Clear();
-                MarkCellDirty(*lib);                
+                MarkCellDirtyCon(*lib);                
             }
         }
 	MergeBlockConnections(adjBlock, largestBlock);
@@ -667,7 +571,7 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
                         // nuke it for self
                         GetCell(*j)->RemoveSemiConnection(b, GetColor(p)); 
                         GetCell(*j)->RemoveFullConnection(b, GetColor(p));
-                        MarkCellDirty(*j);
+                        MarkCellDirtyCon(*j);
                         // NOTE: no connection between p and edge for
                         // p's color, so table is just tracking opp(p) and
                         // edge.
@@ -685,7 +589,8 @@ void Board::Play(SgBlackWhite color, cell_t p)
     //           << "p=" << ToString(p) << '\n'
     //           << "pval=" << (int)p << '\n';
     Statistics::Get().m_numMovesPlayed++;
-    m_dirtyCells.Clear();
+    m_dirtyConCells.Clear();
+    m_dirtyWeightCells.Clear();
     m_dirtyBlocks.Clear();
     m_state.m_history.PushBack(color, p);
     m_state.m_toPlay = color;
@@ -722,6 +627,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     }
     RemoveSharedLiberty(p, adjBlocks);
     RemoveSharedLiberty(p, oppBlocks);
+    Semis().RemoveContaining(p);
        
     // Create/update block containing p (ignores edge blocks).
     // Compute group for this block as well.
@@ -738,6 +644,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
         else
             MergeBlocks(p, border, realAdjBlocks);
     }
+
 
     // Find all opponent groups whose carrier contains p
     SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
@@ -774,20 +681,20 @@ void Board::Play(SgBlackWhite color, cell_t p)
             ComputeGroupForBlock(b, seen, 100 + i);
     }
     
-    // Mark every cell touching a dirty block (a block changed by the group
-    // search, for both colors).
+    // Mark every cell requiring a weight update as dirty.
+    m_dirtyWeightCells = m_dirtyConCells;
     for (EmptyIterator i(*this); i; ++i) {
-	if(!m_dirtyCells.Marked(*i)) {
-	    Cell* cell = GetCell(*i);
-	    for(MarkedCellsWithList::Iterator j(m_dirtyBlocks); j; ++j) {
-		Block* b = GetBlock(*j);
-		if (   cell->IsFullConnected(b, b->m_color) 
-		       || cell->IsSemiConnected(b, b->m_color)) {
-		    MarkCellDirty(*i);
-		    break;
-		}
-	    }
-	}
+        if (m_dirtyWeightCells.Marked(*i))
+            continue;
+        Cell* cell = GetCell(*i);
+        for(MarkedCellsWithList::Iterator j(m_dirtyBlocks); j; ++j) {
+            Block* b = GetBlock(*j);
+            if (   cell->IsFullConnected(b, b->m_color) 
+                   || cell->IsSemiConnected(b, b->m_color)) {
+                MarkCellDirtyWeight(*i);
+                break;
+            }
+        }
     }
 
     // Group expand opponent groups
@@ -803,7 +710,6 @@ void Board::Play(SgBlackWhite color, cell_t p)
     // TODO: need to also group expand other newly created groups
     // for this played
     GroupExpand(p);
-
     
     // Break old win if necessary
     if (HasWinningVC() && GroupBorder(m_state.m_vcGroupAnchor) != BORDER_ALL)
@@ -1038,163 +944,117 @@ void Board::AddNonGroupEdges(int* seen, Group* g, int id)
     if(s > 1) g->m_border |= BORDER_SOUTH;
 }
 
-// TODO: Improve this search.
-void Board::GroupExpand(cell_t move)
+bool Board::CanMergeGroups(cell_t a, cell_t b, 
+                           SemiConnection& x, SemiConnection& y)
 {
-    SgBlackWhite color = GetColor(move);
-    std::vector<PotentialCarrier>& gStack = m_groupExpandPotStack;
-    gStack.clear();
-
-    Group* g1 = GetGroup(BlockAnchor(move));
-    cell_t g1Anchor = g1->m_anchor;
-
-    for (MarkedCellsWithList::Iterator it(m_dirtyCells); it; ++ it) {
-	Cell* cell = GetCell(*it);
-        if (cell->m_FullConnects[color].Length() < 2)
-            continue;
-        // CHECK: cell not in g1->carrier
-	if (g1->m_carrier.Marked(*it))
-	    continue;
-
-	// cerr << "Considering cell: " << ToString(*it) << '\n';
-        // try all possible connections to g1
-	for (int i1 = 0; i1 < cell->m_FullConnects[color].Length(); ++i1) {
-            if (GetGroup(cell->m_FullConnects[color][i1]) != g1)
-                continue;
-            // construct cell->g1 carrier
-	    cell_t g1Block = cell->m_FullConnects[color][i1];
-	    PotentialCarrier g1cellg2(*it, g1Anchor);
-	    for(int j = 0; j < GetConnection(*it, g1Block).Length(); ++j) {
-		g1cellg2.m_fullCarrier.Mark(GetConnection(*it, g1Block)[j]);
-		g1cellg2.m_carrier1.Include(GetConnection(*it, g1Block)[j]);
-	    }
-
-            // try all connections to other groups
-            for (int i2 = 0; i2 < cell->m_FullConnects[color].Length(); ++i2) {
-		// cerr << "Empty connects to: " << ToString(cell->m_FullConnects[color][i2]) << '\n';;
-                if (i2 == i1)
+    Group* ga = GetGroup(BlockAnchor(a));
+    Group* gb = GetGroup(BlockAnchor(b));
+    for (int ia = 0; ia < ga->m_blocks.Length(); ++ia) {
+        int xa = ga->m_blocks[ia];
+        for (int ib = 0; ib < gb->m_blocks.Length(); ++ib) {
+            int xb = gb->m_blocks[ib];
+            for (SemiTable::IteratorPair xit(xa,xb,&Semis()); xit; ++xit) {
+                x = *xit;
+                if (x.Intersects(ga->m_carrier) || x.Intersects(gb->m_carrier))
                     continue;
-                Group* g2 = GetGroup(cell->m_FullConnects[color][i2]);
-                if (g2 == g1)
-                    continue;
-                if (GetColor(g2->m_anchor) == SG_BORDER && g1->m_blocks.Contains(g2->m_anchor))
-                    continue;
-
-                // CHECK: cell not in g2->carrier
-		if (g2->m_carrier.Marked(*it))
-		    continue;
-
-                cell_t g2Anchor = g2->m_anchor;
-		g1cellg2.m_endpoint2 = g2Anchor;
-		for(int j = 0; j < g1cellg2.m_carrier2.Length(); ++j)
-		    g1cellg2.m_fullCarrier.Unmark(g1cellg2.m_carrier2[j]);
-		g1cellg2.m_carrier2.Clear();
-                // construct cell->g2 carrier
-		cell_t g2Block = cell->m_FullConnects[color][i2];
-
-		// cerr << "Cell connects " << ToString(g1Block) 
-                //      << " to " << ToString(g2Block) << '\n';
-		bool intersect = false;
-		// CHECK: cell->g1 does not intersect cell->g2
-                // construct g1->cell->g2 carrier
-		for(int j = 0; j < GetConnection(*it, g2Block).Length(); ++j) {
-		    if(!g1cellg2.m_fullCarrier.Mark(GetConnection(*it, g2Block)[j])) {
-			intersect = true;
-			break;
-		    }
-		    else
-			g1cellg2.m_carrier2.Include(GetConnection(*it, g2Block)[j]);
-		}
-		if(intersect)
-		    continue;
-
-                // CHECK: cell->g1 does not intersect g2
-                // CHECK: cell->g2 does not intersect g1
-		if(g1cellg2.m_fullCarrier.Intersects(g1->m_carrier))
-		    continue;
-		if(g1cellg2.m_fullCarrier.Intersects(g2->m_carrier))
-		    continue;
-
-		// cerr << "Passed intersect tests!\n";
-                bool merged = false;
-                bool addToStack = true;
-                for (size_t j = 0; !merged  && j < gStack.size(); ++j) 
-                {
-		    // cerr << "gStack key: " << ToString(gStack[j].m_key) << '\n';
-		    if (gStack[j].m_endpoint1 != g1cellg2.m_endpoint1)
-			continue;
-                    if (gStack[j].m_endpoint2 != g1cellg2.m_endpoint2)
-			continue;
-                    if (g1cellg2.m_fullCarrier.Marked(gStack[j].m_key))
-                        continue;
-		    if (gStack[j].m_fullCarrier.Marked(*it))
-			continue;
-		    // cerr << "Passed initial tests! \n";
-		    
-		    int size = g1cellg2.m_fullCarrier.IntersectSize(gStack[j].m_fullCarrier);
-		    if (addToStack == true &&
-			size == gStack[j].m_fullCarrier.Size() && 
-			size == g1cellg2.m_fullCarrier.Size()) {
-			// cerr << "Found same carrier: " 
-			//      << ToString(gStack[j].m_key) << '\n';
-			addToStack = false;
-		    }
-
-		    if (g1cellg2.m_carrier1.Length() > 0)
-			if ((g1cellg2.m_carrier1.Length() - 
-			     gStack[j].m_fullCarrier.IntersectSize(g1cellg2.m_carrier1)) < 2) {
-			    continue;
-			}
-		    if (g1cellg2.m_carrier2.Length() > 0)
-			if ((g1cellg2.m_carrier2.Length() - 
-			     gStack[j].m_fullCarrier.IntersectSize(g1cellg2.m_carrier2) < 2)) {
-			    continue;
-			}
-		    if (gStack[j].m_carrier1.Length() > 0)
-			if ((gStack[j].m_carrier1.Length() - 
-			     g1cellg2.m_fullCarrier.IntersectSize(gStack[j].m_carrier1) < 2)) {
-			    continue;
-			}
-		    if (gStack[j].m_carrier2.Length() > 0)
-			if ((gStack[j].m_carrier2.Length() - 
-			     g1cellg2.m_fullCarrier.IntersectSize(gStack[j].m_carrier2) < 2)) {
-			    continue;
-			}
-
-		    merged = true;
-		    // cerr << "Found a compatible carrier: " 
-		    //      << ToString(gStack[j].m_key) << '\n';
-		    MergeGroups(g1Anchor, g2Anchor, gStack[j].m_fullCarrier, 
-				g1cellg2.m_fullCarrier);
-                }
-                if (merged) {
-                    // REMOVE ALL MENTION OF G2 AND KEYS ON STACK
-		    size_t size = gStack.size();
-		    for (size_t j = 0; j < size; ++j) {
-			 // cerr << "Key: " << ToString(gStack[j].m_key) 
-			 //      << " Endpoint2: " << ToString(gStack[j].m_endpoint2) 
-			 //      << '\n';
-			if(   gStack[j].m_endpoint2 == g2Anchor 
-                              || gStack[j].m_fullCarrier.Intersects(g1->m_carrier))
+ 
+                for (int ja = 0; ja < ga->m_blocks.Length(); ++ja) {
+                    int ya = ga->m_blocks[ja];
+                    for (int jb = 0; jb < gb->m_blocks.Length(); ++jb) {
+                        int yb = gb->m_blocks[jb];
+                        // if yb is an edge: check if it is already in ga
+                        if (   GetColor(yb) == SG_BORDER 
+                            && ga->m_blocks.Contains(yb))
+                            continue;
+                        for (SemiTable::IteratorPair yit(ya,yb,&Semis()); 
+                             yit; ++yit) 
                         {
-			    // cerr << "Popping: " << ToString(gStack[j].m_key) << '\n';
-			    gStack[j] = gStack.back();
-			    gStack.pop_back();
-			}
-		    }
-                }
-                else if (addToStack) {
-                    // PUSH NEW ENTRY ON STACK
-		    // (cell,g2Anchor, g1cellg2)
-		    gStack.push_back(g1cellg2);
-		    // cerr << "Pushing: " << ToString(*it) << '\n';
+                            y = *yit;
+                            if (x == y)
+                                continue;
+                            if (   !y.Intersects(ga->m_carrier)
+                                && !y.Intersects(gb->m_carrier)
+                                && !y.Intersects(x))
+                            {
+                                return true;
+                            }
+                        }
+                    }
                 }
             }
-	}
+        }
+    }
+    return false;
+}
+
+void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color,
+                                  SgArrayList<cell_t, 64>& groups)
+{
+    const Cell* cell = GetCell(key);
+    if (cell->m_FullConnects[color].Length() < 2)
+        return;
+    for (int i = 0; i < cell->m_FullConnects[color].Length(); ++i) {
+        cell_t b1 = cell->m_FullConnects[color][i];
+        SemiConnection semi;
+
+        // TODO: handle more than 2 cells in carrier
+        for(int j = 0; j < 2 && j < GetConnection(key, b1).Length() ; ++j)
+            semi.m_carrier.PushBack(GetConnection(key, b1)[j]);
+        semi.m_carrier.PushBack(key);
+
+        for (int j=i+1; j < cell->m_FullConnects[color].Length(); ++j) {
+            cell_t b2 = cell->m_FullConnects[color][j];
+            
+            SgArrayList<cell_t, 10> potential;
+            for (int k = 0; k < GetConnection(key, b2).Length(); ++k) {
+                cell_t p = GetConnection(key, b2)[k];
+                if (!semi.m_carrier.Contains(p))
+                    potential.PushBack(p);
+            }
+            if (potential.Length() < 2 && !GetConnection(key, b2).IsEmpty()) 
+                continue;
+
+            // TODO: use the same function as above to select two 
+            // cells from 'potential'.
+            if (!potential.IsEmpty()) {
+                semi.m_carrier.PushBack(potential[0]);
+                semi.m_carrier.PushBack(potential[1]);
+            }
+            semi.m_p1 = b1;
+            semi.m_p2 = b2;
+            semi.m_key = key;
+            semi.m_hash = SemiTable::ComputeHash(semi);
+            
+            if (Semis().Contains(semi))
+                continue;
+
+            Semis().Add(semi);
+
+            groups.Include(GroupAnchor(b1));
+            groups.Include(GroupAnchor(b2));
+            if (groups.Length() > 60)
+                throw YException("overflowing");
+
+        }
     }
 }
 
-void Board::MergeGroups(cell_t group1, cell_t group2, MarkedCellsWithList carrier1, MarkedCellsWithList carrier2)
+void Board::GroupExpand(cell_t move)
+{
+    SgBlackWhite color = GetColor(move);
+    SgArrayList<cell_t, 64> groups;
+    groups.PushBack(GroupAnchor(move));
+    for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
+        ConstructSemisWithKey(*it, color, groups);
+    SemiConnection x, y;
+    for (int i = 1; i < groups.Length(); ++i) {
+        if (CanMergeGroups(groups[0], groups[i], x, y))
+            MergeGroups(groups[0], groups[i], x, y);            
+    }
+}
+
+void Board::MergeGroups(cell_t group1, cell_t group2, 
+                        const SemiConnection& s1, const SemiConnection& s2)
 {
     Group* g1 = GetGroup(group1);
     Group* g2 = GetGroup(group2);
@@ -1206,13 +1066,13 @@ void Board::MergeGroups(cell_t group1, cell_t group2, MarkedCellsWithList carrie
     }
     for(MarkedCells::Iterator i(g2->m_carrier); i; ++i)
 	g1->m_carrier.Mark(*i);
-    for(MarkedCellsWithList::Iterator i(carrier1); i; ++i)
+    for(SemiConnection::Iterator i(s1.m_carrier); i; ++i)
 	g1->m_carrier.Mark(*i);
-    for(MarkedCellsWithList::Iterator i(carrier2); i; ++i)
+    for(SemiConnection::Iterator i(s2.m_carrier); i; ++i)
 	g1->m_carrier.Mark(*i);
 }
-//---------------------------------------------------------------------------
 
+//---------------------------------------------------------------------------
 
 void Board::CheckConsistency()
 {
@@ -1557,6 +1417,18 @@ std::vector<cell_t> Board::GetCarrierBetween(cell_t p1, cell_t p2) const
     return ret;
 }
 
+std::vector<SemiConnection> Board::GetSemisBetween(cell_t p1, cell_t p2) const 
+{
+    std::vector<SemiConnection> ret;
+    if (!IsOccupied(p1) || !IsOccupied(p2))
+        return ret;
+    p1 = GetBlock(p1)->m_anchor;
+    p2 = GetBlock(p2)->m_anchor;
+    for (SemiTable::IteratorPair it(p1, p2, &Semis()); it; ++it)
+        ret.push_back(*it);
+    return ret;
+}
+
 std::vector<cell_t> Board::GetBlocksInGroup(cell_t p) const
 {
     std::vector<cell_t> ret;
@@ -1570,53 +1442,3 @@ std::vector<cell_t> Board::GetBlocksInGroup(cell_t p) const
 }
 
 //---------------------------------------------------------------------------
-
-bool MarkedCellsWithList::Intersects(const MarkedCells& other) const
-{
-    for(Iterator i(*this); i; ++i)
-	if(other.Marked(*i)) 
-	    return true;
-    return false;
-}
-
-bool MarkedCellsWithList::Intersects(const SgArrayList<cell_t, 6>& other) const
-{
-    for(int i = 0; i < other.Length(); ++i)
-	if(this->Marked(other[i]))
-	    return true;
-    return false;
-}
-
-int MarkedCellsWithList::IntersectSize(const MarkedCellsWithList& other) const
-{
-    int count = 0;
-    if (this->Size() < other.Size()) {
-	for(Iterator i(*this); i; ++i)
-	    if (other.Marked(*i)) 
-		count++;
-    }
-    else {
-	for(Iterator i(other); i; ++i)
-	    if (this->Marked(*i)) 
-		count++;
-    }
-    return count;
-}
-
-int MarkedCellsWithList::IntersectSize(const MarkedCells& other) const
-{
-    int count = 0;
-    for(Iterator i(*this); i; ++i)
-	if (other.Marked(*i)) 
-	    count++;
-    return count;
-}
-
-int  MarkedCellsWithList::IntersectSize(const SgArrayList<cell_t, 6>& other) const
-{
-    int count = 0;
-    for(int i = 0; i < other.Length(); ++i)
-	if(this->Marked(other[i]))
-	    count++;
-    return count;
-}

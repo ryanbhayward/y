@@ -11,6 +11,7 @@
 #include "SgInit.h"
 #include "YGtpEngine.h"
 #include "YSgUtil.h"
+#include "board.h"
 
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/cmdline.hpp>
@@ -103,6 +104,7 @@ int main(int argc, char** argv)
 
     SgInit();
     YSgUtil::Init();
+    SemiTable::Init();
     SgRandom::SetSeed(g_seed);
 
     YGtpEngine engine(g_boardSize);

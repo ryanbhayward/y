@@ -2,6 +2,8 @@ bin_PROGRAMS = y
 
 y_SOURCES = \
 board.cpp \
+ConstBoard.cpp \
+SemiTable.cpp \
 WeightedRandom.cpp \
 YMain.cpp \
 YGtpEngine.cpp \
@@ -10,16 +12,18 @@ YSgUtil.cpp \
 YUctSearch.cpp \
 YUctSearchUtil.cpp
 
-
 noinst_HEADERS = \
 board.h \
+ConstBoard.h \
+SemiTable.h \
 VectorIterator.h \
 WeightedRandom.h \
 YGtpEngine.h \
 YSearch.h \
 YSgUtil.h \
 YUctSearch.h \
-YUctSearchUtil.h
+YUctSearchUtil.h \
+YUtil.h
 
 y_LDADD = \
 $(FUEGO_BUILD)/smartgame/libfuego_smartgame.a \

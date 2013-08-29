@@ -1,9 +1,7 @@
-#ifndef BOARDY_H
-#define BOARDY_H
+#pragma once
 
 #include <string>
 #include <vector>
-#include <bitset>
 
 #include "SgSystem.h"
 #include "SgArrayList.h"
@@ -12,330 +10,15 @@
 #include "SgMove.h"
 #include "VectorIterator.h"
 #include "WeightedRandom.h"
+#include "YUtil.h"
+#include "ConstBoard.h"
+#include "SemiTable.h"
+#include "YException.h"
 
 #include <boost/scoped_array.hpp>
 
-//---------------------------------------------------------------------------
-
-template<typename T>
-bool Contains(const std::vector<T>& v, const T& val)
-{
-    for (size_t i = 0; i < v.size(); ++i)
-        if (v[i] == val)
-            return true;
-    return false;
-}
-
-template<typename T, int SIZE>
-void Append(std::vector<T>& v, const SgArrayList<T,SIZE>& a)
-{
-    for (int i = 0; i < a.Length(); ++i) {
-        if (!Contains(v, a[i]))
-            v.push_back(a[i]);
-    }
-}
-
-template<typename T>
-void Include(std::vector<T>& v, const T& val)
-{
-    if (!Contains(v, val))
-	v.push_back(val);
-}
-
-//---------------------------------------------------------------------------
-
-//           WEST, EAST, SOUTH
-//                 0  *
-//                1  * *  
-//               2  * * *   
-//              3  * * * *   
-//             4  * * * * *  
-//            5  * * * * * *  
-//           6  * * * * * * *   
-//          7  * * * * * * * * 
-//
-// T = S*(S+1)/2 + 3
-
-
-static const int Y_MAX_CELL = 128;
-static const int Y_MAX_SIZE = 15;   // such that TotalCells < Y_MAX_CELL
-
-typedef uint8_t cell_t;
-
-static const int Y_SWAP = -2;  // SG_NULLMOVE == -1
-
-typedef std::pair<cell_t, cell_t> CellPair;
-
-struct MarkedCells
-{
-    cell_t m_marked[Y_MAX_CELL];
-    MarkedCells()
-    {
-        Clear();
-    }
-
-    void Clear()
-    {
-        memset(m_marked, 0, sizeof(m_marked));
-    }
-
-    bool Marked(cell_t p) const
-    { 
-        return m_marked[p];
-    }
-
-    bool Mark(cell_t p)
-    {
-        bool ret = !m_marked[p];
-        m_marked[p] = true;
-        return ret;
-    }
-
-    void Unmark(cell_t p) 
-    {
-        m_marked[p] = false;
-    }
-
-    class Iterator
-    {
-    public:
-        Iterator(const MarkedCells& marked)
-            : m_cur(-1)
-            , m_marked(marked)
-        {
-            operator++();
-        }
-
-        cell_t operator*() const
-        { return m_cur; }
-
-        void operator++()
-        { 
-            do {
-                ++m_cur;
-            } while (m_cur < Y_MAX_CELL && !m_marked.Marked(m_cur));
-        }
-
-        operator bool() const
-        { return m_cur < Y_MAX_CELL; }
-
-    private:
-        cell_t m_cur;
-        const MarkedCells& m_marked;
-    };
-};
-
-template<typename T>
-void Include(std::vector<T>& v, const MarkedCells& a)
-{
-    for (MarkedCells::Iterator i(a); i; ++i)
-        Include(v, *i);
-}
-
-struct MarkedCellsWithList
-{
-    typedef SgArrayList<cell_t, Y_MAX_CELL> ListType;
-    typedef ListType::Iterator ListIterator;
-
-    class Iterator : public ListIterator
-    {
-    public:
-        Iterator(const MarkedCellsWithList& mc)
-            : ListIterator(mc.m_list)
-        { }
-    };
-
-    cell_t m_marked[Y_MAX_CELL];
-    SgArrayList<cell_t, Y_MAX_CELL> m_list;
-
-    MarkedCellsWithList()
-    {
-        Clear();
-    }
-
-    void Clear()
-    {
-        memset(m_marked, 0, sizeof(m_marked));
-        m_list.Clear();
-    }
-
-    bool Mark(cell_t p)
-    {
-        if (!m_marked[p]) {
-            m_marked[p] = true;
-            m_list.PushBack(p);
-            return true;
-        }
-        return false;
-    }
-
-    void Unmark(cell_t p) 
-    {
-        if (m_marked[p]) {
-            m_marked[p] = false;
-            m_list.Exclude(p);
-        }
-    }
-
-    bool Marked(cell_t p) const
-    { 
-        return m_marked[p];
-    }
-
-    int Size() const
-    { return m_list.Length(); }
-
-    bool IsEmpty() const
-    { return m_list.IsEmpty(); }
-
-    bool Intersects(const MarkedCells& other) const;
-    bool Intersects(const SgArrayList<cell_t, 6>& other) const;
-    int  IntersectSize(const MarkedCells& other) const;
-    int  IntersectSize(const MarkedCellsWithList& other) const;
-    int  IntersectSize(const SgArrayList<cell_t, 6>& other) const;
-};
-
-struct SemiConnection
-{
-    cell_t m_key;
-    cell_t m_endpoint1;
-    cell_t m_endpoint2;
-    SgArrayList<cell_t, 6> m_carrier1;
-    SgArrayList<cell_t, 6> m_carrier2;
-    SgArrayList<cell_t, 13> m_fullCarrier;
-
-    SemiConnection()
-    { }
-};
-
-struct PotentialCarrier
-{
-    cell_t m_key;
-    cell_t m_endpoint1;
-    cell_t m_endpoint2;
-    SgArrayList<cell_t, 6> m_carrier1;
-    SgArrayList<cell_t, 6> m_carrier2;
-    MarkedCellsWithList m_fullCarrier;
-
-    PotentialCarrier()
-    { }
-
-    PotentialCarrier(cell_t key, cell_t endpoint1)
-        : m_key(key)
-	, m_endpoint1(endpoint1)
-    { 
-	m_fullCarrier.Clear();
-	m_fullCarrier.Mark(key);
-    }
-
-    PotentialCarrier(cell_t key, cell_t endpoint1, cell_t endpoint2, 
-		     SgArrayList<cell_t, 6> carrier1,
-		     SgArrayList<cell_t, 6> carrier2, 
-		     MarkedCellsWithList fullCarrier)
-        : m_key(key)
-	, m_endpoint1(endpoint1)
-	, m_endpoint2(endpoint2)
-	, m_carrier1(carrier1)
-	, m_carrier2(carrier2)
-	, m_fullCarrier(fullCarrier)
-    { }
-};
- 
-class ConstBoard 
-{
-public:
-
-    static const int WEST = 0;
-    static const int EAST = 1;
-    static const int SOUTH = 2;
-
-    static const int DIR_NW = 0;
-    static const int DIR_NE = 1;
-    static const int DIR_E  = 2;
-    static const int DIR_SE = 3;
-    static const int DIR_SW = 4;
-    static const int DIR_W  = 5;
-
-    static char ColorToChar(SgBoardColor color);
-    static std::string ColorToString(SgBoardColor color);
-
-    static inline int board_row(cell_t p)
-    {  
-        p -= 3;
-        int r = 1;
-        while((r)*(r+1)/2 <= p)
-            ++r;
-        return r - 1;
-    }
-
-    static inline int board_col(cell_t p)
-    {
-        int r = board_row(p);
-        return p - r*(r+1)/2 - 3;
-    }
-
-    static inline cell_t fatten(int r, int c)
-    { return (r)*(r+1)/2 + c + 3; }
-
-    static std::string ToString(SgMove cell);
-
-    static SgMove FromString(const std::string& name);
-
-    int m_size;
-    int TotalCells;
-
-    ConstBoard();
-    ConstBoard(int size);
-
-    int Size() const { return m_size; }
-    bool IsOnBoard(cell_t cell) const
-    {
-        return std::find(m_cells.begin(), m_cells.end(), cell) != m_cells.end();
-    }
-
-    cell_t PointInDir(cell_t cell, int dir) const
-    { return m_cell_nbr[cell][dir]; }
-
-private:
-    std::vector<cell_t> m_cells;
-    std::vector<cell_t> m_cells_edges;
-    std::vector<std::vector<cell_t> > m_cell_nbr;
-
-    friend class Board;
-    friend class CellIterator;
-    friend class CellAndEdgeIterator;
-    friend class CellNbrIterator;
-};
-
-
-//----------------------------------------------------------------------
-
-class CellNbrIterator
-{
-public:
-    CellNbrIterator(const ConstBoard& cbrd, cell_t p)
-        : m_cbrd(cbrd)
-        , m_point(p)
-        , m_index(0)
-    { }
-    
-    /** Advance the state of the iteration to the next liberty. */
-    void operator++()
-    { ++m_index; }
-    
-    /** Return the current liberty. */
-    cell_t operator*() const
-    { return m_cbrd.m_cell_nbr[m_point][m_index]; }
-    
-    /** Return true if iteration is valid, otherwise false. */
-    operator bool() const
-    { return m_index < 6; }
-    
-private:
-    const ConstBoard& m_cbrd;
-    cell_t m_point;
-    cell_t m_index;
-};
+class SemiConnection;
+class SemiTable;
 
 //----------------------------------------------------------------------
 
@@ -533,6 +216,7 @@ struct Board
     std::vector<cell_t> GetBlocksInGroup(cell_t p) const;
     std::vector<cell_t> FullConnectsMultipleBlocks(SgBlackWhite c) const;
     const MarkedCells&  GroupCarrier(cell_t p) const;
+    std::vector<SemiConnection> GetSemisBetween(cell_t p1, cell_t p2) const;
 
     // ------------------------------------------------------------
 
@@ -551,9 +235,11 @@ struct Board
 
 
     void MarkCellNotDirty(cell_t p);
-    void MarkCellDirty(cell_t p); 
-    const MarkedCellsWithList& GetAllDirtyCells() const;
+    void MarkCellDirtyCon(cell_t p); 
+    void MarkCellDirtyWeight(cell_t p); 
 
+    const MarkedCellsWithList& GetAllDirtyConCells() const;
+    const MarkedCellsWithList& GetAllDirtyWeightCells() const;
     const MarkedCellsWithList& GetAllEmptyCells() const;
 
     void GroupExpand(cell_t move);
@@ -736,9 +422,8 @@ private:
         typedef SgArrayList<cell_t, 6> SemiConnectionList;
         typedef SgArrayList<cell_t, 6> FullConnectionList;
 
-        static const int FLAG_DIRTY  = 1;
-        static const int FLAG_DEAD   = 2;
-	static const int FLAG_THREAT = 4;
+        static const int FLAG_DEAD         = 1;
+	static const int FLAG_THREAT       = 2;
 
 	SemiConnectionList m_SemiConnects[2];
 	FullConnectionList m_FullConnects[2];
@@ -786,7 +471,6 @@ private:
         int Flags() const { return m_flags; }
         void SetFlags(int f) { m_flags |= f; }
         void ClearFlags(int f) { m_flags &= ~f; }
-        bool IsDirty() const { return m_flags & FLAG_DIRTY; } 
         bool IsDead() const { return m_flags & FLAG_DEAD; }
 	bool IsThreat() const { return m_flags & FLAG_THREAT; }
 
@@ -798,7 +482,6 @@ private:
                << " Black=" << this->m_NumAdj[SG_BLACK]
                << " White=" << this->m_NumAdj[SG_WHITE]
                << " Flags=" << this->m_flags
-               << ((this->m_flags & FLAG_DIRTY) ? "(dirty)" : "")
                << ((this->m_flags & FLAG_DEAD) ? "(dead)" : "")
                << ((this->m_flags & FLAG_THREAT) ? "(threat)" : "")
                << "]";
@@ -861,6 +544,7 @@ private:
 	boost::scoped_array<Group> m_groupList;
         boost::scoped_array<Carrier> m_conData;
         boost::scoped_array<Carrier*> m_con;
+        boost::scoped_array<SemiTable> m_semis;
 
         SgArrayList<cell_t, 3> m_oppBlocks;
 
@@ -883,10 +567,10 @@ private:
     State m_savePoint1;
     State m_savePoint2;
 
-    MarkedCellsWithList m_dirtyCells;
+    MarkedCellsWithList m_dirtyConCells;
+    MarkedCellsWithList m_dirtyWeightCells;
     MarkedCellsWithList m_dirtyBlocks;
     std::vector<CellPair> m_groupSearchPotStack;
-    std::vector<PotentialCarrier> m_groupExpandPotStack;
 
     void CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border);
 
@@ -918,8 +602,15 @@ private:
 
     void AddNonGroupEdges(int* seen, Group* g, int id);
 
-    void MergeGroups(cell_t group1, cell_t group2, MarkedCellsWithList carrier1,
-		     MarkedCellsWithList carrier2);
+    void ConstructSemisWithKey(cell_t key, SgBlackWhite color,
+                               SgArrayList<cell_t, 64>& groups);
+
+    void MergeGroups(cell_t group1, cell_t group2, 
+                     const SemiConnection& carrier1,
+		     const SemiConnection& carrier2);
+
+    bool CanMergeGroups(cell_t a, cell_t b, 
+                        SemiConnection& x, SemiConnection& y);
 
     void RemoveSharedLiberty(cell_t p, Block* a, Block* b);
 
@@ -965,6 +656,12 @@ private:
 
     const Carrier& GetConnection(cell_t p1, cell_t p2) const;
 
+    const SemiTable& Semis() const
+    { return *m_state.m_semis.get(); }
+
+    SemiTable& Semis()
+    { return *m_state.m_semis.get(); }
+
     void AddCellToConnection(cell_t p1, cell_t p2, cell_t cell)
     {  GetConnection(p1, p2).Include(cell);  }
 
@@ -1000,23 +697,24 @@ inline void Board::MarkCellAsThreat(cell_t p)
     GetCell(p)->SetFlags(Cell::FLAG_THREAT);
 }
 
-inline void Board::MarkCellNotDirty(cell_t p)
+inline void Board::MarkCellDirtyCon(cell_t p) 
 {
-    GetCell(p)->ClearFlags(Cell::FLAG_DIRTY);
-    //m_dirtyCells.Unmark(p);
-    // NOTE: no need to call unmark since Board::Play() clears it 
+    m_dirtyConCells.Mark(p);
 }
 
-inline void Board::MarkCellDirty(cell_t p) 
+inline void Board::MarkCellDirtyWeight(cell_t p) 
 {
-    if (m_dirtyCells.Mark(p)) {
-        GetCell(p)->SetFlags(Cell::FLAG_DIRTY);
-    }
+    m_dirtyWeightCells.Mark(p);
 }
 
-inline const MarkedCellsWithList& Board::GetAllDirtyCells() const
+inline const MarkedCellsWithList& Board::GetAllDirtyConCells() const
 {
-    return m_dirtyCells;
+    return m_dirtyConCells;
+}
+
+inline const MarkedCellsWithList& Board::GetAllDirtyWeightCells() const
+{
+    return m_dirtyWeightCells;
 }
 
 inline const MarkedCellsWithList& Board::GetAllEmptyCells() const
@@ -1069,4 +767,3 @@ public:
 
 //----------------------------------------------------------------------
 
-#endif

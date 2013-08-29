@@ -69,10 +69,13 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("semi_connected_with",
 		&YGtpEngine::CmdSemiConnectedWith);
     RegisterCmd("carrier_between", &YGtpEngine::CmdCarrierBetween);
+    RegisterCmd("semis_between", &YGtpEngine::CmdSemisBetween);
+
     RegisterCmd("full_connects_multiple", 
 		&YGtpEngine::CmdFullConnectsMultipleBlocks);
 
-    RegisterCmd("dirty_cells", &YGtpEngine::CmdDirtyCells);
+    RegisterCmd("dirty_con_cells", &YGtpEngine::CmdDirtyConCells);
+    RegisterCmd("dirty_weight_cells", &YGtpEngine::CmdDirtyWeightCells);
 
     RegisterCmd("block_info", &YGtpEngine::CmdBlockInfo);
     RegisterCmd("block_stones", &YGtpEngine::CmdBlockStones);
@@ -113,8 +116,10 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "plist/Full Connected With/full_connected_with %p %c\n"
 	"plist/Semi Connected With/semi_connected_with %p %c\n"
 	"plist/Carrier Between/carrier_between %P\n"
+	"vc/Semis Between/semis_between %P\n"
 	"plist/Full Connects Multiple Blocks/full_connects_multiple %c\n"
-        "plist/Dirty Cells/dirty_cells\n"
+        "plist/Dirty Con Cells/dirty_con_cells\n"
+        "plist/Dirty Weight Cells/dirty_weight_cells\n"
         "string/Block Info/block_info %p\n"
         "group/Block Stones/block_stones %p\n"
         "plist/Block Liberties/block_liberties %p\n"
@@ -683,6 +688,18 @@ void YGtpEngine::CmdCarrierBetween(GtpCommand& cmd)
     }
 }
 
+void YGtpEngine::CmdSemisBetween(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(2);
+    int p1 = CellArg(cmd, 0);
+    int p2 = CellArg(cmd, 1);
+    std::vector<SemiConnection> semis = m_brd.GetSemisBetween(p1, p2);
+    for (size_t i = 0; i < semis.size(); ++i) {
+        cmd << ConstBoard::ColorToString(m_brd.GetColor(p1))
+            << ' ' << semis[i].ToString() << '\n';
+    }
+}
+
 void YGtpEngine::CmdFullConnectsMultipleBlocks(GtpCommand& cmd)
 {
     cmd.CheckNuArg(1);
@@ -694,9 +711,17 @@ void YGtpEngine::CmdFullConnectsMultipleBlocks(GtpCommand& cmd)
     }
 }
 
-void YGtpEngine::CmdDirtyCells(GtpCommand& cmd)
+void YGtpEngine::CmdDirtyWeightCells(GtpCommand& cmd)
 {
-    const MarkedCellsWithList& dirty = m_brd.GetAllDirtyCells();
+    const MarkedCellsWithList& dirty = m_brd.GetAllDirtyWeightCells();
+    for (MarkedCellsWithList::Iterator it(dirty); it; ++it) {
+        cmd << ' ' << m_brd.ToString(*it);
+    }
+}
+
+void YGtpEngine::CmdDirtyConCells(GtpCommand& cmd)
+{
+    const MarkedCellsWithList& dirty = m_brd.GetAllDirtyConCells();
     for (MarkedCellsWithList::Iterator it(dirty); it; ++it) {
         cmd << ' ' << m_brd.ToString(*it);
     }
