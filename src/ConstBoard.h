@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <bitset>
 
 #include "SgSystem.h"
 #include "SgArrayList.h"
@@ -35,7 +36,8 @@ typedef std::pair<cell_t, cell_t> CellPair;
 
 struct MarkedCells
 {
-    cell_t m_marked[Y_MAX_CELL];
+    std::bitset<Y_MAX_CELL> m_marked;
+
     MarkedCells()
     {
         Clear();
@@ -43,29 +45,37 @@ struct MarkedCells
 
     void Clear()
     {
-        memset(m_marked, 0, sizeof(m_marked));
+        m_marked.reset();
     }
 
     bool Marked(cell_t p) const
     { 
-        return m_marked[p];
+        return m_marked.test(p);
     }
 
     bool Mark(cell_t p)
     {
-        bool ret = !m_marked[p];
-        m_marked[p] = true;
+        bool ret = !Marked(p);
+        m_marked.set(p);
         return ret;
+    }
+
+    void Mark(const MarkedCells& other)
+    {
+        m_marked |= other.m_marked;
     }
 
     void Unmark(cell_t p) 
     {
-        m_marked[p] = false;
+        m_marked.reset(p);
     }
 
     class Iterator
     {
     public:
+        
+        // FIXME: USE A REAL BITSET ITERATOR!!
+
         Iterator(const MarkedCells& marked)
             : m_cur(-1)
             , m_marked(marked)
@@ -169,13 +179,37 @@ public:
     static const int WEST = 0;
     static const int EAST = 1;
     static const int SOUTH = 2;
-
+    static const int FIRST_NON_EDGE = 3;
+    
     static const int DIR_NW = 0;
     static const int DIR_NE = 1;
     static const int DIR_E  = 2;
     static const int DIR_SE = 3;
     static const int DIR_SW = 4;
     static const int DIR_W  = 5;
+
+    static const int BORDER_NONE  = 0; // 000   border values, used bitwise
+    static const int BORDER_SOUTH = 1; // 001
+    static const int BORDER_WEST  = 2; // 010
+    static const int BORDER_EAST  = 4; // 100
+    static const int BORDER_ALL   = 7; // 111
+
+    static bool IsEdge(cell_t cell)
+    {
+        return (cell == WEST || cell == EAST || cell == SOUTH);
+    }
+
+    static int ToBorderValue(cell_t cell)
+    {
+        if (cell == WEST)
+            return BORDER_WEST;
+        if (cell == EAST)
+            return BORDER_EAST;
+        if (cell == SOUTH)
+            return BORDER_SOUTH;
+        return BORDER_NONE;
+    }
+    static std::string BorderToString(int border);
 
     static char ColorToChar(SgBoardColor color);
     static std::string ColorToString(SgBoardColor color);

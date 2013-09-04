@@ -22,15 +22,12 @@ void Board::State::Init(int T)
     m_cellList.reset(new Cell[T]);
     m_blockIndex.reset(new cell_t[T]);
     m_blockList.reset(new Block[T]);
-    m_groupIndex.reset(new cell_t[T]);
-    m_groupList.reset(new Group[T]);
     m_conData.reset(new Carrier[T*(T+1)/2]);
     m_semis.reset(new SemiTable());
 
     for (int i = 0; i < T; ++i)
         m_color[i] = SG_EMPTY;
     memset(m_blockIndex.get(), -1, sizeof(cell_t)*T);
-    memset(m_groupIndex.get(), -1, sizeof(cell_t)*T);
 
     m_con.reset(new Carrier*[T]);
     for(int i = 0, j = 0; i < T; ++i) {
@@ -54,6 +51,7 @@ void Board::SetSize(int size)
     m_savePoint2.Init(m_constBrd.TotalCells);
     
     const int N = Size();
+
     // Create block/group for left edge
     {
         Block& b = m_state.m_blockList[Const().WEST];
@@ -61,16 +59,10 @@ void Board::SetSize(int size)
         m_state.m_color[Const().WEST] = SG_BORDER;
         b.m_color = SG_BORDER;
         b.m_anchor = Const().WEST;
-        b.m_border = BORDER_WEST;
+        b.m_border = ConstBoard::BORDER_WEST;
         b.m_stones.Clear();
         b.m_con.Clear();
-	Group& g = m_state.m_groupList[Const().WEST];
-        m_state.m_groupIndex[Const().WEST] = Const().WEST;
-	g.m_anchor = b.m_anchor;
-	g.m_border = b.m_border;
-        g.m_carrier.Clear();
-	g.m_blocks.Clear();
-	g.m_blocks.PushBack(b.m_anchor);
+        m_state.m_groups->SetGroupDataFromBlock(&b, Const().WEST);
         for (int i = 0; i < N; ++i) {
             cell_t p = Const().fatten(i,0);
             b.m_liberties.PushBack(p);
@@ -90,16 +82,10 @@ void Board::SetSize(int size)
         m_state.m_color[Const().EAST] = SG_BORDER;
         b.m_color = SG_BORDER;
         b.m_anchor = Const().EAST;
-        b.m_border = BORDER_EAST;
+        b.m_border = Const().BORDER_EAST;
         b.m_stones.Clear();
         b.m_con.Clear();
-	Group& g = m_state.m_groupList[Const().EAST];
-        m_state.m_groupIndex[Const().EAST] = Const().EAST;
-	g.m_anchor = b.m_anchor;
-	g.m_border = b.m_border;
-        g.m_carrier.Clear();
-	g.m_blocks.Clear();
-	g.m_blocks.PushBack(b.m_anchor);
+        m_state.m_groups->SetGroupDataFromBlock(&b, Const().EAST);
         for (int i = 0; i < N; ++i) {
             cell_t p = Const().fatten(i,i);
             b.m_liberties.PushBack(p);
@@ -119,16 +105,10 @@ void Board::SetSize(int size)
         m_state.m_color[Const().SOUTH] = SG_BORDER;
         b.m_color = SG_BORDER;
         b.m_anchor = Const().SOUTH;
-        b.m_border = BORDER_SOUTH;
+        b.m_border = Const().BORDER_SOUTH;
         b.m_stones.Clear();
         b.m_con.Clear();
-	Group& g = m_state.m_groupList[Const().SOUTH];
-        m_state.m_groupIndex[Const().SOUTH] = Const().SOUTH;
-	g.m_anchor = b.m_anchor;
-	g.m_border = b.m_border;
-        g.m_carrier.Clear();
-	g.m_blocks.Clear();
-	g.m_blocks.PushBack(b.m_anchor);
+        m_state.m_groups->SetGroupDataFromBlock(&b, Const().SOUTH);
         for (int i = 0; i < N; ++i) {
             cell_t p = Const().fatten(N-1,i);
             b.m_liberties.PushBack(p);
@@ -207,11 +187,10 @@ void Board::CopyState(Board::State& a, const Board::State& b)
     memcpy(a.m_cellList.get(), b.m_cellList.get(), sizeof(Cell)*T);
     memcpy(a.m_blockIndex.get(), b.m_blockIndex.get(), sizeof(cell_t)*T);
     memcpy(a.m_blockList.get(), b.m_blockList.get(), sizeof(Block)*T);
-    memcpy(a.m_groupIndex.get(), b.m_groupIndex.get(), sizeof(cell_t)*T);
-    memcpy(a.m_groupList.get(), b.m_groupList.get(), sizeof(Group)*T);
     memcpy(a.m_conData.get(), b.m_conData.get(),
            sizeof(Carrier)*T*(T+1)/2);
     memcpy(a.m_semis.get(), b.m_semis.get(), sizeof(SemiTable));
+    memcpy(a.m_groups.get(), b.m_groups.get(), sizeof(Groups));
 
     a.m_oppBlocks = b.m_oppBlocks;
 
@@ -330,12 +309,27 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
             AddSharedLiberty(b, GetBlock(*it));
         }
     }
-    m_state.m_groupIndex[p] = p;
-    m_state.m_groupList[p] = Group(p, border);
+    m_state.m_groups->CreateSingleBlockGroup(b);
 
+    SgArrayList<cell_t, 64> blocks;
+    blocks.PushBack(p);
+    for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
+        ConstructSemisWithKey(*it, color, blocks);
     
+    m_state.m_groups->RestructureAfterMove(p, *this);
 
-    ComputeGroupForBlock(b);
+#if 0
+    // flatten blocks into a list of unique groups (with p's group at 0)
+    SgArrayList<cell_t, 6> groups;
+    for (int i = 0; i < blocks.Length(); ++i)
+        groups.Include(GetGroup(blocks[i])->m_id);
+
+    SemiConnection x, y;
+    for (int i = 1; i < groups.Length(); ++i) {
+        if (CanMergeGroups(groups[0], groups[i], x, y))
+            MergeGroups(groups[0], groups[i], x, y);            
+    }
+#endif
 }
 
 bool Board::IsAdjacent(cell_t p, const Block* b)
@@ -370,10 +364,9 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
 
         AddSharedLibertiesAroundPoint(b, c, p);
     }
-    m_state.m_groupIndex[p] = m_state.m_groupIndex[b->m_anchor];
     RemoveEdgeSharedLiberties(b);
    
-    ComputeGroupForBlock(b);
+    // TODO: Merge in any newly adjacent groups!!
 }
 
 // Merge b1 into b2
@@ -467,7 +460,6 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         }
     }
     m_state.m_blockIndex[p] = largestBlock->m_anchor;
-    m_state.m_groupIndex[p] = m_state.m_groupIndex[largestBlock->m_anchor];
     largestBlock->m_border |= border;
     largestBlock->m_stones.PushBack(p);
 
@@ -485,8 +477,6 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         {
             largestBlock->m_stones.PushBack(*stn);
             m_state.m_blockIndex[*stn] = largestBlock->m_anchor;
-	    m_state.m_groupIndex[*stn] 
-                = m_state.m_groupIndex[largestBlock->m_anchor];
         }
         for (Block::LibertyIterator lib(adjBlock->m_liberties); lib; ++lib) {
             if (!seen[*lib]) {
@@ -510,7 +500,9 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
 	}
     }
     RemoveEdgeSharedLiberties(largestBlock);
-    ComputeGroupForBlock(largestBlock);
+    
+
+    // TODO: UPDATE GROUP HERE!!
 }
 
 // TODO: switch to the promote/demote method
@@ -524,14 +516,13 @@ void Board::UpdateBlockConnection(Block* a, Block* b)
     }
 }
 
-
 void Board::RemoveEdgeSharedLiberties(Block* b)
 {
-    if (b->m_border & BORDER_WEST)
+    if (b->m_border & ConstBoard::BORDER_WEST)
         GetConnection(Const().WEST, b->m_anchor).Clear();
-    if (b->m_border & BORDER_EAST)
+    if (b->m_border & ConstBoard::BORDER_EAST)
         GetConnection(Const().EAST, b->m_anchor).Clear();
-    if (b->m_border & BORDER_SOUTH)
+    if (b->m_border & ConstBoard::BORDER_SOUTH)
         GetConnection(Const().SOUTH, b->m_anchor).Clear();
 }
 
@@ -645,42 +636,13 @@ void Board::Play(SgBlackWhite color, cell_t p)
             MergeBlocks(p, border, realAdjBlocks);
     }
 
+    // Rebuild groups broken by move p
+    m_state.m_groups->RestructureAfterMove(p, *this);
 
-    // Find all opponent groups whose carrier contains p
-    SgArrayList<int, Y_MAX_CELL> blocks, seenGroups;
-    for (CellIterator g(*this); g; ++g)
-    {
-        if (GetColor(*g) != SgOppBW(color))
-            continue;
-        const cell_t gAnchor = GroupAnchor(*g);
-        if (gAnchor != *g)
-            continue;
-        if (!seenGroups.Contains(gAnchor)) {
-            Group* g = GetGroup(gAnchor);
-            if (g->m_carrier.Marked(p)) {
-                seenGroups.PushBack(gAnchor);
-                for (int j = 0; j < g->m_blocks.Length(); ++j) {
-                    if (!IsBorder(g->m_blocks[j])) {
-                        blocks.Include(BlockAnchor(g->m_blocks[j]));
-                        // ^^ Note use of BlockAnchor!!
-                        // We are in a transitionary period where the old
-                        // groups may use out of date block anchors.
-                    }
-                }
-                ResetBlocksInGroup(GetBlock(gAnchor));
-            }
-        }
-    } 
+    // Group expand p's group
+    // TODO: need to also group expand other newly created groups
+    // for this played
 
-    // Recompute all opponent groups whose carrier contains p 
-    int seen[Const().TotalCells+10];
-    memset(seen, 0, sizeof(seen));
-    for(int i = 0; i < blocks.Length(); ++i) {
-        Block* b = GetBlock(blocks[i]);
-        if (seen[blocks[i]] != 1)
-            ComputeGroupForBlock(b, seen, 100 + i);
-    }
-    
     // Mark every cell requiring a weight update as dirty.
     m_dirtyWeightCells = m_dirtyConCells;
     for (EmptyIterator i(*this); i; ++i) {
@@ -696,36 +658,23 @@ void Board::Play(SgBlackWhite color, cell_t p)
             }
         }
     }
-
-    // Group expand opponent groups
-    memset(seen, 0, sizeof(seen));
-    for (int i = 0; i < blocks.Length(); ++i) {
-        cell_t gAnchor = GroupAnchor(blocks[i]);
-        if (!seen[gAnchor]) {
-            seen[gAnchor] = true;
-            GroupExpand(gAnchor);
-        }
-    }
-    // Group expand p's group
-    // TODO: need to also group expand other newly created groups
-    // for this played
-    GroupExpand(p);
     
     // Break old win if necessary
-    if (HasWinningVC() && GroupBorder(m_state.m_vcGroupAnchor) != BORDER_ALL)
+    if (HasWinningVC() && GroupBorder(m_state.m_vcGroupAnchor) 
+        != ConstBoard::BORDER_ALL)
     {
         m_state.m_vcWinner = SG_EMPTY;
     }
 
     // Check for a new vc win
-    if (GroupBorder(p) == BORDER_ALL)
+    if (GroupBorder(p) == ConstBoard::BORDER_ALL)
     {
         m_state.m_vcWinner = color;
-        m_state.m_vcGroupAnchor = GroupAnchor(p);
+        m_state.m_vcGroupAnchor = GetGroup(p)->m_id;
     }
 
     // Check for a solid win
-    if (GetBlock(p)->m_border == BORDER_ALL) 
+    if (GetBlock(p)->m_border == ConstBoard::BORDER_ALL) 
     {
         m_state.m_winner = color;
     }
@@ -754,241 +703,8 @@ void Board::RemoveConnectionWith(Block* b, const Block* other)
 
 //---------------------------------------------------------------------------
 
-void Board::ResetBlocksInGroup(Block* b)
-{
-    Group* g = GetGroup(b->m_anchor);
-    // Start from 1 since first block in list is g
-    for(int i = 1; i < g->m_blocks.Length(); ++i) {
-        if (IsBorder(g->m_blocks[i]))
-            continue;
-        Block* b2 = GetBlock(g->m_blocks[i]);
-        m_state.m_groupIndex[b2->m_anchor] = b2->m_anchor;
-        Group* g2 = GetGroup(b2->m_anchor);
-        g2->m_anchor = b2->m_anchor;
-        g2->m_border = b2->m_border;
-        g2->m_carrier.Clear();
-        g2->m_blocks.Clear();
-        g2->m_blocks.PushBack(g2->m_anchor);
-    }
-    g->m_border = b->m_border;
-    g->m_anchor = b->m_anchor;
-    g->m_carrier.Clear();
-    g->m_blocks.Clear();
-    g->m_blocks.PushBack(g->m_anchor);
-}
-
-void Board::ComputeGroupForBlock(Block* b)
-{
-    SgArrayList<cell_t, Y_MAX_CELL> blocks, seenGroups;
-    blocks.PushBack(b->m_anchor);
-
-    for (int i = 0; i < b->m_con.Length(); ++i)
-    {
-	cell_t other = b->m_con[i];
-        if (IsBorder(other))
-            continue;
-        cell_t gAnchor = GroupAnchor(other);
-        if (!seenGroups.Contains(gAnchor)) {
-            seenGroups.PushBack(gAnchor);
-            Group* g = GetGroup(gAnchor);
-            for (int j = 0; j < g->m_blocks.Length(); ++j) {
-                if (!IsBorder(g->m_blocks[j])) {
-                    blocks.Include(BlockAnchor(g->m_blocks[j]));
-                    // ^^ Note use of BlockAnchor!!
-                    // We are in a transitionary period where the old
-                    // groups may use out of date block anchors.
-                }
-            }
-	    ResetBlocksInGroup(GetBlock(gAnchor));
-        }
-    }    
-
-    ResetBlocksInGroup(b);
-    int seen[Const().TotalCells+10];
-    memset(seen, 0, sizeof(seen));
-    for(int i = 0; i < blocks.Length(); ++i) {
-        if (seen[blocks[i]] != 1)
-            ComputeGroupForBlock(GetBlock(blocks[i]), seen, 100 + i);
-    }
-}
-
-void Board::ComputeGroupForBlock(Block* b, int* seen, int id)
-{
-    // std::cerr << "ComputeGroupForBlock: " 
-    //           << ToString(b->m_anchor) << ' ' << "id=" << id << '\n';
-
-    m_groupSearchPotStack.clear();
-    GroupSearch(seen, b, id, m_groupSearchPotStack);
-
-    Group* g = GetGroup(b->m_anchor);
-
-    //Currently breaks proven wins at root.
-    //AddNonGroupEdges(seen, g, id);
-
-    // Add edge to group if we are touching
-    if ((g->m_border & BORDER_WEST) && !g->m_blocks.Contains(Const().WEST))
-        g->m_blocks.PushBack(Const().WEST);
-    if ((g->m_border & BORDER_EAST) && !g->m_blocks.Contains(Const().EAST))
-        g->m_blocks.PushBack(Const().EAST);
-    if ((g->m_border & BORDER_SOUTH) && !g->m_blocks.Contains(Const().SOUTH))
-        g->m_blocks.PushBack(Const().SOUTH);
-
-    seen[Const().WEST] = 0;
-    seen[Const().EAST] = 0;
-    seen[Const().SOUTH] = 0;
-}
-
-int Board::NumUnmarkedSharedLiberties(const Carrier& lib, int* seen, int id,
-                                      Carrier& ret)
-{
-    int count = 0;
-    for (int i = 0; i < lib.Size(); ++i) {
-        if (seen[lib[i]] != id) {
-            ++count;
-            ret.PushBack(lib[i]);
-        }
-    }
-    return count;
-}
-
-void Board::GroupSearch(int* seen, Block* b, int id, 
-                        std::vector<CellPair>& potStack)
-{
-    seen[b->m_anchor] = 1;
-    if(b->m_color != SG_BORDER)
-	m_dirtyBlocks.Mark(b->m_anchor);
-    //std::cerr << "Entered: " << ToString(b->m_anchor) << '\n';
-    for (int i = 0; i < b->m_con.Length(); ++i)
-    {
-        bool visit = false;
-	cell_t other = b->m_con[i];
-        Carrier unmarked;
-        Carrier& sl = GetConnection(b->m_anchor, other);
-
-	//std::cerr << "Considering: " << ToString(other) << '\n';
-        int count = NumUnmarkedSharedLiberties(sl, seen, id, unmarked);
-        // Never seen this block before:
-        // visit it if we have a vc and mark it as potential if we have a semi
-	if (seen[other] != 1 && seen[other] != id) 
-        {
-            if (count > 1)
-                visit = true;
-            else if (count == 1) {
-                //std::cerr << "Marking as potential!\n";
-                seen[other] = id;
-                seen[unmarked[0]] = id;
-                potStack.push_back(std::make_pair(other, unmarked[0]));
-            }
-        }
-        // block is marked as potential:
-        // visit it if we have a vc or a semi (since the other semi
-        // we found earlier combined with this semi gives a vc)
-        else if (seen[other] == id && count >= 1)
-        {
-            visit = true;
-            for (size_t i = 0; i < potStack.size(); ++i) {
-                if (potStack[i].first == other) {
-                    unmarked.Include(potStack[i].second);
-                    potStack[i] = potStack.back();
-                    potStack.pop_back();
-                    break;
-                }
-            }
-        }
-
-        if (visit)
-	{
-	    //std::cerr << "Inside!\n";
-	    Group* g = GetGroup(b->m_anchor);
-	    g->m_border |= GetBlock(other)->m_border;
-            g->m_blocks.PushBack(other);
-            for (int i = 0; i < unmarked.Size(); ++i)
-                g->m_carrier.Mark(unmarked[i]);
-
-	    if(GetColor(other) != SG_BORDER) {
-                // Note that we are not marking liberties with an edge
-                // block: we claim these cannot conflict with group
-                // formation.
-                for (int i = 0; i < unmarked.Size(); ++i)
-                    seen[unmarked[i]] = id;
-                m_state.m_groupIndex[other] = g->m_anchor;
-		GroupSearch(seen, GetBlock(other), id, potStack);
-            }
-            else {
-                // Block other blocks from revisiting this edge.  This
-                // will be reset to 0 at the end of
-                // ComputeGroupForBlock() so that group searches from
-                // other dirty blocks can go to the edge
-                seen[other] = 1;
-            }
-
-            //std::cerr << "Back to: " << ToString(b->m_anchor) << '\n';
-	}
-    }
-}
-
-void Board::AddNonGroupEdges(int* seen, Group* g, int id)
-{
-    int w, e, s;
-    w = e = s = 0;
-    for(CellIterator it(Const()); it; ++it) {
-	if(seen[*it] == id && GetColor(*it) == ToPlay()) {
-	    int border = GetBlock(*it)->m_border;
-	    if(border == BORDER_WEST) w++;
-	    else if(border == BORDER_EAST) e++;
-	    else if(border == BORDER_SOUTH) s++;
-	}
-    }
-    if(w > 1) g->m_border |= BORDER_WEST;
-    if(e > 1) g->m_border |= BORDER_EAST;
-    if(s > 1) g->m_border |= BORDER_SOUTH;
-}
-
-bool Board::CanMergeGroups(cell_t a, cell_t b, 
-                           SemiConnection& x, SemiConnection& y)
-{
-    Group* ga = GetGroup(BlockAnchor(a));
-    Group* gb = GetGroup(BlockAnchor(b));
-    for (int ia = 0; ia < ga->m_blocks.Length(); ++ia) {
-        int xa = ga->m_blocks[ia];
-        for (int ib = 0; ib < gb->m_blocks.Length(); ++ib) {
-            int xb = gb->m_blocks[ib];
-            for (SemiTable::IteratorPair xit(xa,xb,&Semis()); xit; ++xit) {
-                x = *xit;
-                if (x.Intersects(ga->m_carrier) || x.Intersects(gb->m_carrier))
-                    continue;
- 
-                for (int ja = 0; ja < ga->m_blocks.Length(); ++ja) {
-                    int ya = ga->m_blocks[ja];
-                    for (int jb = 0; jb < gb->m_blocks.Length(); ++jb) {
-                        int yb = gb->m_blocks[jb];
-                        // if yb is an edge: check if it is already in ga
-                        if (   GetColor(yb) == SG_BORDER 
-                            && ga->m_blocks.Contains(yb))
-                            continue;
-                        for (SemiTable::IteratorPair yit(ya,yb,&Semis()); 
-                             yit; ++yit) 
-                        {
-                            y = *yit;
-                            if (x == y)
-                                continue;
-                            if (   !y.Intersects(ga->m_carrier)
-                                && !y.Intersects(gb->m_carrier)
-                                && !y.Intersects(x))
-                            {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
-
 void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color,
-                                  SgArrayList<cell_t, 64>& groups)
+                                  SgArrayList<cell_t, 64>& blocks)
 {
     const Cell* cell = GetCell(key);
     if (cell->m_FullConnects[color].Length() < 2)
@@ -1029,16 +745,17 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color,
                 continue;
 
             Semis().Add(semi);
-
-            groups.Include(GroupAnchor(b1));
-            groups.Include(GroupAnchor(b2));
-            if (groups.Length() > 60)
+            
+            blocks.Include(b1);
+            blocks.Include(b2);
+            if (blocks.Length() > 60)
                 throw YException("overflowing");
 
         }
     }
 }
 
+#if 0
 void Board::GroupExpand(cell_t move)
 {
     SgBlackWhite color = GetColor(move);
@@ -1052,25 +769,7 @@ void Board::GroupExpand(cell_t move)
             MergeGroups(groups[0], groups[i], x, y);            
     }
 }
-
-void Board::MergeGroups(cell_t group1, cell_t group2, 
-                        const SemiConnection& s1, const SemiConnection& s2)
-{
-    Group* g1 = GetGroup(group1);
-    Group* g2 = GetGroup(group2);
-    g1->m_border |= g2->m_border;
-    for(int i = 0; i < g2->m_blocks.Length(); ++i){
-	g1->m_blocks.Include(g2->m_blocks[i]);
-	if(GetColor(g2->m_blocks[i]) != SG_BORDER)
-	    m_state.m_groupIndex[g2->m_blocks[i]] = group1;
-    }
-    for(MarkedCells::Iterator i(g2->m_carrier); i; ++i)
-	g1->m_carrier.Mark(*i);
-    for(SemiConnection::Iterator i(s1.m_carrier); i; ++i)
-	g1->m_carrier.Mark(*i);
-    for(SemiConnection::Iterator i(s2.m_carrier); i; ++i)
-	g1->m_carrier.Mark(*i);
-}
+#endif
 
 //---------------------------------------------------------------------------
 
@@ -1286,7 +985,7 @@ void Board::MarkAllThreats(const MarkedCellsWithList& cells,
                 const Group* g=GetGroup(BlockAnchor(cell->m_FullConnects[*c][i]));
                 // Cell is connected to a winning group; our work here
                 // is done.
-                if (g->m_border == BORDER_ALL) {
+                if (g->m_border == ConstBoard::BORDER_ALL) {
                     for (MarkedCells::Iterator j(g->m_carrier); j; ++j) {
                         threatUnion.Mark(*j);
                     }
@@ -1295,7 +994,7 @@ void Board::MarkAllThreats(const MarkedCellsWithList& cells,
                 }
                 
                 border |= g->m_border;
-                if (border == BORDER_ALL) {
+                if (border == ConstBoard::BORDER_ALL) {
                     MarkCellAsThreat(*it);
                     
                     break;
@@ -1314,17 +1013,17 @@ float Board::WeightCell(cell_t p) const
     for (SgBWIterator it; it; ++it) {
 	for (int i = 0; i < cell->m_FullConnects[*it].Length(); ++i) {
 	    ret += GetBlock(cell->m_FullConnects[*it][i])->m_stones.Length();
-	    const Group* g = GetGroup(BlockAnchor(
-					  cell->m_FullConnects[*it][i]));
-	    if (GetColor(g->m_anchor) == SG_BORDER)
+            cell_t block = BlockAnchor(cell->m_FullConnects[*it][i]);
+	    const Group* g = GetGroup(block);
+	    if (GetColor(block) == SG_BORDER)
 		continue;
-	    if (seenGroups.Contains(g->m_anchor))
+	    if (seenGroups.Contains(g->m_id))
 		continue;
 	    if (g->m_carrier.Marked(p))
 		continue;
 	    ret += 2 * g->m_blocks.Length();
 	    border |= g->m_border;
-	    seenGroups.PushBack(g->m_anchor);
+	    seenGroups.PushBack(g->m_id);
 	}
     }
     ret += border;
@@ -1433,11 +1132,8 @@ std::vector<cell_t> Board::GetBlocksInGroup(cell_t p) const
 {
     std::vector<cell_t> ret;
     const Group* g = GetGroup(BlockAnchor(p));
-    for (int i = 0; i < g->m_blocks.Length(); ++i) {
-        ret.push_back(g->m_blocks[i]);
-        if (g->m_blocks[i] == g->m_anchor)
-            std::swap(ret.back(), ret[0]);
-    }
+    for (Group::BlockIterator it(*g); it; ++it)
+        ret.push_back(*it);
     return ret;
 }
 

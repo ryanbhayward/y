@@ -13,9 +13,11 @@
 #include "YUtil.h"
 #include "ConstBoard.h"
 #include "SemiTable.h"
+#include "Groups.h"
 #include "YException.h"
 
 #include <boost/scoped_array.hpp>
+#include <boost/scoped_ptr.hpp>
 
 class SemiConnection;
 class SemiTable;
@@ -74,6 +76,65 @@ struct LocalMoves
 };
 
 //---------------------------------------------------------------------------
+
+struct Block
+{
+    static const int MAX_STONES = Y_MAX_CELL;
+    static const int MAX_LIBERTIES = Y_MAX_CELL;
+    static const int MAX_CONNECTIONS = Y_MAX_CELL / 2;
+
+    typedef SgArrayList<cell_t, MAX_LIBERTIES> LibertyList;
+    typedef LibertyList::Iterator LibertyIterator;
+    typedef SgArrayList<cell_t, MAX_STONES> StoneList;
+    typedef StoneList::Iterator StoneIterator;
+    typedef SgArrayList<cell_t, MAX_CONNECTIONS> ConnectionList;
+    typedef ConnectionList::Iterator ConnectionIterator;
+
+    cell_t m_anchor;
+    int m_border;
+    SgBlackWhite m_color;
+    LibertyList m_liberties;    
+    StoneList m_stones;
+    ConnectionList m_con;
+
+    Block()
+    { }
+
+    Block(cell_t p, SgBlackWhite color)
+        : m_anchor(p)
+        , m_color(color)
+    { }
+
+    int GetConnectionIndex(const Block* b2) const
+    {
+        for(int i = 0; i != m_con.Length(); ++i)
+            if (m_con[i] == b2->m_anchor)
+                return i;
+        return -1;
+    }
+
+    std::string BlockConnectionsToString(const ConstBoard& cbrd) const
+    {
+        std::ostringstream os;
+        os << "[";
+        for (int i = 0; i < m_con.Length(); ++i) {
+            if (i) os << ",";
+            os << "[" << cbrd.ToString(m_con[i]) << "]";
+        }
+        os << "]";
+        return os.str();
+    }
+    std::string ToString(const ConstBoard& cbrd) const
+    {
+        std::ostringstream os;
+        os << "[color=" <<  m_color
+           << " anchor=" << cbrd.ToString(m_anchor)
+           << " border=" << m_border
+           << " connected=" << BlockConnectionsToString(cbrd)
+           << "]\n";
+        return os.str();
+    }
+};
 
 struct Board 
 {
@@ -198,14 +259,14 @@ struct Board
     //------------------------------------------------------------
     // Groups
 
-    cell_t GroupAnchor(cell_t p) const
-    { return GetGroup(BlockAnchor(p))->m_anchor; }
+    cell_t GroupID(cell_t p) const
+    { return GetGroup(BlockAnchor(p))->m_id; }
 
     int GroupBorder(cell_t p) const
     { return GetGroup(BlockAnchor(p))->m_border; }
 
     std::string GroupInfo(cell_t p) const
-	{ return GetGroup(BlockAnchor(p))->ToString(); }
+    { return GetGroup(BlockAnchor(p))->ToString(); }
 
     //------------------------------------------------------------
     // Gui access functions
@@ -267,11 +328,6 @@ struct Board
     void DumpBlocks() ;
 
 private:
-    static const int BORDER_NONE  = 0; // 000   border values, used bitwise
-    static const int BORDER_SOUTH = 1; // 001
-    static const int BORDER_WEST  = 2; // 010
-    static const int BORDER_EAST  = 4; // 100
-    static const int BORDER_ALL   = 7; // 111
 
     template<typename T, int SIZE>
     class CarrierList : public SgArrayList<T, SIZE>
@@ -297,125 +353,6 @@ private:
 
     static const int MAX_CARRIER_SIZE = 8;
     typedef CarrierList<cell_t, MAX_CARRIER_SIZE> Carrier;
-
-    struct Block
-    {
-        static const int MAX_STONES = Y_MAX_CELL;
-        static const int MAX_LIBERTIES = Y_MAX_CELL;
-        static const int MAX_CONNECTIONS = Y_MAX_CELL / 2;
-
-        typedef SgArrayList<cell_t, MAX_LIBERTIES> LibertyList;
-        typedef LibertyList::Iterator LibertyIterator;
-        typedef SgArrayList<cell_t, MAX_STONES> StoneList;
-        typedef StoneList::Iterator StoneIterator;
-        typedef SgArrayList<cell_t, MAX_CONNECTIONS> ConnectionList;
-        typedef ConnectionList::Iterator ConnectionIterator;
-
-        cell_t m_anchor;
-        int m_border;
-        SgBlackWhite m_color;
-        LibertyList m_liberties;    
-        StoneList m_stones;
-        ConnectionList m_con;
-
-        Block()
-        { }
-
-        Block(cell_t p, SgBlackWhite color)
-            : m_anchor(p)
-            , m_color(color)
-        { }
-
-	Block* Smaller(Block* b1, Block* b2)
-	{ return b1->m_anchor < b2->m_anchor ? b1 : b2; }
-
-        int GetConnectionIndex(const Block* b2) const
-        {
-            for(int i = 0; i != m_con.Length(); ++i)
-                if (m_con[i] == b2->m_anchor)
-                    return i;
-            return -1;
-        }
-
-        std::string BlockConnectionsToString(const ConstBoard& cbrd) const
-        {
-            std::ostringstream os;
-            os << "[";
-            for (int i = 0; i < m_con.Length(); ++i) {
-                if (i) os << ",";
-                os << "[" << cbrd.ToString(m_con[i]) << "]";
-            }
-            os << "]";
-            return os.str();
-        }
-        std::string ToString(const ConstBoard& cbrd) const
-        {
-            std::ostringstream os;
-            os << "[color=" <<  m_color
-               << " anchor=" << cbrd.ToString(m_anchor)
-               << " border=" << m_border
-               << " connected=" << BlockConnectionsToString(cbrd)
-               << "]\n";
-            return os.str();
-        }
-    };
-
-    struct Group
-    {
-	static const size_t MAX_BLOCKS = Y_MAX_CELL/2;
-
-	cell_t m_anchor;
-	int m_border;
-	SgArrayList<cell_t, MAX_BLOCKS> m_blocks;
-        MarkedCells m_carrier;
-
-	Group()
-	{ }
-
-	Group(cell_t anchor, cell_t border)
-	    : m_anchor(anchor)
-	    , m_border(border)
-	    , m_blocks(anchor)
-            , m_carrier()
-	{ }
-
-        std::string GroupBlocksToString() const
-        {
-            std::ostringstream os;
-            os << "[";
-            for (int i = 0; i < m_blocks.Length(); ++i) {
-                if (i) os << ", ";
-                os << ConstBoard::ToString(m_blocks[i]);
-            }
-            os << "]";
-            return os.str();
-        }
-
-	std::string GroupCarrierToString() const
-	{
-            std::ostringstream os;
-            os << "[";
-	    int cnt = 0;
-            for (MarkedCells::Iterator i(m_carrier); i; ++i) {
-                if (cnt) os << ", ";
-                os << ConstBoard::ToString(*i);
-		++cnt;
-            }
-            os << "]";
-            return os.str();
-	}
-
-        std::string ToString() const
-        {
-            std::ostringstream os;
-            os << "[anchor="  << ConstBoard::ToString(m_anchor)
-               << " border="  << m_border
-	       << " blocks="  << GroupBlocksToString()
-	       << " carrier=" << GroupCarrierToString() 
-               << "]\n";
-            return os.str();
-        }
-    };
 
     struct Cell
     {
@@ -540,11 +477,10 @@ private:
 	boost::scoped_array<Cell> m_cellList;
         boost::scoped_array<cell_t> m_blockIndex;
         boost::scoped_array<Block> m_blockList;
-	boost::scoped_array<cell_t> m_groupIndex;
-	boost::scoped_array<Group> m_groupList;
         boost::scoped_array<Carrier> m_conData;
         boost::scoped_array<Carrier*> m_con;
-        boost::scoped_array<SemiTable> m_semis;
+        boost::scoped_ptr<SemiTable> m_semis;
+        boost::scoped_ptr<Groups> m_groups;
 
         SgArrayList<cell_t, 3> m_oppBlocks;
 
@@ -591,32 +527,14 @@ private:
     static int NumUnmarkedSharedLiberties(const Carrier& lib, int* seen, 
                                           int id, Carrier& unmarked);
 
-    void ResetBlocksInGroup(Block* b);
-
-    void ComputeGroupForBlock(Block* b);
-
-    void ComputeGroupForBlock(Block* b, int* seen, int id);
-
-    void GroupSearch(int* seen, Block* b, int id, 
-                     std::vector<CellPair>& potStack);
-
-    void AddNonGroupEdges(int* seen, Group* g, int id);
-
-    void ConstructSemisWithKey(cell_t key, SgBlackWhite color,
-                               SgArrayList<cell_t, 64>& groups);
-
-    void MergeGroups(cell_t group1, cell_t group2, 
-                     const SemiConnection& carrier1,
-		     const SemiConnection& carrier2);
-
-    bool CanMergeGroups(cell_t a, cell_t b, 
-                        SemiConnection& x, SemiConnection& y);
-
     void RemoveSharedLiberty(cell_t p, Block* a, Block* b);
 
     void RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks);
 
     void UpdateBlockConnection(Block* a, Block* b); 
+
+    void ConstructSemisWithKey(cell_t key, SgBlackWhite color,
+                               SgArrayList<cell_t, 64>& blocks);
 
     void RemoveConnectionWith(Block* b, const Block* other);
 
@@ -638,10 +556,10 @@ private:
     { return &m_state.m_blockList[BlockIndex(p)]; }
 
     Group* GetGroup(cell_t p)
-    { return &m_state.m_groupList[m_state.m_groupIndex[p]]; }
+    { return m_state.m_groups->GetGroup(p); }
 
     const Group* GetGroup(cell_t p) const
-    { return &m_state.m_groupList[m_state.m_groupIndex[p]]; }
+    { return m_state.m_groups->GetGroup(p); }
 
     Cell* GetCell(cell_t p)
     { return &m_state.m_cellList[p]; }

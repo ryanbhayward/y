@@ -116,6 +116,8 @@ public:
 
     bool Contains(const SemiConnection& s) const;
 
+    const SemiConnection& Lookup(uint32_t hash) const;
+
     void RemoveContaining(cell_t p);
 
     void RemoveAllBetween(cell_t a, cell_t b);

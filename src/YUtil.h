@@ -4,8 +4,18 @@
 #include "SgArrayList.h"
 
 #include <string>
+#include <sstream>
 #include <vector>
-#include <bitset>
+#include <iomanip>
+#include <stdint.h>
+
+//---------------------------------------------------------------------------
+
+namespace YUtil
+{
+    std::string HashString(uint32_t hash);
+
+}  // YUtil
 
 //---------------------------------------------------------------------------
 

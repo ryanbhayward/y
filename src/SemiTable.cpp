@@ -29,6 +29,18 @@ bool SemiTable::Contains(const SemiConnection& s) const
     return false;
 }
 
+const SemiConnection& SemiTable::Lookup(uint32_t hash) const
+{
+    int hslot = SlotIndex(hash);        
+    for (int i = 0; i < m_hash_table[hslot].Length(); ++i) {
+        const SemiConnection& s = m_entries[ m_hash_table[hslot][i] ];
+        if (s.m_hash == s.m_hash)
+            return s;
+    }
+    throw YException() << "Lookup failed on hash!! (" << hash << ")\n";
+    return m_entries[0];  // to avoid compilation error
+}
+
 void SemiTable::Remove(int index)
 {
     const SemiConnection& s = m_entries[index];

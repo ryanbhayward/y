@@ -12,6 +12,20 @@ using namespace std;
 
 //---------------------------------------------------------------------------
 
+std::string ConstBoard::BorderToString(int border)
+{
+    std::ostringstream os;
+    os << "(";
+    if (border & BORDER_WEST)
+        os << "(west)";
+    if (border & BORDER_EAST)
+        os << "(east)";
+    if (border & BORDER_SOUTH)
+        os << "(south)";
+    os << ")";            
+    return os.str();
+}
+
 char ConstBoard::ColorToChar(SgBoardColor color) 
 {
     switch(color) {

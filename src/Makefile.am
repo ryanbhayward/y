@@ -3,6 +3,7 @@ bin_PROGRAMS = y
 y_SOURCES = \
 board.cpp \
 ConstBoard.cpp \
+Groups.cpp \
 SemiTable.cpp \
 WeightedRandom.cpp \
 YMain.cpp \
@@ -10,11 +11,13 @@ YGtpEngine.cpp \
 YSearch.cpp \
 YSgUtil.cpp \
 YUctSearch.cpp \
-YUctSearchUtil.cpp
+YUctSearchUtil.cpp \
+YUtil.cpp
 
 noinst_HEADERS = \
 board.h \
 ConstBoard.h \
+Groups.h \
 SemiTable.h \
 VectorIterator.h \
 WeightedRandom.h \
