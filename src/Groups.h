@@ -59,6 +59,13 @@ public:
         return m_border & ConstBoard::ToBorderValue(border);
     }
 
+    bool ContainsBlock(cell_t b) const
+    {
+        if (ConstBoard::IsEdge(b))
+            return ContainsBorder(b);
+        return m_blocks.Contains(b);
+    }
+
     class BlockIterator
     {
     public:
@@ -112,10 +119,10 @@ public:
 
     cell_t SetGroupDataFromBlock(const Block* block, int id);
    
-    void RestructureAfterMove(cell_t p, const Board& brd);
+    void RestructureAfterMove(cell_t p, SgBlackWhite color, const Board& brd);
 
-    cell_t Merge(Group* g1, Group* g2, 
-                 const SemiConnection& s1, const SemiConnection& s2);
+    void ProcessNewSemis(const Block* block,
+                         std::vector<const SemiConnection*> s);
 
     const Group* GetGroup(cell_t p) const
     { return const_cast<Groups*>(this)->GetGroup(p); }
@@ -146,7 +153,14 @@ private:
     }
 
     bool CanMerge(const Group* ga, const Group* gb, 
-                  SemiConnection& x, SemiConnection& y);
+                  SemiConnection const** x, SemiConnection const** y) const;
+
+    bool CanMergeOnSemi(const Group* ga, const Group* gb,
+                        const SemiConnection& x, 
+                        SemiConnection const** outy) const;
+
+    cell_t Merge(Group* g1, Group* g2, 
+                 const SemiConnection& s1, const SemiConnection& s2);
 
     void RestructureAfterMove(Group* g, cell_t p, const Board& brd);
 

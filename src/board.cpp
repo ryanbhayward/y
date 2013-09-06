@@ -309,15 +309,15 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
             AddSharedLiberty(b, GetBlock(*it));
         }
     }
-    m_state.m_groups->CreateSingleBlockGroup(b);
+    GetGroups().CreateSingleBlockGroup(b);
 
+
+    // Create new semi connections 
     SgArrayList<cell_t, 64> blocks;
     blocks.PushBack(p);
     for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
         ConstructSemisWithKey(*it, color, blocks);
     
-    m_state.m_groups->RestructureAfterMove(p, *this);
-
 #if 0
     // flatten blocks into a list of unique groups (with p's group at 0)
     SgArrayList<cell_t, 6> groups;
@@ -618,7 +618,8 @@ void Board::Play(SgBlackWhite color, cell_t p)
     }
     RemoveSharedLiberty(p, adjBlocks);
     RemoveSharedLiberty(p, oppBlocks);
-    Semis().RemoveContaining(p);
+    GetSemis().RemoveContaining(p);
+    GetGroups().RestructureAfterMove(p, SgOppBW(color), *this);
        
     // Create/update block containing p (ignores edge blocks).
     // Compute group for this block as well.
@@ -635,9 +636,6 @@ void Board::Play(SgBlackWhite color, cell_t p)
         else
             MergeBlocks(p, border, realAdjBlocks);
     }
-
-    // Rebuild groups broken by move p
-    m_state.m_groups->RestructureAfterMove(p, *this);
 
     // Group expand p's group
     // TODO: need to also group expand other newly created groups
@@ -741,10 +739,10 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color,
             semi.m_key = key;
             semi.m_hash = SemiTable::ComputeHash(semi);
             
-            if (Semis().Contains(semi))
+            if (GetSemis().Contains(semi))
                 continue;
 
-            Semis().Add(semi);
+            GetSemis().Add(semi);
             
             blocks.Include(b1);
             blocks.Include(b2);
@@ -1123,7 +1121,7 @@ std::vector<SemiConnection> Board::GetSemisBetween(cell_t p1, cell_t p2) const
         return ret;
     p1 = GetBlock(p1)->m_anchor;
     p2 = GetBlock(p2)->m_anchor;
-    for (SemiTable::IteratorPair it(p1, p2, &Semis()); it; ++it)
+    for (SemiTable::IteratorPair it(p1, p2, &GetSemis()); it; ++it)
         ret.push_back(*it);
     return ret;
 }

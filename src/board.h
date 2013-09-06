@@ -574,11 +574,17 @@ private:
 
     const Carrier& GetConnection(cell_t p1, cell_t p2) const;
 
-    const SemiTable& Semis() const
+    const SemiTable& GetSemis() const
     { return *m_state.m_semis.get(); }
 
-    SemiTable& Semis()
+    SemiTable& GetSemis()
     { return *m_state.m_semis.get(); }
+
+    const Groups& GetGroups() const
+    { return *m_state.m_groups.get(); }
+
+    Groups& GetGroups()
+    { return *m_state.m_groups.get(); }
 
     void AddCellToConnection(cell_t p1, cell_t p2, cell_t cell)
     {  GetConnection(p1, p2).Include(cell);  }
