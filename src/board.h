@@ -81,21 +81,17 @@ struct Block
 {
     static const int MAX_STONES = Y_MAX_CELL;
     static const int MAX_LIBERTIES = Y_MAX_CELL;
-    static const int MAX_CONNECTIONS = Y_MAX_CELL / 2;
 
     typedef SgArrayList<cell_t, MAX_LIBERTIES> LibertyList;
     typedef LibertyList::Iterator LibertyIterator;
     typedef SgArrayList<cell_t, MAX_STONES> StoneList;
     typedef StoneList::Iterator StoneIterator;
-    typedef SgArrayList<cell_t, MAX_CONNECTIONS> ConnectionList;
-    typedef ConnectionList::Iterator ConnectionIterator;
 
     cell_t m_anchor;
     int m_border;
     SgBlackWhite m_color;
     LibertyList m_liberties;    
     StoneList m_stones;
-    ConnectionList m_con;
 
     Block()
     { }
@@ -105,32 +101,12 @@ struct Block
         , m_color(color)
     { }
 
-    int GetConnectionIndex(const Block* b2) const
-    {
-        for(int i = 0; i != m_con.Length(); ++i)
-            if (m_con[i] == b2->m_anchor)
-                return i;
-        return -1;
-    }
-
-    std::string BlockConnectionsToString(const ConstBoard& cbrd) const
-    {
-        std::ostringstream os;
-        os << "[";
-        for (int i = 0; i < m_con.Length(); ++i) {
-            if (i) os << ",";
-            os << "[" << cbrd.ToString(m_con[i]) << "]";
-        }
-        os << "]";
-        return os.str();
-    }
     std::string ToString(const ConstBoard& cbrd) const
     {
         std::ostringstream os;
         os << "[color=" <<  m_color
            << " anchor=" << cbrd.ToString(m_anchor)
            << " border=" << m_border
-           << " connected=" << BlockConnectionsToString(cbrd)
            << "]\n";
         return os.str();
     }
