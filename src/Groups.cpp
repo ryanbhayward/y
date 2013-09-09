@@ -14,9 +14,11 @@ std::string Group::BlocksToString() const
 {
     std::ostringstream os;
     os << "[";
-    for (int i = 0; i < m_blocks.Length(); ++i) {
-        if (i) os << ", ";
-        os << ConstBoard::ToString(m_blocks[i]);
+    bool first = true;
+    for (Group::BlockIterator i(*this); i; ++i) {
+        if (!first) os << ", ";
+        os << ConstBoard::ToString(*i);
+        first = false;
     }
     os << "]";
     return os.str();
@@ -41,7 +43,6 @@ std::string Group::ToString() const
     std::ostringstream os;
     os << "[id=" << Group::IDToString(m_id)
        << " parent=" << Group::IDToString(m_parent)
-       << " block=" << ConstBoard::ToString(m_block)
        << " left=" << Group::IDToString(m_left)
        << " right=" << Group::IDToString(m_right)
        << " semi1=" << YUtil::HashString(m_semi1)
@@ -88,7 +89,7 @@ std::string Groups::Encode(const Group* g) const
 {
     std::ostringstream os;
     os << '(';
-    if (g->m_block == (cell_t)SG_NULLMOVE) {
+    if (g->m_left != (cell_t)SG_NULLMOVE) {
         os << Encode(GetGroupById(g->m_left));
         os << '[';
         bool first = true;
@@ -99,8 +100,10 @@ std::string Groups::Encode(const Group* g) const
         os << ']';
         os << Encode(GetGroupById(g->m_right));
     }
-    else 
-        os << ConstBoard::ToString(g->m_block);
+    else {
+        Group::BlockIterator it(*g);
+        os << ConstBoard::ToString(*it);
+    }
     os << ')';
     return os.str();
 }
@@ -119,7 +122,6 @@ cell_t Groups::SetGroupDataFromBlock(const Block* b, int id)
     g->m_parent = g->m_left = g->m_right = SG_NULLMOVE;
     g->m_semi1 = g->m_semi2 = 0;
     g->m_border = b->m_border;
-    g->m_block = b->m_anchor;
     g->m_carrier.Clear();
     g->m_con_carrier.Clear();
     g->m_blocks.Clear();
@@ -130,7 +132,6 @@ cell_t Groups::SetGroupDataFromBlock(const Block* b, int id)
 
 void Groups::RecomputeFromChildren(Group* g)
 {
-    std::cerr << "gid=" << (int)g->m_id << '\n';
     const Group* left  = GetGroupById(g->m_left);
     const Group* right = GetGroupById(g->m_right);
     g->m_border = left->m_border | right->m_border;
@@ -175,7 +176,7 @@ void Groups::Detach(Group* g, Group* p)
     }
     Group* gp = GetGroupById(p->m_parent);
     // Tentatively make sibling a child of gp
-      gp->ChangeChild(p->m_id, sid);
+    gp->ChangeChild(p->m_id, sid);
     // If both semis in gp do not connect to sibling, then sibling
     // cannot really be a child of gp. Fix this by detaching sibling
     // from gp.
@@ -186,25 +187,30 @@ void Groups::Detach(Group* g, Group* p)
     } 
     else
     {
+        // Sibling is a valid child of gp. Need to check that
+        // the removal of g didn't break connections above gp.
         CheckStructure(gp);
     }
 }
 
 void Groups::CheckStructure(Group* p)
 {
-    if (IsRootGroup(p->m_id)) {
-        RecomputeFromChildren(p);
-        return;
-    }
-    Group* gp = GetGroupById(p->m_parent);
-    if (   p->ContainsSemiEndpoint(m_semis.Lookup(gp->m_semi1))
-        && p->ContainsSemiEndpoint(m_semis.Lookup(gp->m_semi2)))
+    if (IsRootGroup(p->m_id)) 
     {
         RecomputeFromChildren(p);
-        CheckStructure(gp);
     }
-    else
-        Detach(p, gp);
+    else 
+    {
+        Group* gp = GetGroupById(p->m_parent);
+        if (   p->ContainsSemiEndpoint(m_semis.Lookup(gp->m_semi1))
+            && p->ContainsSemiEndpoint(m_semis.Lookup(gp->m_semi2)))
+        {
+            RecomputeFromChildren(p);
+            CheckStructure(gp);
+        }
+        else
+            Detach(p, gp);
+    }
 }
 
 void Groups::ComputeConnectionCarrier(Group* g)
@@ -254,7 +260,6 @@ cell_t Groups::Merge(Group* g1, Group* g2,
     std::cerr << "m.s2: " << s2.ToString() << ' ' 
               << YUtil::HashString(s2.m_hash)<< '\n';
    
-    g->m_block = (cell_t)SG_NULLMOVE;
     ComputeConnectionCarrier(g);
     RecomputeFromChildren(g);
     return id;
@@ -270,9 +275,9 @@ bool Groups::CanMergeOnSemi(const Group* ga, const Group* gb,
         cell_t ya = *ja;
         for (Group::BlockIterator jb(*gb); jb; ++jb) {
             cell_t yb = *jb;
-            if (ConstBoard::IsEdge(yb) && ga->ContainsBorder(yb))
+            if (ConstBoard::IsEdge(yb) && ga->ContainsEdge(yb))
                 continue;
-            if (ConstBoard::IsEdge(ya) && gb->ContainsBorder(ya))
+            if (ConstBoard::IsEdge(ya) && gb->ContainsEdge(ya))
                 continue;
             for (SemiTable::IteratorPair yit(ya,yb,&m_semis); yit; ++yit) 
             {
@@ -332,9 +337,7 @@ bool Groups::CanMerge(const Group* ga, const Group* gb,
                     cell_t ya = *ja;
                     for (Group::BlockIterator jb(*gb, ib.Index()); jb; ++jb) {
                         cell_t yb = *jb;
-                        // if yb is an edge: check if it is already in ga
-                        if (   ConstBoard::IsEdge(yb) 
-                            && ga->ContainsBorder(yb))
+                        if (ConstBoard::IsEdge(yb) && ga->ContainsEdge(yb))
                             continue;
                         for (SemiTable::IteratorPair yit(ya,yb,&m_semis); 
                              yit; ++yit) 

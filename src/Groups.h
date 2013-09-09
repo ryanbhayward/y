@@ -36,7 +36,6 @@ public:
 
     cell_t m_id;
     cell_t m_parent;
-    cell_t m_block;
     cell_t m_left, m_right;
     uint32_t m_semi1, m_semi2;
     int m_border;
@@ -60,15 +59,15 @@ public:
 
     std::string ToString() const;
 
-    bool ContainsBorder(cell_t border) const
+    bool ContainsEdge(cell_t edge) const
     {
-        return m_border & ConstBoard::ToBorderValue(border);
+        return m_border & ConstBoard::ToBorderValue(edge);
     }
 
     bool ContainsBlock(cell_t b) const
     {
         if (ConstBoard::IsEdge(b))
-            return ContainsBorder(b);
+            return ContainsEdge(b);
         return m_blocks.Contains(b);
     }
 
