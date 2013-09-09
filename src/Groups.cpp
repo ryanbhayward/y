@@ -131,6 +131,8 @@ cell_t Groups::SetGroupDataFromBlock(const Block* b, int id)
 
 void Groups::RecomputeFromChildren(Group* g)
 {
+    assert(!ConstBoard::IsEdge(g->m_id));
+    assert(g->m_left != SG_NULLMOVE);
     const Group* left  = GetGroupById(g->m_left);
     const Group* right = GetGroupById(g->m_right);
     g->m_border = left->m_border | right->m_border;
@@ -160,8 +162,8 @@ void Groups::Detach(Group* g, Group* p)
         PrintRootGroups();
         return;
     }
-    // g's parent will now have only a single child, so move
-    // g's sibling up into parent's position
+    // g's parent will now have only a single child, so tentatively
+    // make sibling a child of grandparent
     cell_t sid = SiblingID(p, g->m_id);
     Group* sibling = GetGroupById(sid);
     m_freelist.PushBack(p->m_id);  // parent always dies
@@ -174,7 +176,6 @@ void Groups::Detach(Group* g, Group* p)
         return;
     }
     Group* gp = GetGroupById(p->m_parent);
-    // Tentatively make sibling a child of gp
     gp->ChangeChild(p->m_id, sid);
     // If both semis in gp do not connect to sibling, then sibling
     // cannot really be a child of gp. Fix this by detaching sibling
@@ -194,6 +195,7 @@ void Groups::Detach(Group* g, Group* p)
 
 void Groups::CheckStructure(Group* p)
 {
+    assert(!ConstBoard::IsEdge(p->m_id));
     if (IsRootGroup(p->m_id)) 
     {
         RecomputeFromChildren(p);
@@ -223,7 +225,7 @@ void Groups::ComputeConnectionCarrier(Group* g)
 
 // Create merged group in g1's location g1 down and creating
 // a new internal node with g1 and g2 as children.
-// NOTE: g1 must be a valid group (never be an edge group!)
+// NOTE: g1 must be a valid onboard group (never be an edge group!)
 // NOTE: g2 needs to be a free group or an edge group.
 // NOTE: we are always merging g1 and g2 at the root of both trees.
 // We could examine the two endpoints of s1 and s2 that occur in g1
@@ -233,6 +235,8 @@ void Groups::ComputeConnectionCarrier(Group* g)
 cell_t Groups::Merge(Group* g1, Group* g2,
                      const SemiConnection& s1, const SemiConnection& s2)
 {
+    assert(!ConstBoard::IsEdge(g1->m_id));
+
     cell_t id = ObtainID();
     Group* g = GetGroupById(id);
     g->m_id = id;
@@ -241,6 +245,7 @@ cell_t Groups::Merge(Group* g1, Group* g2,
         m_rootGroups.Exclude(g1->m_id);
         m_rootGroups.PushBack(id);
     } else {
+        assert(g1->m_parent != SG_NULLMOVE);
         GetGroupById(g1->m_parent)->ChangeChild(g1->m_id, id);
     }
 
@@ -314,7 +319,7 @@ void Groups::ProcessNewSemis(const Block* block,
             m_rootGroups.Exclude(gb->m_id);
             std::cerr << "MERGE: " << y->ToString() << '\n';
             Merge(ga, gb, *x, *y);
-            ga = GetGroup(bx);  // Get the new group!!
+            ga = GetGroup(bx);  // Get the new group for block!!
         }
     }
 }
