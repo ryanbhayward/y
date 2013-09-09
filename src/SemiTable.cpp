@@ -2,6 +2,12 @@
 
 uint32_t SemiTable::s_cell_hash[Y_MAX_CELL];
 
+SemiTable::SemiTable()
+{
+    for (int i = MAX_ENTRIES_IN_TABLE-1; i >= 0; --i)
+        m_freelist.PushBack(i);
+}
+
 void SemiTable::Add(const SemiConnection& s)
 {
     if (m_freelist.IsEmpty())
@@ -17,6 +23,7 @@ void SemiTable::Add(const SemiConnection& s)
     m_usedlist.PushBack(index);
     m_end_table[eslot].PushBack(index);
     m_hash_table[hslot].PushBack(index);
+    std::cerr << "index=" << index << '\n';
     m_entries[index] = s;
     m_newlist.push_back(&m_entries[index]);
     std::cerr << "ADDED: " << s.ToString() << ' ' 

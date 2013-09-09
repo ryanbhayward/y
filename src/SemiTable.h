@@ -106,11 +106,7 @@ public:
         return ret;
     }
 
-    SemiTable()
-    {
-        for (int i = 0; i < MAX_ENTRIES_IN_TABLE; ++i)
-            m_freelist.PushBack(i);
-    }
+    SemiTable();
 
     void Add(const SemiConnection& s);
 
@@ -210,9 +206,9 @@ private:
 
     SgArrayList<int, MAX_ENTRIES_PER_SLOT> m_end_table[NUM_SLOTS];
     SgArrayList<int, MAX_ENTRIES_PER_SLOT> m_hash_table[NUM_SLOTS];
-    SgArrayList<SemiConnection, MAX_ENTRIES_IN_TABLE> m_entries;
     SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_freelist;
     SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_usedlist;
+    SemiConnection m_entries[MAX_ENTRIES_IN_TABLE];
 
     std::vector<const SemiConnection*> m_newlist;
 

@@ -66,7 +66,6 @@ Groups::Groups(const SemiTable& semis)
 cell_t Groups::ObtainID()
 {
     assert(!m_freelist.IsEmpty());
-    assert(m_freelist.Length() + m_groups.Length() == MAX_GROUPS);
     cell_t id = m_freelist.Last();
     m_freelist.PopBack();
     return id;
