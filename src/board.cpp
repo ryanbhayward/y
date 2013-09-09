@@ -343,7 +343,10 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
     }
     RemoveEdgeSharedLiberties(b);
    
-    // TODO: Merge in any newly adjacent groups!!
+    GetSemis().ClearNewSemis();
+    for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
+        ConstructSemisWithKey(*it, b->m_color);
+    GetGroups().ProcessNewSemis(b, GetSemis().GetNewSemis());
 }
 
 void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to,
