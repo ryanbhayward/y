@@ -15,9 +15,12 @@ void SemiTable::Add(const SemiConnection& s)
     int index = m_freelist.Last();
     m_freelist.PopBack();
     m_usedlist.PushBack(index);
-    m_entries[index] = s;
     m_end_table[eslot].PushBack(index);
     m_hash_table[hslot].PushBack(index);
+    m_entries[index] = s;
+    m_newlist.push_back(&m_entries[index]);
+    std::cerr << "ADDED: " << s.ToString() << ' ' 
+              << YUtil::HashString(s.m_hash) << '\n';
 }
 
 bool SemiTable::Contains(const SemiConnection& s) const
@@ -34,7 +37,7 @@ const SemiConnection& SemiTable::Lookup(uint32_t hash) const
     int hslot = SlotIndex(hash);        
     for (int i = 0; i < m_hash_table[hslot].Length(); ++i) {
         const SemiConnection& s = m_entries[ m_hash_table[hslot][i] ];
-        if (s.m_hash == s.m_hash)
+        if (s.m_hash == hash)
             return s;
     }
     throw YException() << "Lookup failed on hash!! (" << hash << ")\n";

@@ -25,6 +25,15 @@ public:
 
     typedef SgArrayList<cell_t, MAX_BLOCKS> BlockList;
 
+    static std::string IDToString(cell_t id)
+    {
+        if (id == NULL_GROUP)
+            return "(nil)";
+        std::ostringstream os;
+        os << (int)id;
+        return os.str();
+    }
+
     cell_t m_id;
     cell_t m_parent;
     cell_t m_block;
@@ -36,9 +45,6 @@ public:
     MarkedCells m_con_carrier;
 
     Group();
-
-    bool IsTopLevel() const
-    { return m_parent == NULL_GROUP; }
 
     void ChangeChild(cell_t o, cell_t n)
     {
@@ -65,6 +71,8 @@ public:
             return ContainsBorder(b);
         return m_blocks.Contains(b);
     }
+
+    bool ContainsSemiEndpoint(const SemiConnection& s);
 
     class BlockIterator
     {
@@ -129,13 +137,17 @@ public:
 
     Group* GetGroup(cell_t p);
 
+    std::string Encode(const Group* g) const;
+
 private:
     // Need space for MAX_GROUPS * 2, and MAX_GROUPS < T/2, so this works.
     static const int MAX_GROUPS = Y_MAX_CELL;
+    typedef SgArrayList<int, MAX_GROUPS> GroupList;
 
     Group m_groupData[MAX_GROUPS];
-    SgArrayList<int, MAX_GROUPS> m_rootGroups;
-    SgArrayList<int, MAX_GROUPS> m_freelist;
+    GroupList m_rootGroups;
+    GroupList m_freelist;
+    GroupList m_detached;
     const SemiTable& m_semis;
 
     Group* GetGroupById(int gid)
@@ -143,9 +155,21 @@ private:
         return &m_groupData[gid];
     }
 
-    void Detach(Group* g);
+    const Group* GetGroupById(int gid) const
+    {
+        return &m_groupData[gid];
+    }
+
+    void Detach(Group* g, Group* p);
 
     void RecomputeFromChildren(Group* g);
+
+    inline bool IsRootGroup(cell_t id) const
+    {
+        if (id == SG_NULLMOVE)
+            return false;
+        return m_rootGroups.Contains(id);
+    }
 
     inline cell_t SiblingID(const Group* parent, cell_t child) const
     {
@@ -162,13 +186,17 @@ private:
     cell_t Merge(Group* g1, Group* g2, 
                  const SemiConnection& s1, const SemiConnection& s2);
 
+    bool Merge(Group* g, const GroupList& list, const Board& brd);
+
     void RestructureAfterMove(Group* g, cell_t p, const Board& brd);
 
     void ComputeConnectionCarrier(Group* g);
 
-    void FindGroupToMergeWith(Group* g, const Board& brd);
-    
+    void CheckStructure(Group* p);
+
     cell_t ObtainID();
+
+    void PrintRootGroups();
 };
 
 //---------------------------------------------------------------------------

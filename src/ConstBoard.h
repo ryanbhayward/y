@@ -25,10 +25,10 @@
 //
 // T = S*(S+1)/2 + 3
 
-static const int Y_MAX_CELL = 128;
+static const int Y_MAX_CELL = 127;
 static const int Y_MAX_SIZE = 15;   // such that TotalCells < Y_MAX_CELL
 
-typedef uint8_t cell_t;
+typedef int8_t cell_t;
 
 static const int Y_SWAP = -2;  // SG_NULLMOVE == -1
 

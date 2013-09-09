@@ -24,6 +24,7 @@ void Board::State::Init(int T)
     m_blockList.reset(new Block[T]);
     m_conData.reset(new Carrier[T*(T+1)/2]);
     m_semis.reset(new SemiTable());
+    m_groups.reset(new Groups(*m_semis));
 
     for (int i = 0; i < T; ++i)
         m_color[i] = SG_EMPTY;
@@ -302,26 +303,10 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
 	}
     }
     GetGroups().CreateSingleBlockGroup(b);
-
-
-    // Create new semi connections 
-    SgArrayList<cell_t, 64> blocks;
-    blocks.PushBack(p);
+    GetSemis().ClearNewSemis();
     for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
-        ConstructSemisWithKey(*it, color, blocks);
-    
-#if 0
-    // flatten blocks into a list of unique groups (with p's group at 0)
-    SgArrayList<cell_t, 6> groups;
-    for (int i = 0; i < blocks.Length(); ++i)
-        groups.Include(GetGroup(blocks[i])->m_id);
-
-    SemiConnection x, y;
-    for (int i = 1; i < groups.Length(); ++i) {
-        if (CanMergeGroups(groups[0], groups[i], x, y))
-            MergeGroups(groups[0], groups[i], x, y);            
-    }
-#endif
+        ConstructSemisWithKey(*it, color);
+    GetGroups().ProcessNewSemis(b, GetSemis().GetNewSemis());
 }
 
 bool Board::IsAdjacent(cell_t p, const Block* b)
@@ -637,15 +622,17 @@ void Board::Play(SgBlackWhite color, cell_t p)
 
 //---------------------------------------------------------------------------
 
-void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color,
-                                  SgArrayList<cell_t, 64>& blocks)
+void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
 {
     const Cell* cell = GetCell(key);
     if (cell->m_FullConnects[color].Length() < 2)
         return;
+    std::cerr << "Working on " << ToString(key) << ":\n";
     for (int i = 0; i < cell->m_FullConnects[color].Length(); ++i) {
         cell_t b1 = cell->m_FullConnects[color][i];
         SemiConnection semi;
+
+        std::cerr << "  " << ToString(b1) << '\n';
 
         // TODO: handle more than 2 cells in carrier
         for(int j = 0; j < 2 && j < GetConnection(key, b1).Length() ; ++j)
@@ -655,6 +642,7 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color,
         for (int j=i+1; j < cell->m_FullConnects[color].Length(); ++j) {
             cell_t b2 = cell->m_FullConnects[color][j];
             
+            std::cerr << "    " << ToString(b2) << '\n';
             SgArrayList<cell_t, 10> potential;
             for (int k = 0; k < GetConnection(key, b2).Length(); ++k) {
                 cell_t p = GetConnection(key, b2)[k];
@@ -664,9 +652,13 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color,
             if (potential.Length() < 2 && !GetConnection(key, b2).IsEmpty()) 
                 continue;
 
+            std::cerr << "    checking if disjoint\n";
+
             // TODO: use the same function as above to select two 
             // cells from 'potential'.
+            bool needToPop = false;
             if (!potential.IsEmpty()) {
+                needToPop = true;
                 semi.m_carrier.PushBack(potential[0]);
                 semi.m_carrier.PushBack(potential[1]);
             }
@@ -674,36 +666,16 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color,
             semi.m_p2 = b2;
             semi.m_key = key;
             semi.m_hash = SemiTable::ComputeHash(semi);
-            
-            if (GetSemis().Contains(semi))
-                continue;
+            if (!GetSemis().Contains(semi))
+                GetSemis().Add(semi);
 
-            GetSemis().Add(semi);
-            
-            blocks.Include(b1);
-            blocks.Include(b2);
-            if (blocks.Length() > 60)
-                throw YException("overflowing");
-
+            if (needToPop) {
+                semi.m_carrier.PopBack();
+                semi.m_carrier.PopBack();                
+            }                
         }
     }
 }
-
-#if 0
-void Board::GroupExpand(cell_t move)
-{
-    SgBlackWhite color = GetColor(move);
-    SgArrayList<cell_t, 64> groups;
-    groups.PushBack(GroupAnchor(move));
-    for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
-        ConstructSemisWithKey(*it, color, groups);
-    SemiConnection x, y;
-    for (int i = 1; i < groups.Length(); ++i) {
-        if (CanMergeGroups(groups[0], groups[i], x, y))
-            MergeGroups(groups[0], groups[i], x, y);            
-    }
-}
-#endif
 
 //---------------------------------------------------------------------------
 
@@ -953,6 +925,13 @@ std::vector<cell_t> Board::FullConnectedTo(cell_t p, SgBlackWhite c) const
     std::vector<cell_t> ret;
     if (IsEmpty(p)) 
         Append(ret, GetCell(p)->m_FullConnects[c]);
+    else {
+        const Block* b = GetBlock(p);
+        for (EmptyIterator i(*this); i; ++i) {
+            if (GetCell(*i)->IsFullConnected(b, c))
+                ret.push_back(*i);
+        }
+    }
     return ret;
 }
 
@@ -971,6 +950,13 @@ std::vector<cell_t> Board::SemiConnectedTo(cell_t p, SgBlackWhite c) const
     std::vector<cell_t> ret;
     if (IsEmpty(p))
         Append(ret, GetCell(p)->m_SemiConnects[c]);
+    else {
+        const Block* b = GetBlock(p);
+        for (EmptyIterator i(*this); i; ++i) {
+            if (GetCell(*i)->IsSemiConnected(b, c))
+                ret.push_back(*i);
+        }
+    }
     return ret;
 }
 
@@ -997,13 +983,10 @@ std::vector<SemiConnection> Board::GetSemisBetween(cell_t p1, cell_t p2) const
     return ret;
 }
 
-std::vector<cell_t> Board::GetBlocksInGroup(cell_t p) const
+std::string Board::GroupStructure(cell_t p) const
 {
-    std::vector<cell_t> ret;
     const Group* g = GetGroup(BlockAnchor(p));
-    for (Group::BlockIterator it(*g); it; ++it)
-        ret.push_back(*it);
-    return ret;
+    return GetGroups().Encode(g);
 }
 
 //---------------------------------------------------------------------------

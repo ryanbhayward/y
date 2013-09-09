@@ -50,6 +50,8 @@ std::string ConstBoard::ToString(SgMove move)
 {
     if (move == Y_SWAP)
         return "swap";
+    else if (move == SG_NULLMOVE)
+        return "null";
     else if (move == WEST)
         return "west";
     else if (move == EAST)

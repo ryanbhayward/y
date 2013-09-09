@@ -124,6 +124,16 @@ public:
 
     void TransferEndpoints(cell_t from, cell_t to, const Board& brd);
 
+    void ClearNewSemis()
+    {
+        m_newlist.clear();
+    }
+
+    const std::vector<const SemiConnection*>& GetNewSemis() const
+    { 
+        return m_newlist;
+    }
+
     class IteratorPair
     {
     public:
@@ -203,6 +213,8 @@ private:
     SgArrayList<SemiConnection, MAX_ENTRIES_IN_TABLE> m_entries;
     SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_freelist;
     SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_usedlist;
+
+    std::vector<const SemiConnection*> m_newlist;
 
     void Remove(int index);
 };

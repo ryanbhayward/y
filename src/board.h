@@ -235,8 +235,7 @@ struct Board
     //------------------------------------------------------------
     // Groups
 
-    cell_t GroupID(cell_t p) const
-    { return GetGroup(BlockAnchor(p))->m_id; }
+    std::string GroupStructure(cell_t p) const;
 
     int GroupBorder(cell_t p) const
     { return GetGroup(BlockAnchor(p))->m_border; }
@@ -509,8 +508,7 @@ private:
 
     void UpdateBlockConnection(Block* a, Block* b); 
 
-    void ConstructSemisWithKey(cell_t key, SgBlackWhite color,
-                               SgArrayList<cell_t, 64>& blocks);
+    void ConstructSemisWithKey(cell_t key, SgBlackWhite color);
 
     void RemoveConnectionWith(Block* b, const Block* other);
 

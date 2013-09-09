@@ -123,7 +123,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
         "group/Block Stones/block_stones %p\n"
         "plist/Block Liberties/block_liberties %p\n"
 	"string/Group Info/group_info %p\n"
-	"group/Group Blocks/group_blocks %p\n"
+	"string/Group Blocks/group_blocks %p\n"
         "plist/Group Carrier/group_carrier %p\n"
         "string/Playout Statistics/playout_statistics\n"
         "pspairs/Playout Weights/playout_weights\n"
@@ -783,10 +783,7 @@ void YGtpEngine::CmdGroupBlocks(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
-    std::vector<cell_t> blocks = m_brd.GetBlocksInGroup(p);
-    std::stable_sort(blocks.begin(), blocks.end());
-    for(size_t i = 0; i < blocks.size(); ++i)
-	cmd << ' ' << m_brd.ToString(blocks[i]);
+    cmd << m_brd.GroupStructure(p);
 }
 
 void YGtpEngine::CmdGroupValue(GtpCommand& cmd)
