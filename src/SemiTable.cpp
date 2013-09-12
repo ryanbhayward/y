@@ -8,16 +8,19 @@ SemiTable::SemiTable()
         m_freelist.PushBack(i);
 }
 
-void SemiTable::Add(const SemiConnection& s)
+void SemiTable::Include(const SemiConnection& s)
 {
-    if (m_freelist.IsEmpty())
-        throw YException("SemiTable is full!!!");
-    int eslot = SlotIndex(HashEndpoints(s));
-    if (m_end_table[eslot].Length() >= MAX_ENTRIES_PER_SLOT)
-        throw YException("Endpoint list is full!");
     int hslot = SlotIndex(s.m_hash);
     if (m_hash_table[hslot].Length() >= MAX_ENTRIES_PER_SLOT)
         throw YException("Hash list is full!");
+    for (int i = 0; i < m_hash_table[hslot].Length(); ++i)
+        if (m_entries[ m_hash_table[hslot][i] ].m_hash == s.m_hash)
+            return;     // Duplicate!
+    int eslot = SlotIndex(HashEndpoints(s));
+    if (m_end_table[eslot].Length() >= MAX_ENTRIES_PER_SLOT)
+        throw YException("Endpoint list is full!");
+    if (m_freelist.IsEmpty())
+        throw YException("SemiTable is full!!!");
     int index = m_freelist.Last();
     m_freelist.PopBack();
     m_usedlist.PushBack(index);
@@ -30,16 +33,17 @@ void SemiTable::Add(const SemiConnection& s)
               << YUtil::HashString(s.m_hash) << '\n';
 }
 
-bool SemiTable::Contains(const SemiConnection& s) const
+int32_t SemiTable::HashToIndex(uint32_t hash) const
 {
-    int hslot = SlotIndex(s.m_hash);        
+    int hslot = SlotIndex(hash);        
     for (int i = 0; i < m_hash_table[hslot].Length(); ++i)
-        if (m_entries[ m_hash_table[hslot][i] ].m_hash == s.m_hash)
-            return true;
-    return false;
+        if (m_entries[ m_hash_table[hslot][i] ].m_hash == hash)
+            return m_hash_table[hslot][i];
+    assert(false);
+    return -1;
 }
 
-const SemiConnection& SemiTable::Lookup(uint32_t hash) const
+const SemiConnection& SemiTable::LookupHash(uint32_t hash) const
 {
     int hslot = SlotIndex(hash);        
     for (int i = 0; i < m_hash_table[hslot].Length(); ++i) {
@@ -62,10 +66,11 @@ void SemiTable::Remove(int index)
 
 void SemiTable::RemoveContaining(cell_t p)
 {
-    for (int i = 0; i < m_usedlist.Length(); ++i) {
-        const SemiConnection& s = m_entries[m_usedlist[i]];
+    m_worklist = m_usedlist;
+    for (int i = 0; i < m_worklist.Length(); ++i) {
+        const SemiConnection& s = m_entries[m_worklist[i]];
         if (s.Contains(p)) {
-            Remove(m_usedlist[i]);
+            Remove(m_worklist[i]);
         }
     }
 }
@@ -77,23 +82,24 @@ void SemiTable::RemoveAllBetween(cell_t a, cell_t b)
     }
 }
 
-void SemiTable::TransferEndpoints(cell_t from, cell_t to, const Board& brd)
+void SemiTable::TransferEndpoints(cell_t from, cell_t to)
 {
-    for (IteratorSingle it(from, &brd, this); it; ++it) {
-        int index = it.Index();
+    for (int i = 0; i < m_usedlist.Length(); ++i) {
+        const int index = m_usedlist[i];
         SemiConnection& s = m_entries[index];
-        m_end_table[SlotIndex(HashEndpoints(s))].Exclude(index);
-        m_hash_table[SlotIndex(s.m_hash)].Exclude(index);
-        if (s.m_p1 == from)
-            s.m_p1 = to;
-        if (s.m_p2 == from)
-            s.m_p2 = to;
-        s.m_hash = ComputeHash(s);
-        m_end_table[SlotIndex(HashEndpoints(s))].Include(index);
-        m_hash_table[SlotIndex(s.m_hash)].Include(index);
+        if (s.m_p1 == from || s.m_p2 == from) {
+            m_end_table[SlotIndex(HashEndpoints(s))].Exclude(index);
+            m_hash_table[SlotIndex(s.m_hash)].Exclude(index);
+            if (s.m_p1 == from)
+                s.m_p1 = to;
+            if (s.m_p2 == from)
+                s.m_p2 = to;
+            s.m_hash = ComputeHash(s);
+            m_end_table[SlotIndex(HashEndpoints(s))].Include(index);
+            m_hash_table[SlotIndex(s.m_hash)].Include(index);
+        }
     }
 }
-
 
 void SemiTable::IteratorSingle::operator++()
 {

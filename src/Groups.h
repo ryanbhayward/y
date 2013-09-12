@@ -73,6 +73,9 @@ public:
 
     bool ContainsSemiEndpoint(const SemiConnection& s);
 
+    bool IsLeaf() const
+    { return m_left == SG_NULLMOVE; }
+
     class BlockIterator
     {
     public:
@@ -130,6 +133,8 @@ public:
 
     void ProcessNewSemis(const Block* block,
                          std::vector<const SemiConnection*> s);
+    
+    void HandleBlockMerge(cell_t from, cell_t to);
 
     const Group* GetGroup(cell_t p) const
     { return const_cast<Groups*>(this)->GetGroup(p); }
@@ -162,6 +167,7 @@ private:
     void Detach(Group* g, Group* p);
 
     void RecomputeFromChildren(Group* g);
+    void RecomputeFromChildrenToTop(Group* g);
 
     inline bool IsRootGroup(cell_t id) const
     {
@@ -176,7 +182,8 @@ private:
     }
 
     bool CanMerge(const Group* ga, const Group* gb, 
-                  SemiConnection const** x, SemiConnection const** y) const;
+                  SemiConnection const** x, SemiConnection const** y,
+                  const MarkedCells& avoid) const;
 
     bool CanMergeOnSemi(const Group* ga, const Group* gb,
                         const SemiConnection& x, 
@@ -187,13 +194,25 @@ private:
 
     bool Merge(Group* g, const GroupList& list, const Board& brd);
 
-    void RestructureAfterMove(Group* g, cell_t p, const Board& brd);
+    void RestructureAfterMove(Group* g, cell_t p);
 
     void ComputeConnectionCarrier(Group* g);
 
     void CheckStructure(Group* p);
 
     cell_t ObtainID();
+
+    void Free(int id)
+    { m_freelist.PushBack(id); }
+
+    void Free(Group* g)
+    { m_freelist.PushBack(g->m_id); }
+
+    Group* RootGroupContaining(cell_t from);
+    Group* CommonAncestor(Group* g, cell_t a, cell_t b);
+    Group* ChildContaining(Group* g, cell_t a);
+    void HandleBlockMerge(Group* g, cell_t from, cell_t to);
+    void ReplaceLeafWithGroup(Group* g, cell_t a, Group* z);
 
     void PrintRootGroups();
 };

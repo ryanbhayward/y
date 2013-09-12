@@ -485,6 +485,8 @@ private:
 
     void CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border);
 
+    void AddLibertyToBlock(Block* block, cell_t c);
+
     bool IsAdjacent(cell_t p, const Block* b);
 
     void AddStoneToBlock(cell_t p, int border, Block* b);
@@ -492,8 +494,6 @@ private:
     void MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks);
 
     int GetCarrierIndex(Block* b1, Block* b2) const;
-
-    void AddSharedLiberty(Block* b1, Block* b2);
 
     void AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip);
 

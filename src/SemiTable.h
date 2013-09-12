@@ -108,17 +108,20 @@ public:
 
     SemiTable();
 
-    void Add(const SemiConnection& s);
+    void Include(const SemiConnection& s);
 
-    bool Contains(const SemiConnection& s) const;
+    int32_t HashToIndex(uint32_t hash) const;
 
-    const SemiConnection& Lookup(uint32_t hash) const;
+    const SemiConnection& LookupHash(uint32_t hash) const;
+
+    const SemiConnection& LookupIndex(uint32_t index) const
+    { return m_entries[index]; }
 
     void RemoveContaining(cell_t p);
 
     void RemoveAllBetween(cell_t a, cell_t b);
 
-    void TransferEndpoints(cell_t from, cell_t to, const Board& brd);
+    void TransferEndpoints(cell_t from, cell_t to);
 
     void ClearNewSemis()
     {
@@ -208,6 +211,7 @@ private:
     SgArrayList<int, MAX_ENTRIES_PER_SLOT> m_hash_table[NUM_SLOTS];
     SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_freelist;
     SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_usedlist;
+    SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_worklist;
     SemiConnection m_entries[MAX_ENTRIES_IN_TABLE];
 
     std::vector<const SemiConnection*> m_newlist;

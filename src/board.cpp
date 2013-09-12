@@ -283,6 +283,15 @@ void Board::AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip)
     }
 }
 
+void Board::AddLibertyToBlock(Block* block, cell_t c)
+{
+    block->m_liberties.PushBack(c);
+    GetCell(c)->AddFull(block, block->m_color);
+    GetCell(c)->RemoveSemiConnection(block, block->m_color);
+    GetConnection(c, block->m_anchor).Clear();
+    MarkCellDirtyCon(c);
+}
+
 void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
 {
     Block* b = &m_state.m_blockList[p];
@@ -294,11 +303,7 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
     b->m_liberties.Clear();
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY) {
-            b->m_liberties.PushBack(*it);
-
-            GetCell(*it)->AddFull(b, color);
-            MarkCellDirtyCon(*it);
-
+            AddLibertyToBlock(b, *it);
             AddSharedLibertiesAroundPoint(b, *it, p);
 	}
     }
@@ -324,22 +329,14 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
     SgArrayList<cell_t, 6> newlib;
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY) {
-            if (!IsAdjacent(*it, b)) {
-                b->m_liberties.PushBack(*it);
+            if (!IsAdjacent(*it, b))
                 newlib.PushBack(*it);
-            }
         }
     }
     m_state.m_blockIndex[p] = b->m_anchor;
     for (int i = 0; i < newlib.Length(); ++i) {
-        cell_t c = newlib[i];
-
-        GetCell(c)->AddFull(b, b->m_color);
-        GetCell(c)->RemoveSemiConnection(b, b->m_color);
-        GetConnection(c, b->m_anchor).Clear();
-        MarkCellDirtyCon(c);
-
-        AddSharedLibertiesAroundPoint(b, c, p);
+        AddLibertyToBlock(b, newlib[i]);
+        AddSharedLibertiesAroundPoint(b, newlib[i], p);
     }
     RemoveEdgeSharedLiberties(b);
    
@@ -446,17 +443,23 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
             }
         }
 	UpdateConnectionsToNewAnchor(adjBlock, largestBlock, seen);
+        GetSemis().TransferEndpoints(adjBlock->m_anchor, 
+                                     largestBlock->m_anchor);
+        GetGroups().HandleBlockMerge(adjBlock->m_anchor, 
+                                     largestBlock->m_anchor);
     }
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY && !seen[*it]) {
-            largestBlock->m_liberties.PushBack(*it);
+            AddLibertyToBlock(largestBlock, *it);
             AddSharedLibertiesAroundPoint(largestBlock, *it, p);
 	}
     }
     RemoveEdgeSharedLiberties(largestBlock);
     
-
-    // TODO: UPDATE GROUP HERE!!
+    GetSemis().ClearNewSemis();
+    for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
+        ConstructSemisWithKey(*it, largestBlock->m_color);
+    GetGroups().ProcessNewSemis(largestBlock, GetSemis().GetNewSemis());
 }
 
 void Board::RemoveEdgeSharedLiberties(Block* b)
@@ -558,7 +561,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     RemoveSharedLiberty(p, adjBlocks);
     RemoveSharedLiberty(p, oppBlocks);
     GetSemis().RemoveContaining(p);
-    GetGroups().RestructureAfterMove(p, SgOppBW(color), *this);
+    GetGroups().RestructureAfterMove(p, color, *this);
        
     // Create/update block containing p (ignores edge blocks).
     // Compute group for this block as well.
@@ -575,10 +578,6 @@ void Board::Play(SgBlackWhite color, cell_t p)
         else
             MergeBlocks(p, border, realAdjBlocks);
     }
-
-    // Group expand p's group
-    // TODO: need to also group expand other newly created groups
-    // for this played
 
     // Mark every cell requiring a weight update as dirty.
     m_dirtyWeightCells = m_dirtyConCells;
@@ -618,8 +617,6 @@ void Board::Play(SgBlackWhite color, cell_t p)
     
     //std::cerr << m_state.m_group[p]->m_border << '\n';
     //std::cerr << ToString();
-
-
     FlipToPlay();
 }
 
@@ -644,7 +641,21 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
 
         for (int j=i+1; j < cell->m_FullConnects[color].Length(); ++j) {
             cell_t b2 = cell->m_FullConnects[color][j];
-            
+
+            // Ensure at least one endpoint is not an edge
+            if (ConstBoard::IsEdge(b2) && ConstBoard::IsEdge(b1))
+                continue;
+            // FIXME: instead of checking for two edges, shouldn't we
+            // just ensure one endpoint is the block we just
+            // created/modified?
+
+            // Don't build semis between blocks that touch an edge and
+            // that edge
+            if (ConstBoard::IsEdge(b1) || ConstBoard::IsEdge(b2)) {
+                if (GetBlock(b1)->m_border & GetBlock(b2)->m_border)
+                    continue;
+            }
+
             std::cerr << "    " << ToString(b2) << '\n';
             SgArrayList<cell_t, 10> potential;
             for (int k = 0; k < GetConnection(key, b2).Length(); ++k) {
@@ -669,8 +680,7 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
             semi.m_p2 = b2;
             semi.m_key = key;
             semi.m_hash = SemiTable::ComputeHash(semi);
-            if (!GetSemis().Contains(semi))
-                GetSemis().Add(semi);
+            GetSemis().Include(semi);
 
             if (needToPop) {
                 semi.m_carrier.PopBack();

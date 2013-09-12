@@ -70,6 +70,11 @@ struct MarkedCells
         m_marked.reset(p);
     }
 
+    void Unmark(const MarkedCells& other)
+    {
+        m_marked &= ~other.m_marked;
+    }
+
     class Iterator
     {
     public:
