@@ -551,6 +551,7 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
         Group* z = ChildContaining(a, from);
         Group* x = ChildContaining(a, to);
         HandleBlockMerge(z, from, to);
+        m_detached.Clear();
         if (f == a) {
             // try to detach a leaf so the non-leaf child becomes
             // the root group. If both are leafs, then it doesn't
@@ -570,7 +571,8 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             Detach(z, a);
             ReplaceLeafWithGroup(f, to, z);
         }
-        
+        // Detaching z should not cause a chain of detaches
+        assert(m_detached.Length() == 1);
     } else { // (f != t)
         HandleBlockMerge(f, from, to);
         if (f->IsLeaf())
