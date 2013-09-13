@@ -19,6 +19,19 @@ void SemiTable::Include(const SemiConnection& s)
     int eslot = SlotIndex(HashEndpoints(s));
     if (m_end_table[eslot].Length() >= MAX_ENTRIES_PER_SLOT)
         throw YException("Endpoint list is full!");
+    // Check if s is a superset of some existing semi
+    // FIXME: do duplicate check if doing this??
+    for (int i = 0; i < m_end_table[eslot].Length(); ++i) {
+        const SemiConnection& other = m_entries[ m_end_table[eslot][i] ];
+        if (other.SameEndpoints(s) && other.IsCarrierSubsetOf(s)) {
+            // std::cerr << "############### SKIPPING SUPERSET ####\n";
+            // std::cerr << "s: " << s.ToString() << '\n';
+            // std::cerr << "o: " << other.ToString() << '\n';
+            return;
+        }
+    }
+    // TODO: remove existing supersets of s somehow. Note that doing
+    //       so will affect m_newlist and break existing groups.
     if (m_freelist.IsEmpty())
         throw YException("SemiTable is full!!!");
     int index = m_freelist.Last();

@@ -28,6 +28,23 @@ struct SemiConnection
     bool Contains(cell_t p) const
     { return m_carrier.Contains(p); }
 
+    bool operator==(const SemiConnection& other) const
+    { return m_hash == other.m_hash; }
+
+    bool SameEndpoints(const SemiConnection& other) const
+    { 
+        return (m_p1 == other.m_p1 && m_p2 == other.m_p2)
+            || (m_p1 == other.m_p2 && m_p2 == other.m_p1); 
+    }
+
+    bool IsCarrierSubsetOf(const SemiConnection& other) const
+    {
+        for (int i = 0; i < m_carrier.Length(); ++i)
+            if (!other.m_carrier.Contains(m_carrier[i]))
+                return false;
+        return true;
+    }
+
     bool Intersects(const MarkedCells& cells) const 
     {
         for (int i = 0; i < m_carrier.Length(); ++i) {
@@ -45,9 +62,6 @@ struct SemiConnection
         }
         return false;
     }
-
-    bool operator==(const SemiConnection& other) const
-    { return m_hash == other.m_hash; }
 
     std::string ToString() const 
     {
