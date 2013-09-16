@@ -317,14 +317,22 @@ bool Groups::CanMergeOnSemi(const Group* ga, const Group* gb,
 {
     if (x.Intersects(ga->m_carrier) || x.Intersects(gb->m_carrier))
         return false;
+    
+    assert(!ConstBoard::IsEdge(ga->m_id));
+    bool bIsEdge = ConstBoard::IsEdge(gb->m_id);
+
     for (Group::BlockIterator ja(*ga); ja; ++ja) {
         cell_t ya = *ja;
+        // since ga is not the edge group, we can never connect to some
+        // other group over an edge block.
+        if (ConstBoard::IsEdge(ya))
+            continue;
+
         for (Group::BlockIterator jb(*gb); jb; ++jb) {
             cell_t yb = *jb;
-            if (ConstBoard::IsEdge(yb) && ga->ContainsEdge(yb))
+            if (ConstBoard::IsEdge(yb) && (!bIsEdge || ga->ContainsEdge(yb)))
                 continue;
-            if (ConstBoard::IsEdge(ya) && gb->ContainsEdge(ya))
-                continue;
+
             for (SemiTable::IteratorPair yit(ya,yb,&m_semis); yit; ++yit) 
             {
                 const SemiConnection& y = *yit;
@@ -378,21 +386,16 @@ bool Groups::CanMerge(const Group* ga, const Group* gb,
     std::cerr << "CanMerge::\n";
     for (Group::BlockIterator ia(*ga); ia; ++ia) {
         cell_t xa = *ia;
-        // Must use non-edge blocks to connect to other groups!
-        // (Fall through here only if ga is the actual edge)
-        if (ConstBoard::IsEdge(xa)) {
-            if (!aIsEdge || gb->ContainsEdge(xa))
-                continue;
-        }
+        // Must use non-edge blocks to connect to other groups.  
+        // If xa is an edge block then fall through here only if ga is
+        // the actual edge and gb does not already contain it.
+        if (ConstBoard::IsEdge(xa) && (!aIsEdge || gb->ContainsEdge(xa)))
+            continue;
             
         for (Group::BlockIterator ib(*gb); ib; ++ib) {
             cell_t xb = *ib;
-            if (ConstBoard::IsEdge(xb)) {
-                if (!bIsEdge || ga->ContainsEdge(xb))
-                    continue;
-                // The only way we can get here is if ga is not an edge
-                // and gb *is* an edge that ga does not connect to.
-            }
+            if (ConstBoard::IsEdge(xb) && (!bIsEdge || ga->ContainsEdge(xb)))
+                continue;
 
             for (SemiTable::IteratorPair xit(xa,xb,&m_semis); xit; ++xit) {
                 const SemiConnection& x = *xit;
@@ -403,17 +406,15 @@ bool Groups::CanMerge(const Group* ga, const Group* gb,
  
                 for (Group::BlockIterator ja(*ga, ia.Index()); ja; ++ja) {
                     cell_t ya = *ja;
-                    if (ConstBoard::IsEdge(ya)) {
-                        if (!aIsEdge || gb->ContainsEdge(ya))
-                            continue;
-                    }
-
+                    if (   ConstBoard::IsEdge(ya) 
+                        && (!aIsEdge || gb->ContainsEdge(ya)))
+                        continue;
+                    
                     for (Group::BlockIterator jb(*gb, ib.Index()); jb; ++jb) {
                         cell_t yb = *jb;
-                        if (ConstBoard::IsEdge(yb)) {
-                            if (!bIsEdge || ga->ContainsEdge(yb))
-                                continue;
-                        }
+                        if (   ConstBoard::IsEdge(yb)
+                            && (!bIsEdge || ga->ContainsEdge(yb)))
+                            continue;
 
                         for (SemiTable::IteratorPair yit(ya,yb,&m_semis); 
                              yit; ++yit) 
