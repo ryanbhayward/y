@@ -433,13 +433,7 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         for (Block::LibertyIterator lib(adjBlock->m_liberties); lib; ++lib) {
             if (!seen[*lib]) {
                 seen[*lib] = true;
-                largestBlock->m_liberties.PushBack(*lib);
-                // give new liberty an empty full connection
-                GetCell(*lib)->RemoveSemiConnection(largestBlock, 
-                                                    largestBlock->m_color);
-                GetCell(*lib)->AddFull(largestBlock, largestBlock->m_color);
-                GetConnection(*lib, largestBlock->m_anchor).Clear();
-                MarkCellDirtyCon(*lib);                
+                AddLibertyToBlock(largestBlock, *lib);
             }
         }
 	UpdateConnectionsToNewAnchor(adjBlock, largestBlock, seen);
