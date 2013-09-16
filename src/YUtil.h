@@ -44,6 +44,18 @@ void Include(std::vector<T>& v, const T& val)
 	v.push_back(val);
 }
 
+template<typename T>
+void Exclude(std::vector<T>& v, const T& val)
+{
+    for (size_t i = 0; i < v.size(); ++i) {
+        if (v[i] == val) {
+            std::swap(v[i], v.back());
+            v.pop_back();
+            return;
+        }
+    }
+}
+
 //---------------------------------------------------------------------------
 
 

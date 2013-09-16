@@ -20,11 +20,11 @@ struct SemiConnection
     cell_t m_p1;
     cell_t m_p2;
     cell_t m_key;
+    cell_t m_group_id;
     Carrier m_carrier;
     uint32_t m_hash;
 
-    SemiConnection()
-    { }
+    SemiConnection();
 
     SemiConnection(cell_t p1, cell_t p2, cell_t key, const Carrier& carrier);
 
@@ -48,6 +48,12 @@ struct SemiConnection
     bool operator==(const SemiConnection& other) const
     { 
         return m_hash == other.m_hash; 
+    }
+
+    bool SameEndpoints(cell_t a, cell_t b) const
+    {
+        return (m_p1 == std::min(a, b) && 
+                m_p2 == std::max(a, b));
     }
 
     bool SameEndpoints(const SemiConnection& other) const
@@ -100,6 +106,7 @@ struct SemiConnection
 //---------------------------------------------------------------------------
 
 class Board;
+class Groups;
 
 class SemiTable
 {
@@ -144,13 +151,19 @@ public:
 
     SemiTable();
 
+    void SetGroups(Groups* groups)
+    { m_groups = groups; }
+
     void Include(const SemiConnection& s);
 
     int32_t HashToIndex(uint32_t hash) const;
 
     const SemiConnection& LookupHash(uint32_t hash) const;
 
-    const SemiConnection& LookupIndex(uint32_t index) const
+    const SemiConnection& LookupIndex(int32_t index) const
+    { return m_entries[index]; }
+
+    SemiConnection& LookupIndex(int32_t index)
     { return m_entries[index]; }
 
     void RemoveContaining(cell_t p);
@@ -248,14 +261,28 @@ public:
 
 private:
 
-    SgArrayList<int, MAX_ENTRIES_PER_SLOT> m_end_table[NUM_SLOTS];
-    SgArrayList<int, MAX_ENTRIES_PER_SLOT> m_hash_table[NUM_SLOTS];
-    SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_freelist;
-    SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_usedlist;
-    SgArrayList<int, MAX_ENTRIES_IN_TABLE> m_worklist;
+    typedef SgArrayList<int, MAX_ENTRIES_PER_SLOT> SlotSizeList;
+    typedef SgArrayList<int, MAX_ENTRIES_IN_TABLE> TableSizeList;
+
+    Groups* m_groups;
+
+    SlotSizeList m_end_table[NUM_SLOTS];
+    SlotSizeList m_hash_table[NUM_SLOTS];
+    TableSizeList m_freelist;
+    TableSizeList m_usedlist;
+    TableSizeList m_worklist;
     SemiConnection m_entries[MAX_ENTRIES_IN_TABLE];
 
     std::vector<const SemiConnection*> m_newlist;
+
+    bool m_using_worklist;
+
+#define BEGIN_USING_WORKLIST \
+    assert(!m_using_worklist); \
+    m_using_worklist = true;
+
+#define FINISH_USING_WORKLIST \
+    m_using_worklist = false;
 
     void Remove(int index);
 };

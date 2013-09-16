@@ -25,6 +25,7 @@ void Board::State::Init(int T)
     m_conData.reset(new Carrier[T*(T+1)/2]);
     m_semis.reset(new SemiTable());
     m_groups.reset(new Groups(*m_semis));
+    m_semis->SetGroups(m_groups.get());
 
     for (int i = 0; i < T; ++i)
         m_color[i] = SG_EMPTY;

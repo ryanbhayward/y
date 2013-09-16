@@ -1,19 +1,30 @@
 #include "SemiTable.h"
+#include "Groups.h"
 
 uint32_t SemiTable::s_cell_hash[Y_MAX_CELL];
+
+//---------------------------------------------------------------------------
+
+SemiConnection::SemiConnection()
+    : m_group_id(-1)
+{ }
 
 SemiConnection::SemiConnection(cell_t p1, cell_t p2, cell_t key, 
                                const Carrier& carrier)
     : m_p1(std::min(p1, p2))
     , m_p2(std::max(p1, p2))
     , m_key(key)
+    , m_group_id(-1)
     , m_carrier(carrier)
     , m_hash(  SemiTable::Hash(p1) 
                ^ SemiTable::Hash(p2) 
                ^ SemiTable::Hash(carrier))
 { }
 
+//---------------------------------------------------------------------------
+
 SemiTable::SemiTable()
+    : m_using_worklist(false)
 {
     for (int i = MAX_ENTRIES_IN_TABLE-1; i >= 0; --i)
         m_freelist.PushBack(i);
@@ -21,40 +32,99 @@ SemiTable::SemiTable()
 
 void SemiTable::Include(const SemiConnection& s)
 {
-    int hslot = SlotIndex(s.m_hash);
-    if (m_hash_table[hslot].Length() >= MAX_ENTRIES_PER_SLOT)
-        throw YException("Hash list is full!");
-    for (int i = 0; i < m_hash_table[hslot].Length(); ++i)
-        if (m_entries[ m_hash_table[hslot][i] ].m_hash == s.m_hash)
-            return;     // Duplicate!
+    // Abort include if s is a superset of an existing connection.
+    // Make a list of all existing connections that are supsersets of s.
+    BEGIN_USING_WORKLIST;
+    m_worklist.Clear();
     int eslot = SlotIndex(HashEndpoints(s));
-    if (m_end_table[eslot].Length() >= MAX_ENTRIES_PER_SLOT)
-        throw YException("Endpoint list is full!");
-    // Check if s is a superset of some existing semi
-    // FIXME: do duplicate check if doing this??
     for (int i = 0; i < m_end_table[eslot].Length(); ++i) {
-        const SemiConnection& other = m_entries[ m_end_table[eslot][i] ];
-        if (other.SameEndpoints(s) && other.IsCarrierSubsetOf(s)) {
-            // std::cerr << "############### SKIPPING SUPERSET ####\n";
-            // std::cerr << "s: " << s.ToString() << '\n';
-            // std::cerr << "o: " << other.ToString() << '\n';
-            return;
+        const int index = m_end_table[eslot][i];
+        const SemiConnection& other = m_entries[ index ];
+        if (other.SameEndpoints(s)) {
+            if (other.IsCarrierSubsetOf(s)) {
+                // std::cerr << "############### SKIPPING SUPERSET ####\n";
+                // std::cerr << "s: " << s.ToString() << '\n';
+                // std::cerr << "o: " << other.ToString() << '\n';
+                FINISH_USING_WORKLIST;
+                return;
+            }
+            else if (s.IsCarrierSubsetOf(other)) {
+                m_worklist.PushBack(index);
+            }
         }
     }
-    // TODO: remove existing supersets of s somehow. Note that doing
-    //       so will affect m_newlist and break existing groups.
-    if (m_freelist.IsEmpty())
-        throw YException("SemiTable is full!!!");
-    int index = m_freelist.Last();
-    m_freelist.PopBack();
-    m_usedlist.PushBack(index);
-    m_end_table[eslot].PushBack(index);
-    m_hash_table[hslot].PushBack(index);
-    std::cerr << "index=" << index << '\n';
-    m_entries[index] = s;
-    m_newlist.push_back(&m_entries[index]);
-    std::cerr << "ADDED: " << s.ToString() << ' ' 
-              << YUtil::HashString(s.m_hash) << '\n';
+
+    // If an existing superset of s is used in a group we can replace
+    // it with s; otherwise, just free all supersets.
+    int replace_index = -1;
+    for (int i = 0; i < m_worklist.Length(); ++i) {
+        const int index = m_worklist[i];
+        const SemiConnection& other = m_entries[ index ];
+        if (other.m_group_id != -1) {
+            // Only be possible to do this once: If a semi from
+            // this list is used in a group connection, then the
+            // endpoints of this list are in the same group, hence,
+            // there are exactly two disjoint semis from this list
+            // used in the group connection. Hence if s is a subset of
+            // semi1 it cannot be a subset of semi2 (and vice versa).
+            assert(replace_index == -1);
+            replace_index = index;
+        } else {
+            Remove(index);
+            Exclude(m_newlist, &other);
+        }
+    }
+    FINISH_USING_WORKLIST;
+
+    // Replace an existing semi
+    if (replace_index != -1) 
+    {
+        SemiConnection& other = m_entries[ replace_index ];
+
+        // Move it into its new hash slot
+        m_hash_table[SlotIndex(other.m_hash)].Exclude(replace_index);
+        int hslot = SlotIndex(s.m_hash);
+        if (m_hash_table[hslot].Length() >= MAX_ENTRIES_PER_SLOT)
+            throw YException("Hash list is full!");
+        m_hash_table[hslot].PushBack(replace_index);
+        m_entries[replace_index] = s;
+        // FIXME: add it to the new list of semis??!
+
+        // Shrink all groups above g
+        // FIXME: Is this okay? Should I really allow SemiTable
+        // access to private stuff in Groups?
+        Group* g = m_groups->GetGroupById(other.m_group_id);
+        m_groups->ComputeConnectionCarrier(g);
+        m_groups->RecomputeFromChildrenToTop(g);
+
+        std::cerr << "index=" << replace_index << '\n';
+        std::cerr << "REPLACED: " << s.ToString() << ' ' 
+                  << YUtil::HashString(s.m_hash) << '\n';
+
+    }
+    // Find room for s
+    else 
+    {
+        if (m_freelist.IsEmpty())
+            throw YException("SemiTable is full!!!");
+        if (m_end_table[eslot].Length() >= MAX_ENTRIES_PER_SLOT)
+            throw YException("Endpoint list is full!");
+        int hslot = SlotIndex(s.m_hash);
+        if (m_hash_table[hslot].Length() >= MAX_ENTRIES_PER_SLOT)
+            throw YException("Hash list is full!");
+        
+        int index = m_freelist.Last();
+        m_freelist.PopBack();
+        m_usedlist.PushBack(index);
+        m_end_table[eslot].PushBack(index);
+        m_hash_table[hslot].PushBack(index);
+
+        std::cerr << "index=" << index << '\n';
+        m_entries[index] = s;
+        m_newlist.push_back(&m_entries[index]);
+        std::cerr << "ADDED: " << s.ToString() << ' ' 
+                  << YUtil::HashString(s.m_hash) << '\n';
+    }
 }
 
 int32_t SemiTable::HashToIndex(uint32_t hash) const
@@ -82,6 +152,8 @@ const SemiConnection& SemiTable::LookupHash(uint32_t hash) const
 void SemiTable::Remove(int index)
 {
     const SemiConnection& s = m_entries[index];
+    if (s.m_group_id != -1) 
+        m_groups->GetGroupById(s.m_group_id)->KillSemi(index);
     m_end_table[SlotIndex(HashEndpoints(s))].Exclude(index);
     m_hash_table[SlotIndex(s.m_hash)].Exclude(index);
     m_freelist.PushBack(index);
@@ -90,6 +162,7 @@ void SemiTable::Remove(int index)
 
 void SemiTable::RemoveContaining(cell_t p)
 {
+    BEGIN_USING_WORKLIST;
     m_worklist = m_usedlist;
     for (int i = 0; i < m_worklist.Length(); ++i) {
         const SemiConnection& s = m_entries[m_worklist[i]];
@@ -97,12 +170,19 @@ void SemiTable::RemoveContaining(cell_t p)
             Remove(m_worklist[i]);
         }
     }
+    FINISH_USING_WORKLIST;
 }
 
 void SemiTable::RemoveAllBetween(cell_t a, cell_t b)
 {
-    for (IteratorPair it(a,b,this); it; ++it) {
-        Remove(it.Index());
+    int eslot = SlotIndex(Hash(a) ^ Hash(b));
+    SlotSizeList m_worklist(m_end_table[eslot]);
+    for (int i = 0; i < m_worklist.Length(); ++i) {
+        const int index = m_worklist[i];
+        const SemiConnection& s = m_entries[ index ];
+        if (s.SameEndpoints(a, b)) {
+            Remove(index);
+        }
     }
 }
 

@@ -37,7 +37,7 @@ public:
     cell_t m_id;
     cell_t m_parent;
     cell_t m_left, m_right;
-    uint32_t m_semi1, m_semi2;
+    int32_t m_semi1, m_semi2;
     int m_border;
     BlockList m_blocks;
     MarkedCells m_carrier;
@@ -51,6 +51,14 @@ public:
             m_left = n;
         else 
             m_right = n;
+    }
+
+    void KillSemi(int32_t semi)
+    {
+        if (m_semi1 == semi)
+            m_semi1 = -1;
+        else if (m_semi2 == semi)
+            m_semi2 = -1;
     }
 
     std::string BlocksToString() const;
@@ -123,7 +131,7 @@ public:
 class Groups
 {
 public:
-    explicit Groups(const SemiTable& semis);
+    explicit Groups(SemiTable& semis);
 
     cell_t CreateSingleBlockGroup(const Block* block);
 
@@ -152,7 +160,7 @@ private:
     GroupList m_rootGroups;
     GroupList m_freelist;
     GroupList m_detached;
-    const SemiTable& m_semis;
+    SemiTable& m_semis;
 
     Group* GetGroupById(int gid)
     {
@@ -202,11 +210,15 @@ private:
 
     cell_t ObtainID();
 
-    void Free(int id)
-    { m_freelist.PushBack(id); }
+    void FreeSemis(Group* g);
 
-    void Free(Group* g)
-    { m_freelist.PushBack(g->m_id); }
+    void SetSemis(Group* g, const SemiConnection& s1, 
+                  const SemiConnection& s2);
+
+    void Free(int id)
+    { Free(GetGroupById(id)); }
+
+    void Free(Group* g);
 
     Group* RootGroupContaining(cell_t from);
     Group* CommonAncestor(Group* g, cell_t a, cell_t b);
@@ -215,6 +227,8 @@ private:
     void ReplaceLeafWithGroup(Group* g, cell_t a, Group* z);
 
     void PrintRootGroups();
+
+    friend class SemiTable;
 };
 
 //---------------------------------------------------------------------------

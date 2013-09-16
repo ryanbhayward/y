@@ -59,7 +59,7 @@ std::string Group::ToString() const
 
 //---------------------------------------------------------------------------
 
-Groups::Groups(const SemiTable& semis)
+Groups::Groups(SemiTable& semis)
     : m_semis(semis)
 {
     for (int i = Y_MAX_CELL-1; i >= ConstBoard::FIRST_NON_EDGE; --i)
@@ -132,6 +132,20 @@ cell_t Groups::SetGroupDataFromBlock(const Block* b, int id)
     return id;
 }
 
+void Groups::FreeSemis(Group* g)
+{
+    if (g->m_semi1 != -1)
+        m_semis.LookupIndex(g->m_semi1).m_group_id = -1;
+    if (g->m_semi2 != -1)
+        m_semis.LookupIndex(g->m_semi2).m_group_id = -1;
+}
+
+void Groups::Free(Group* g)
+{ 
+    FreeSemis(g);
+    m_freelist.PushBack(g->m_id);
+}
+
 void Groups::RecomputeFromChildren(Group* g)
 {
     assert(!ConstBoard::IsEdge(g->m_id));
@@ -178,7 +192,7 @@ void Groups::Detach(Group* g, Group* p)
     // make sibling a child of grandparent
     cell_t sid = SiblingID(p, g->m_id);
     Group* sibling = GetGroupById(sid);
-    Free(p->m_id);  // parent always dies
+    Free(p);  // parent always dies
     if (!ConstBoard::IsEdge(sid))
         sibling->m_parent = p->m_parent;
     if (IsRootGroup(p->m_id)) {
@@ -235,6 +249,22 @@ void Groups::ComputeConnectionCarrier(Group* g)
          it; ++it) { g->m_con_carrier.Mark(*it); }
 }
 
+void Groups::SetSemis(Group* g, 
+                      const SemiConnection& s1,
+                      const SemiConnection& s2)
+{
+    // FIXME: we are passed s1 and s2...  Seems dumb to have to lookup
+    // a mutable version. Maybe we need a better interface for
+    // creating groups?
+    assert(s1.m_group_id == -1);
+    g->m_semi1 = m_semis.HashToIndex(s1.m_hash);
+    m_semis.LookupIndex(g->m_semi1).m_group_id = g->m_id;
+
+    assert(s2.m_group_id == -1);
+    g->m_semi2 = m_semis.HashToIndex(s2.m_hash);
+    m_semis.LookupIndex(g->m_semi2).m_group_id = g->m_id;
+}
+
 // Create merged group in g1's location g1 down and creating
 // a new internal node with g1 and g2 as children.
 // NOTE: g1 must be a valid onboard group (never be an edge group!)
@@ -268,8 +298,8 @@ cell_t Groups::Merge(Group* g1, Group* g2,
 
     g->m_left = g1->m_id;
     g->m_right = g2->m_id;
-    g->m_semi1 = m_semis.HashToIndex(s1.m_hash);
-    g->m_semi2 = m_semis.HashToIndex(s2.m_hash);
+
+    SetSemis(g, s1, s2);
 
     std::cerr << "m.s1: " << s1.ToString() << ' ' 
               << YUtil::HashString(s1.m_hash)<< '\n';
@@ -341,11 +371,29 @@ bool Groups::CanMerge(const Group* ga, const Group* gb,
                       const SemiConnection** outy,
                       const MarkedCells& avoid) const
 {
+    bool aIsEdge = ConstBoard::IsEdge(ga->m_id);
+    bool bIsEdge = ConstBoard::IsEdge(gb->m_id);
+    assert(!aIsEdge || !bIsEdge);
+
     std::cerr << "CanMerge::\n";
     for (Group::BlockIterator ia(*ga); ia; ++ia) {
         cell_t xa = *ia;
+        // Must use non-edge blocks to connect to other groups!
+        // (Fall through here only if ga is the actual edge)
+        if (ConstBoard::IsEdge(xa)) {
+            if (!aIsEdge || gb->ContainsEdge(xa))
+                continue;
+        }
+            
         for (Group::BlockIterator ib(*gb); ib; ++ib) {
             cell_t xb = *ib;
+            if (ConstBoard::IsEdge(xb)) {
+                if (!bIsEdge || ga->ContainsEdge(xb))
+                    continue;
+                // The only way we can get here is if ga is not an edge
+                // and gb *is* an edge that ga does not connect to.
+            }
+
             for (SemiTable::IteratorPair xit(xa,xb,&m_semis); xit; ++xit) {
                 const SemiConnection& x = *xit;
                 if (   x.Intersects(avoid)
@@ -355,10 +403,18 @@ bool Groups::CanMerge(const Group* ga, const Group* gb,
  
                 for (Group::BlockIterator ja(*ga, ia.Index()); ja; ++ja) {
                     cell_t ya = *ja;
+                    if (ConstBoard::IsEdge(ya)) {
+                        if (!aIsEdge || gb->ContainsEdge(ya))
+                            continue;
+                    }
+
                     for (Group::BlockIterator jb(*gb, ib.Index()); jb; ++jb) {
                         cell_t yb = *jb;
-                        if (ConstBoard::IsEdge(yb) && ga->ContainsEdge(yb))
-                            continue;
+                        if (ConstBoard::IsEdge(yb)) {
+                            if (!bIsEdge || ga->ContainsEdge(yb))
+                                continue;
+                        }
+
                         for (SemiTable::IteratorPair yit(ya,yb,&m_semis); 
                              yit; ++yit) 
                         {
@@ -417,17 +473,23 @@ void Groups::RestructureAfterMove(Group* g, cell_t p)
             break;
     }
     assert(g->m_con_carrier.Marked(p));
+    assert(g->m_semi1 == -1 || g->m_semi2 == -1);
     MarkedCells avoid = root->m_carrier;
     avoid.Unmark(g->m_con_carrier);
 
+    // Try to immediately reform the group
+    // FIXME: we know which semi was killed, we could try 
+    // CanMergeOnSemi() with the remaining one first.
     const SemiConnection *x, *y;
     if (CanMerge(left, right, &x, &y, avoid)) {
-        g->m_semi1 = m_semis.HashToIndex(x->m_hash);
-        g->m_semi2 = m_semis.HashToIndex(y->m_hash);
+        FreeSemis(g);
+        SetSemis(g, *x, *y);
         ComputeConnectionCarrier(g);
         RecomputeFromChildrenToTop(g);
         std::cerr << "RE-MERGED!!\n";
         std::cerr << g->ToString() << '\n';
+        std::cerr << "x: " << x->ToString() << '\n';
+        std::cerr << "y: " << y->ToString() << '\n';
     } 
     else {
         if (IsRootGroup(g->m_id))
@@ -533,7 +595,7 @@ void Groups::ReplaceLeafWithGroup(Group* g, cell_t a, Group* z)
         std::cerr << "child: " << child->ToString() << '\n';
         std::cerr << "z: " << z->ToString() << '\n';
         std::cerr << "g: " << g->ToString() << '\n';
-        Free(child->m_id);
+        Free(child);
     }
     else
         ReplaceLeafWithGroup(child, a, z);
