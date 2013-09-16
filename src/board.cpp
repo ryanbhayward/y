@@ -624,14 +624,14 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
     std::cerr << "Working on " << ToString(key) << ":\n";
     for (int i = 0; i < cell->m_FullConnects[color].Length(); ++i) {
         cell_t b1 = cell->m_FullConnects[color][i];
-        SemiConnection semi;
+        SemiConnection::Carrier carrier;
 
         std::cerr << "  " << ToString(b1) << '\n';
 
         // TODO: handle more than 2 cells in carrier
         for(int j = 0; j < 2 && j < GetConnection(key, b1).Length() ; ++j)
-            semi.m_carrier.PushBack(GetConnection(key, b1)[j]);
-        semi.m_carrier.PushBack(key);
+            carrier.PushBack(GetConnection(key, b1)[j]);
+        carrier.PushBack(key);
 
         for (int j=i+1; j < cell->m_FullConnects[color].Length(); ++j) {
             cell_t b2 = cell->m_FullConnects[color][j];
@@ -654,7 +654,7 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
             SgArrayList<cell_t, 10> potential;
             for (int k = 0; k < GetConnection(key, b2).Length(); ++k) {
                 cell_t p = GetConnection(key, b2)[k];
-                if (!semi.m_carrier.Contains(p))
+                if (!carrier.Contains(p))
                     potential.PushBack(p);
             }
             if (potential.Length() < 2 && !GetConnection(key, b2).IsEmpty()) 
@@ -667,18 +667,15 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
             bool needToPop = false;
             if (!potential.IsEmpty()) {
                 needToPop = true;
-                semi.m_carrier.PushBack(potential[0]);
-                semi.m_carrier.PushBack(potential[1]);
+                carrier.PushBack(potential[0]);
+                carrier.PushBack(potential[1]);
             }
-            semi.m_p1 = b1;
-            semi.m_p2 = b2;
-            semi.m_key = key;
-            semi.m_hash = SemiTable::ComputeHash(semi);
+            SemiConnection semi(b1, b2, key, carrier);
             GetSemis().Include(semi);
 
             if (needToPop) {
-                semi.m_carrier.PopBack();
-                semi.m_carrier.PopBack();                
+                carrier.PopBack();
+                carrier.PopBack();                
             }                
         }
     }

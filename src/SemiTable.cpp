@@ -2,6 +2,17 @@
 
 uint32_t SemiTable::s_cell_hash[Y_MAX_CELL];
 
+SemiConnection::SemiConnection(cell_t p1, cell_t p2, cell_t key, 
+                               const Carrier& carrier)
+    : m_p1(std::min(p1, p2))
+    , m_p2(std::max(p1, p2))
+    , m_key(key)
+    , m_carrier(carrier)
+    , m_hash(  SemiTable::Hash(p1) 
+               ^ SemiTable::Hash(p2) 
+               ^ SemiTable::Hash(carrier))
+{ }
+
 SemiTable::SemiTable()
 {
     for (int i = MAX_ENTRIES_IN_TABLE-1; i >= 0; --i)
@@ -103,17 +114,14 @@ void SemiTable::TransferEndpoints(cell_t from, cell_t to)
         if (s.m_p1 == from || s.m_p2 == from) {
             m_end_table[SlotIndex(HashEndpoints(s))].Exclude(index);
             m_hash_table[SlotIndex(s.m_hash)].Exclude(index);
-            if (s.m_p1 == from)
-                s.m_p1 = to;
-            if (s.m_p2 == from)
-                s.m_p2 = to;
-            s.m_hash = ComputeHash(s);
+            s.ReplaceEndpoint(from, to);
             m_end_table[SlotIndex(HashEndpoints(s))].Include(index);
             m_hash_table[SlotIndex(s.m_hash)].Include(index);
         }
     }
 }
 
+#if 0
 void SemiTable::IteratorSingle::operator++()
 {
     if (!m_iter) {
@@ -132,3 +140,4 @@ void SemiTable::IteratorSingle::operator++()
     else
         ++m_iter;
 }
+#endif
