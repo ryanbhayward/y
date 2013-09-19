@@ -199,8 +199,13 @@ private:
     GroupList m_rootGroups;
     GroupList m_freelist;
     GroupList m_detached;
+    bool m_detaching;
+
     SemiTable& m_semis;
 
+    void BeginDetaching();
+    void FinishedDetaching();
+   
     Group* GetGroupById(int gid)
     {
         return &m_groupData[gid];
@@ -239,7 +244,7 @@ private:
     cell_t Merge(Group* g1, Group* g2, 
                  const SemiConnection& s1, const SemiConnection& s2);
 
-    bool Merge(Group* g, const GroupList& list, const Board& brd);
+    bool TryMerge(Group* g, const GroupList& list, const Board& brd);
 
     void RestructureAfterMove(Group* g, cell_t p);
 
@@ -269,6 +274,7 @@ private:
     void HandleBlockMerge(Group* g, cell_t from, cell_t to);
     void ReplaceLeafWithGroup(Group* g, cell_t a, Group* z);
 
+    void RemoveEdgeFromGroup(Group* g, cell_t edge);
     void PrintRootGroups();
 
     friend class SemiTable;

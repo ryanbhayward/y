@@ -59,7 +59,8 @@ std::string Group::ToString() const
 //---------------------------------------------------------------------------
 
 Groups::Groups(SemiTable& semis)
-    : m_semis(semis)
+    : m_detaching(false)
+    , m_semis(semis)
 {
     for (int i = Y_MAX_CELL-1; i >= ConstBoard::FIRST_NON_EDGE; --i)
         m_freelist.PushBack(i);
@@ -212,17 +213,15 @@ void Groups::PrintRootGroups()
 
 void Groups::Detach(Group* g, Group* p)
 {
+    assert(m_detaching);
+    assert(!IsRootGroup(g->m_id));
     std::cerr << "Detach: g=" << (int)g->m_id << " p=" << (int)p->m_id << '\n';
-    if (!ConstBoard::IsEdge(g->m_id))
+    if (!ConstBoard::IsEdge(g->m_id)) {
+        assert(g->m_parent == p->m_id);
         m_detached.PushBack(g->m_id);
-
-    if (IsRootGroup(g->m_id)) {
-        PrintRootGroups();
-        m_rootGroups.Exclude(g->m_id);
-        std::cerr << "Excluded " << (int)g->m_id << '\n';
-        PrintRootGroups();
-        return;
+        g->m_parent = SG_NULLMOVE;
     }
+
     // g's parent will now have only a single child, so tentatively
     // make sibling a child of grandparent
     cell_t sid = SiblingID(p, g->m_id);
@@ -273,8 +272,6 @@ void Groups::CheckStructure(Group* p)
     }
 }
 
-// Create merged group in g1's location g1 down and creating
-// a new internal node with g1 and g2 as children.
 // NOTE: g1 must be a valid onboard group (never be an edge group!)
 // NOTE: g2 needs to be a free group or an edge group.
 // NOTE: we are always merging g1 and g2 at the root of both trees.
@@ -286,6 +283,9 @@ cell_t Groups::Merge(Group* g1, Group* g2,
                      const SemiConnection& s1, const SemiConnection& s2)
 {
     assert(!ConstBoard::IsEdge(g1->m_id));
+    assert(g1->m_parent == SG_NULLMOVE);
+    assert(g2->m_parent == SG_NULLMOVE);
+    assert(!m_rootGroups.Contains(g2->m_id));
 
     cell_t id = ObtainID();
     Group* g = GetGroupById(id);
@@ -449,7 +449,7 @@ bool Groups::CanMerge(const Group* ga, const Group* gb,
 }
 
 // NOTE: g must be a detached group
-bool Groups::Merge(Group* g, const GroupList& list, const Board& brd)
+bool Groups::TryMerge(Group* g, const GroupList& list, const Board& brd)
 {
     assert(!ConstBoard::IsEdge(g->m_id));
     const SemiConnection *x, *y;
@@ -457,7 +457,8 @@ bool Groups::Merge(Group* g, const GroupList& list, const Board& brd)
     for (int i = 0; i < list.Length(); ++i) {
         Group* other = GetGroupById(m_rootGroups[i]);
         if (brd.GetColor(other->m_id)==color 
-            && CanMerge(other, g, &x, &y, other->m_carrier)) {
+            && CanMerge(other, g, &x, &y, other->m_carrier)) 
+        {
             Merge(other, g, *x, *y);
             return true;
         }
@@ -525,8 +526,8 @@ void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color,
     for (int i = 0; i < m_rootGroups.Length(); ++i) {
         Group* g = GetGroupById(m_rootGroups[i]);
         if (g->m_carrier.Marked(p)) {
-            std::cerr << "HERE\n";
-            m_detached.Clear();
+            std::cerr << "RestructureAfterMove:\n";
+            BeginDetaching();
             RestructureAfterMove(g, p);
             for (int i = 0; i < m_detached.Length(); ++i) {
                 Group* g2 = GetGroupById(m_detached[i]);
@@ -534,12 +535,13 @@ void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color,
                 // we will rebuild the groups for color using new semi
                 // connections later.
                 if (brd.GetColor(g->m_blocks[0]) == color 
-                    || !Merge(g2, m_rootGroups, brd)) 
+                    || !TryMerge(g2, m_rootGroups, brd)) 
                 {
                     m_rootGroups.PushBack(g2->m_id);
                     g2->m_parent = SG_NULLMOVE;
                 }
             }
+            FinishedDetaching();
         }
     }
 }
@@ -604,6 +606,16 @@ void Groups::FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c)
     }
 }
 
+void Groups::RemoveEdgeFromGroup(Group* g, cell_t edge)
+{
+    Group *p, *c;
+    FindParentOfBlock(g, edge, &p, &c);
+    BeginDetaching();
+    Detach(c, p);
+    assert(m_detached.Length() == 1);
+    FinishedDetaching();
+}
+
 void Groups::ReplaceLeafWithGroup(Group* g, cell_t a, Group* z)
 {
     assert(!g->IsLeaf());
@@ -632,7 +644,8 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
         Group* z = ChildContaining(a, from);
         Group* x = ChildContaining(a, to);
         HandleBlockMerge(z, from, to);
-        m_detached.Clear();
+        std::cerr << "HandleBlockMerge\n";
+        BeginDetaching();
         if (f == a) {
             // try to detach a leaf so the non-leaf child becomes
             // the root group. If both are leafs, then it doesn't
@@ -653,8 +666,11 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             ReplaceLeafWithGroup(f, to, z);
         }
         // Detaching z should not cause a chain of detaches
+        FinishedDetaching();
         assert(m_detached.Length() == 1);
+
     } else { // (f != t)
+
         HandleBlockMerge(f, from, to);
         if (f->IsLeaf())
             std::swap(f, t);
@@ -667,6 +683,20 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             ReplaceLeafWithGroup(f, to, t);
         }
     }
+}
+
+//---------------------------------------------------------------------------
+
+void Groups::BeginDetaching()
+{
+    assert(!m_detaching);
+    m_detaching = true;
+    m_detached.Clear();
+}
+
+void Groups::FinishedDetaching()
+{
+    m_detaching = false;
 }
 
 //---------------------------------------------------------------------------
