@@ -272,42 +272,33 @@ void Groups::CheckStructure(Group* p)
     }
 }
 
-// NOTE: g1 must be a valid onboard group (never be an edge group!)
+// NOTE: g1 must be a valid root group
 // NOTE: g2 needs to be a free group or an edge group.
-// NOTE: we are always merging g1 and g2 at the root of both trees.
-// We could examine the two endpoints of s1 and s2 that occur in g1
-// and descend down g1 until they stradle g1->left and g1->right.
-// This attaches g2 'locally' in g1... not sure of the advantages of
-// this, if there are any.
+// NOTE: merges g1 and g2 at the root of both trees
 cell_t Groups::Merge(Group* g1, Group* g2,
                      const SemiConnection& s1, const SemiConnection& s2)
 {
     assert(!ConstBoard::IsEdge(g1->m_id));
     assert(g1->m_parent == SG_NULLMOVE);
     assert(g2->m_parent == SG_NULLMOVE);
-    assert(!m_rootGroups.Contains(g2->m_id));
+    assert(!IsRootGroup(g2->m_id));
+    assert(IsRootGroup(g1->m_id));
+
+    m_rootGroups.Exclude(g1->m_id);
 
     cell_t id = ObtainID();
     Group* g = GetGroupById(id);
+    m_rootGroups.PushBack(id);
+
     g->m_id = id;
+    g->m_parent = SG_NULLMOVE;
+    g->m_left = g1->m_id;
+    g->m_right = g2->m_id;
+    SetSemis(g, s1, s2);
 
-    if (IsRootGroup(g1->m_id)) {
-        m_rootGroups.Exclude(g1->m_id);
-        m_rootGroups.PushBack(id);
-    } else {
-        assert(g1->m_parent != SG_NULLMOVE);
-        GetGroupById(g1->m_parent)->ChangeChild(g1->m_id, id);
-    }
-
-    g->m_parent = g1->m_parent;
     g1->m_parent = id;
     if (!ConstBoard::IsEdge(g2->m_id))
         g2->m_parent = id;
-
-    g->m_left = g1->m_id;
-    g->m_right = g2->m_id;
-
-    SetSemis(g, s1, s2);
 
     std::cerr << "m.s1: " << s1.ToString() << ' ' 
               << YUtil::HashString(s1.m_hash)<< '\n';
