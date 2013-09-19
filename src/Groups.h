@@ -54,8 +54,7 @@ struct FullConnection
     {
         std::ostringstream os;
         os << "["
-           << "s1=" << m_semi1
-           << "s2=" << m_semi2
+           << m_semi1 << ' ' << m_semi2
            << "]";
         return os.str();
     }
@@ -263,6 +262,7 @@ private:
 
     void Free(Group* g);
 
+    void FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c);
     Group* RootGroupContaining(cell_t from);
     Group* CommonAncestor(Group* g, cell_t a, cell_t b);
     Group* ChildContaining(Group* g, cell_t a);

@@ -588,24 +588,37 @@ void Groups::HandleBlockMerge(Group* g, cell_t from, cell_t to)
         HandleBlockMerge(ChildContaining(g, from), from, to);
 }
 
+void Groups::FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c)
+{
+    assert(!g->IsLeaf());
+    while (true) {
+        Group* child = ChildContaining(g, a);
+        if (child->IsLeaf()) {
+            assert(child->m_blocks[0] == a);
+            *p = g;
+            *c = child;
+            std::cerr << "BLAH BLAH BALH\n";
+            break;
+        }
+        g = child;
+    }
+}
+
 void Groups::ReplaceLeafWithGroup(Group* g, cell_t a, Group* z)
 {
     assert(!g->IsLeaf());
     if (z->IsLeaf())
         return;
-    Group* child = ChildContaining(g, a);
-    if (child->IsLeaf()) {
-        g->ChangeChild(child->m_id, z->m_id);
-        z->m_parent = g->m_id;
-        std::cerr << "YES2\n";
-        std::cerr << "child: " << child->ToString() << '\n';
-        std::cerr << "z: " << z->ToString() << '\n';
-        std::cerr << "g: " << g->ToString() << '\n';
-        Free(child);
-    }
-    else
-        ReplaceLeafWithGroup(child, a, z);
-    RecomputeFromChildren(g);
+    Group *p, *c;
+    FindParentOfBlock(g, a, &p, &c);
+    p->ChangeChild(c->m_id, z->m_id);
+    z->m_parent = p->m_id;
+    std::cerr << "ReplaceLeafWithGroup():\n"
+              << "p: " << p->ToString() << '\n'
+              << "c: " << c->ToString() << '\n'
+              << "z: " << z->ToString() << '\n';
+    Free(c);
+    RecomputeFromChildren(p);
 }
 
 void Groups::HandleBlockMerge(cell_t from, cell_t to)
