@@ -48,8 +48,7 @@ std::string Group::ToString() const
        << " parent=" << Group::IDToString(m_parent)
        << " left=" << Group::IDToString(m_left)
        << " right=" << Group::IDToString(m_right)
-       << " semi1=" << m_semi1
-       << " semi2=" << m_semi2
+       << " con=" << m_con.ToString()
        << " border=" << ConstBoard::BorderToString(m_border)
        << " blocks=" << BlocksToString()
        << " carrier=" << CarrierToString()
@@ -122,28 +121,64 @@ cell_t Groups::SetGroupDataFromBlock(const Block* b, int id)
     Group* g = &m_groupData[id];
     g->m_id = id;
     g->m_parent = g->m_left = g->m_right = SG_NULLMOVE;
-    g->m_semi1 = g->m_semi2 = -1;
+    g->m_con.Clear();
     g->m_border = b->m_border;
     g->m_carrier.Clear();
-    g->m_con_carrier.Clear();
     g->m_blocks.Clear();
     if (!ConstBoard::IsEdge(b->m_anchor))
         g->m_blocks.PushBack(b->m_anchor);
     return id;
 }
 
-void Groups::FreeSemis(Group* g)
-{
-    if (g->m_semi1 != -1)
-        m_semis.LookupIndex(g->m_semi1).m_group_id = -1;
-    if (g->m_semi2 != -1)
-        m_semis.LookupIndex(g->m_semi2).m_group_id = -1;
-}
-
 void Groups::Free(Group* g)
 { 
-    FreeSemis(g);
+    UnlinkSemis(g->m_con);
     m_freelist.PushBack(g->m_id);
+}
+
+void Groups::UnlinkSemis(const FullConnection& con)
+{
+    if (con.m_semi1 != -1)
+        m_semis.LookupIndex(con.m_semi1).m_group_id = -1;
+    if (con.m_semi2 != -1)
+        m_semis.LookupIndex(con.m_semi2).m_group_id = -1;
+}
+
+void Groups::LinkSemis(const FullConnection& con, cell_t gid)
+{
+    m_semis.LookupIndex(con.m_semi1).m_group_id = gid;    
+    m_semis.LookupIndex(con.m_semi2).m_group_id = gid;
+}
+
+void Groups::SetSemis(Group* g, 
+                      const SemiConnection& s1,
+                      const SemiConnection& s2)
+{
+    // FIXME: we are passed s1 and s2...  Seems dumb to have to lookup
+    // a mutable version. Maybe we need a better interface for
+    // creating groups?
+    assert(s1.m_group_id == -1);
+    assert(s2.m_group_id == -1);
+    g->m_con.m_semi1 = m_semis.HashToIndex(s1.m_hash);
+    g->m_con.m_semi2 = m_semis.HashToIndex(s2.m_hash);
+    LinkSemis(g->m_con, g->m_id);
+}
+
+bool Groups::ConnectsToBothSemis(Group* g, const FullConnection& con)
+{
+    return g->ContainsSemiEndpoint(m_semis.LookupIndex(con.m_semi1))
+        && g->ContainsSemiEndpoint(m_semis.LookupIndex(con.m_semi2));
+}
+
+void Groups::ComputeConnectionCarrier(FullConnection& con)
+{
+    con.m_carrier.Clear();
+    const SemiConnection& s1 = m_semis.LookupIndex(con.m_semi1);
+    for (SemiConnection::Iterator it(s1.m_carrier); it; ++it) 
+        con.m_carrier.Mark(*it); 
+    const SemiConnection& s2 = m_semis.LookupIndex(con.m_semi2);
+    for (SemiConnection::Iterator it(s2.m_carrier); it; ++it) 
+        con.m_carrier.Mark(*it);
 }
 
 void Groups::RecomputeFromChildren(Group* g)
@@ -155,7 +190,7 @@ void Groups::RecomputeFromChildren(Group* g)
     g->m_border = left->m_border | right->m_border;
     g->m_blocks = left->m_blocks;
     g->m_blocks.PushBackList(right->m_blocks);
-    g->m_carrier = g->m_con_carrier;
+    g->m_carrier = g->m_con.m_carrier;
     g->m_carrier.Mark(left->m_carrier);
     g->m_carrier.Mark(right->m_carrier);
 }
@@ -207,8 +242,7 @@ void Groups::Detach(Group* g, Group* p)
     // If both semis in gp do not connect to sibling, then sibling
     // cannot really be a child of gp. Fix this by detaching sibling
     // from gp.
-    if (   !sibling->ContainsSemiEndpoint(m_semis.LookupIndex(gp->m_semi1))
-        || !sibling->ContainsSemiEndpoint(m_semis.LookupIndex(gp->m_semi2)))
+    if (!ConnectsToBothSemis(sibling, gp->m_con))
     {
         Detach(sibling, gp);
     } 
@@ -227,8 +261,7 @@ void Groups::CheckStructure(Group* p)
     if (!IsRootGroup(p->m_id)) 
     {
         Group* gp = GetGroupById(p->m_parent);
-        if (   p->ContainsSemiEndpoint(m_semis.LookupIndex(gp->m_semi1))
-            && p->ContainsSemiEndpoint(m_semis.LookupIndex(gp->m_semi2)))
+        if (ConnectsToBothSemis(p, gp->m_con))
         {
             std::cerr << "passed!\n";
             std::cerr << p->ToString() << '\n';
@@ -238,31 +271,6 @@ void Groups::CheckStructure(Group* p)
         else
             Detach(p, gp);
     }
-}
-
-void Groups::ComputeConnectionCarrier(Group* g)
-{
-    g->m_con_carrier.Clear();
-    for (SemiConnection::Iterator it(m_semis.LookupIndex(g->m_semi1).m_carrier);
-         it; ++it) { g->m_con_carrier.Mark(*it); }
-    for (SemiConnection::Iterator it(m_semis.LookupIndex(g->m_semi2).m_carrier);
-         it; ++it) { g->m_con_carrier.Mark(*it); }
-}
-
-void Groups::SetSemis(Group* g, 
-                      const SemiConnection& s1,
-                      const SemiConnection& s2)
-{
-    // FIXME: we are passed s1 and s2...  Seems dumb to have to lookup
-    // a mutable version. Maybe we need a better interface for
-    // creating groups?
-    assert(s1.m_group_id == -1);
-    g->m_semi1 = m_semis.HashToIndex(s1.m_hash);
-    m_semis.LookupIndex(g->m_semi1).m_group_id = g->m_id;
-
-    assert(s2.m_group_id == -1);
-    g->m_semi2 = m_semis.HashToIndex(s2.m_hash);
-    m_semis.LookupIndex(g->m_semi2).m_group_id = g->m_id;
 }
 
 // Create merged group in g1's location g1 down and creating
@@ -306,7 +314,7 @@ cell_t Groups::Merge(Group* g1, Group* g2,
     std::cerr << "m.s2: " << s2.ToString() << ' ' 
               << YUtil::HashString(s2.m_hash)<< '\n';
    
-    ComputeConnectionCarrier(g);
+    ComputeConnectionCarrier(g->m_con);
     RecomputeFromChildren(g);
     return id;
 }
@@ -473,19 +481,19 @@ void Groups::RestructureAfterMove(Group* g, cell_t p)
         else
             break;
     }
-    assert(g->m_con_carrier.Marked(p));
-    assert(g->m_semi1 == -1 || g->m_semi2 == -1);
+    assert(g->m_con.m_carrier.Marked(p));
+    assert(g->m_con.IsBroken());
     MarkedCells avoid = root->m_carrier;
-    avoid.Unmark(g->m_con_carrier);
+    avoid.Unmark(g->m_con.m_carrier);
 
     // Try to immediately reform the group
     // FIXME: we know which semi was killed, we could try 
     // CanMergeOnSemi() with the remaining one first.
     const SemiConnection *x, *y;
     if (CanMerge(left, right, &x, &y, avoid)) {
-        FreeSemis(g);
+        UnlinkSemis(g->m_con);
         SetSemis(g, *x, *y);
-        ComputeConnectionCarrier(g);
+        ComputeConnectionCarrier(g->m_con);
         RecomputeFromChildrenToTop(g);
         std::cerr << "RE-MERGED!!\n";
         std::cerr << g->ToString() << '\n';
@@ -501,10 +509,7 @@ void Groups::RestructureAfterMove(Group* g, cell_t p)
             // semi connects to right, so just detach left.
             Group* p = GetGroupById(g->m_parent);
             std::cerr << "Restructure: p->id=" << (int)p->m_id << '\n';
-            const SemiConnection& s1 = m_semis.LookupIndex(p->m_semi1);
-            const SemiConnection& s2 = m_semis.LookupIndex(p->m_semi2);
-            if (   left->ContainsSemiEndpoint(s1)
-                && left->ContainsSemiEndpoint(s2)) 
+            if (ConnectsToBothSemis(left, p->m_con))
             {
                 Detach(right, g);
             } else {

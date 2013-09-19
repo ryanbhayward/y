@@ -94,7 +94,7 @@ void SemiTable::Include(const SemiConnection& s)
         // FIXME: Is this okay? Should I really allow SemiTable
         // access to private stuff in Groups?
         Group* g = m_groups->GetGroupById(other.m_group_id);
-        m_groups->ComputeConnectionCarrier(g);
+        m_groups->ComputeConnectionCarrier(g->m_con);
         m_groups->RecomputeFromChildrenToTop(g);
 
         std::cerr << "index=" << replace_index << '\n';
@@ -153,7 +153,7 @@ void SemiTable::Remove(int index)
 {
     const SemiConnection& s = m_entries[index];
     if (s.m_group_id != -1) 
-        m_groups->GetGroupById(s.m_group_id)->KillSemi(index);
+        m_groups->GetGroupById(s.m_group_id)->BreakConnection(index);
     m_end_table[SlotIndex(HashEndpoints(s))].Exclude(index);
     m_hash_table[SlotIndex(s.m_hash)].Exclude(index);
     m_freelist.PushBack(index);

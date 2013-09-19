@@ -17,6 +17,50 @@ class SemiConnection;
 
 //---------------------------------------------------------------------------
 
+struct FullConnection
+{
+    int32_t m_semi1, m_semi2;
+    MarkedCells m_carrier;
+    
+    FullConnection()
+        : m_semi1(-1)
+        , m_semi2(-1)
+        , m_carrier()
+    { }
+
+    void Clear()
+    {
+        m_semi1 = -1;
+        m_semi2 = -1;
+        m_carrier.Clear();
+    }
+    
+    bool IsBroken() const 
+    {
+        return m_semi1 == -1 || m_semi2 == -1;
+    }
+
+    void Break(int32_t semi)
+    {
+        if (m_semi1 == semi)
+            m_semi1 = -1;
+        else {
+            assert(m_semi2 == semi);
+            m_semi2 = -1;
+        }
+    }
+
+    std::string ToString() const
+    {
+        std::ostringstream os;
+        os << "["
+           << "s1=" << m_semi1
+           << "s2=" << m_semi2
+           << "]";
+        return os.str();
+    }
+};
+
 class Group
 {
 public:
@@ -36,13 +80,12 @@ public:
 
     cell_t m_id;
     cell_t m_parent;
+    FullConnection m_con;
     cell_t m_left, m_right;
-    int32_t m_semi1, m_semi2;
     int m_border;
     BlockList m_blocks;
     MarkedCells m_carrier;
-    MarkedCells m_con_carrier;
-
+    
     Group();
 
     void ChangeChild(cell_t o, cell_t n)
@@ -53,12 +96,9 @@ public:
             m_right = n;
     }
 
-    void KillSemi(int32_t semi)
+    void BreakConnection(int32_t semi)
     {
-        if (m_semi1 == semi)
-            m_semi1 = -1;
-        else if (m_semi2 == semi)
-            m_semi2 = -1;
+        m_con.Break(semi);
     }
 
     std::string BlocksToString() const;
@@ -204,16 +244,19 @@ private:
 
     void RestructureAfterMove(Group* g, cell_t p);
 
-    void ComputeConnectionCarrier(Group* g);
+    void ComputeConnectionCarrier(FullConnection& con);
 
     void CheckStructure(Group* p);
 
     cell_t ObtainID();
 
-    void FreeSemis(Group* g);
+    void UnlinkSemis(const FullConnection& con);
+    void LinkSemis(const FullConnection& con, cell_t gid);
 
     void SetSemis(Group* g, const SemiConnection& s1, 
                   const SemiConnection& s2);
+
+    bool ConnectsToBothSemis(Group* g, const FullConnection& con);
 
     void Free(int id)
     { Free(GetGroupById(id)); }
