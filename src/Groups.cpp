@@ -286,6 +286,21 @@ cell_t Groups::Merge(Group* g1, Group* g2,
 
     m_rootGroups.Exclude(g1->m_id);
 
+#if 0    
+    for (EdgeIterator e; e; ++e) {
+        int eb = ConstBoard::ToBorderValue(*e);
+        if (eb & g1->m_border & g2->m_border) {
+            Group *p, *c;
+            FindParentOfBlock(g2, *e, &p, &c);
+            if (c->m_id == *e) {
+                // c has a full connection to e
+            } else {
+                // c block touches e
+            }
+        }
+    }
+#endif
+    
     cell_t id = ObtainID();
     Group* g = GetGroupById(id);
     m_rootGroups.PushBack(id);
@@ -447,7 +462,7 @@ bool Groups::TryMerge(Group* g, const GroupList& list, const Board& brd)
     const SgBlackWhite color = brd.GetColor(g->m_id);
     for (int i = 0; i < list.Length(); ++i) {
         Group* other = GetGroupById(m_rootGroups[i]);
-        if (brd.GetColor(other->m_id)==color 
+        if (brd.GetColor(other->m_id) == color 
             && CanMerge(other, g, &x, &y, other->m_carrier)) 
         {
             Merge(other, g, *x, *y);
@@ -528,8 +543,8 @@ void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color,
                 if (brd.GetColor(g->m_blocks[0]) == color 
                     || !TryMerge(g2, m_rootGroups, brd)) 
                 {
+                    // TODO: attempt to connect g2 to each edge!!
                     m_rootGroups.PushBack(g2->m_id);
-                    g2->m_parent = SG_NULLMOVE;
                 }
             }
             FinishedDetaching();
@@ -583,6 +598,7 @@ void Groups::HandleBlockMerge(Group* g, cell_t from, cell_t to)
 
 void Groups::FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c)
 {
+    assert(g->ContainsBlock(a));
     assert(!g->IsLeaf());
     while (true) {
         Group* child = ChildContaining(g, a);
@@ -590,21 +606,24 @@ void Groups::FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c)
             assert(child->m_blocks[0] == a);
             *p = g;
             *c = child;
-            std::cerr << "BLAH BLAH BALH\n";
             break;
         }
         g = child;
     }
 }
 
-void Groups::RemoveEdgeFromGroup(Group* g, cell_t edge)
+Group* Groups::RemoveEdgeFromGroup(Group* g, cell_t edge)
 {
-    Group *p, *c;
+    Group *p, *c, *s;
     FindParentOfBlock(g, edge, &p, &c);
+    s = GetSibling(p, c);
     BeginDetaching();
     Detach(c, p);
     assert(m_detached.Length() == 1);
     FinishedDetaching();
+    if (p == g)
+        return s;
+    return g;
 }
 
 void Groups::ReplaceLeafWithGroup(Group* g, cell_t a, Group* z)

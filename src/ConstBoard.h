@@ -181,6 +181,7 @@ class ConstBoard
 {
 public:
 
+    static const int FIRST_EDGE = 0;
     static const int WEST = 0;
     static const int EAST = 1;
     static const int SOUTH = 2;
@@ -194,9 +195,9 @@ public:
     static const int DIR_W  = 5;
 
     static const int BORDER_NONE  = 0; // 000   border values, used bitwise
-    static const int BORDER_SOUTH = 1; // 001
-    static const int BORDER_WEST  = 2; // 010
-    static const int BORDER_EAST  = 4; // 100
+    static const int BORDER_WEST  = 1; // 001
+    static const int BORDER_EAST  = 2; // 010
+    static const int BORDER_SOUTH = 4; // 100
     static const int BORDER_ALL   = 7; // 111
 
     static bool IsEdge(cell_t cell)
@@ -268,6 +269,29 @@ private:
 };
 
 //----------------------------------------------------------------------
+
+class EdgeIterator
+{
+public:
+    EdgeIterator()
+        : m_index(ConstBoard::FIRST_EDGE)
+    { }
+    
+    /** Advance the state of the iteration to the next liberty. */
+    void operator++()
+    { ++m_index; }
+    
+    /** Return the current liberty. */
+    cell_t operator*() const
+    { return m_index; }
+    
+    /** Return true if iteration is valid, otherwise false. */
+    operator bool() const
+    { return m_index < ConstBoard::FIRST_NON_EDGE; }
+    
+private:
+    cell_t m_index;
+};
 
 class CellNbrIterator
 {

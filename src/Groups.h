@@ -233,6 +233,11 @@ private:
         return parent->m_left == child ? parent->m_right : parent->m_left;
     }
 
+    inline Group* GetSibling(const Group* p, const Group* c)
+    {
+        return GetGroupById(SiblingID(p, c->m_id));
+    }
+
     bool CanMerge(const Group* ga, const Group* gb, 
                   SemiConnection const** x, SemiConnection const** y,
                   const MarkedCells& avoid) const;
@@ -274,7 +279,7 @@ private:
     void HandleBlockMerge(Group* g, cell_t from, cell_t to);
     void ReplaceLeafWithGroup(Group* g, cell_t a, Group* z);
 
-    void RemoveEdgeFromGroup(Group* g, cell_t edge);
+    Group* RemoveEdgeFromGroup(Group* g, cell_t edge);
     void PrintRootGroups();
 
     friend class SemiTable;
