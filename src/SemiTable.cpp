@@ -59,7 +59,7 @@ void SemiTable::Include(const SemiConnection& s)
     int replace_index = -1;
     for (int i = 0; i < m_worklist.Length(); ++i) {
         const int index = m_worklist[i];
-        const SemiConnection& other = m_entries[ index ];
+        SemiConnection& other = m_entries[ index ];
         if (other.m_group_id != -1) {
             // Only be possible to do this once: If a semi from
             // this list is used in a group connection, then the
@@ -87,14 +87,21 @@ void SemiTable::Include(const SemiConnection& s)
         if (m_hash_table[hslot].Length() >= MAX_ENTRIES_PER_SLOT)
             throw YException("Hash list is full!");
         m_hash_table[hslot].PushBack(replace_index);
+
+        int group_id = other.m_group_id;
+        cell_t type = other.m_con_type;
+
         m_entries[replace_index] = s;
+        m_entries[replace_index].m_group_id = group_id;
+        m_entries[replace_index].m_con_type = type;
+
         // FIXME: add it to the new list of semis??!
 
         // Shrink all groups above g
         // FIXME: Is this okay? Should I really allow SemiTable
         // access to private stuff in Groups?
-        Group* g = m_groups->GetGroupById(other.m_group_id);
-        m_groups->ComputeConnectionCarrier(g->m_con);
+        Group* g = m_groups->GetGroupById(group_id);
+        m_groups->ComputeConnectionCarrier(g, type);
         m_groups->RecomputeFromChildrenToTop(g);
 
         std::cerr << "index=" << replace_index << '\n';
@@ -152,8 +159,12 @@ const SemiConnection& SemiTable::LookupHash(uint32_t hash) const
 void SemiTable::Remove(int index)
 {
     const SemiConnection& s = m_entries[index];
-    if (s.m_group_id != -1) 
-        m_groups->GetGroupById(s.m_group_id)->BreakConnection(index);
+    if (s.m_group_id != -1) {
+        std::cerr << "Removing " << index << '\n';
+        std::cerr << "GroupId = " << (int)s.m_group_id << '\n';
+        m_groups->GetGroupById(s.m_group_id)
+            ->BreakConnection(index, s.m_con_type);
+    }
     m_end_table[SlotIndex(HashEndpoints(s))].Exclude(index);
     m_hash_table[SlotIndex(s.m_hash)].Exclude(index);
     m_freelist.PushBack(index);

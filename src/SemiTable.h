@@ -21,6 +21,7 @@ struct SemiConnection
     cell_t m_p2;
     cell_t m_key;
     cell_t m_group_id;
+    cell_t m_con_type;   // -1: group carrier; WEST,EAST,SOUTH: to that edge
     Carrier m_carrier;
     uint32_t m_hash;
 
@@ -177,7 +178,7 @@ public:
         m_newlist.clear();
     }
 
-    const std::vector<const SemiConnection*>& GetNewSemis() const
+    const std::vector<SemiConnection*>& GetNewSemis()
     { 
         return m_newlist;
     }
@@ -273,7 +274,7 @@ private:
     TableSizeList m_worklist;
     SemiConnection m_entries[MAX_ENTRIES_IN_TABLE];
 
-    std::vector<const SemiConnection*> m_newlist;
+    std::vector<SemiConnection*> m_newlist;
 
     bool m_using_worklist;
 

@@ -514,7 +514,7 @@ private:
 
     void MergeBlockConnections(const Block* b1, Block* b2);
 
-    void RemoveEdgeSharedLiberties(Block* b);
+    void RemoveEdgeConnections(Block* b, int new_borders);
 
     void CopyState(Board::State& a, const Board::State& b);
 
@@ -530,10 +530,10 @@ private:
     { return &m_state.m_blockList[BlockIndex(p)]; }
 
     Group* GetGroup(cell_t p)
-    { return m_state.m_groups->GetGroup(p); }
+    { return m_state.m_groups->GetRootGroup(p); }
 
     const Group* GetGroup(cell_t p) const
-    { return m_state.m_groups->GetGroup(p); }
+    { return m_state.m_groups->GetRootGroup(p); }
 
     Cell* GetCell(cell_t p)
     { return &m_state.m_cellList[p]; }

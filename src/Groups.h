@@ -35,13 +35,26 @@ struct FullConnection
         m_carrier.Clear();
     }
     
+    bool IsDefined() const
+    { 
+        return m_semi1 != -1 || m_semi2 != -1;
+    }
+
     bool IsBroken() const 
     {
-        return m_semi1 == -1 || m_semi2 == -1;
+        return (m_semi1 == -1 && m_semi2 != -1)
+            || (m_semi2 == -1 && m_semi1 != -1);
+    }
+
+    bool IsValid() const
+    {
+        return m_semi1 != -1 && m_semi2 != -1;
     }
 
     void Break(int32_t semi)
     {
+        std::cerr << "Break: semi = " << semi << '\n';
+        std::cerr << ToString() << '\n';
         if (m_semi1 == semi)
             m_semi1 = -1;
         else {
@@ -80,6 +93,7 @@ public:
     cell_t m_id;
     cell_t m_parent;
     FullConnection m_con;
+    FullConnection m_econ[3];
     cell_t m_left, m_right;
     int m_border;
     BlockList m_blocks;
@@ -95,9 +109,15 @@ public:
             m_right = n;
     }
 
-    void BreakConnection(int32_t semi)
+    void BreakConnection(int32_t semi, cell_t type)
     {
-        m_con.Break(semi);
+        std::cerr << "BreakConnection: breaking " << semi << '\n';
+        if (type == -1)
+            m_con.Break(semi);
+        else {
+            m_econ[type].Break(semi);
+        }
+        std::cerr << "Break successful!\n";
     }
 
     std::string BlocksToString() const;
@@ -136,7 +156,6 @@ public:
             : m_index(start)
             , m_list(g.m_blocks)
         {
-            AppendEdges(g);
         }
 
         cell_t operator*() const
@@ -151,10 +170,26 @@ public:
         operator bool() const
         { return m_index < m_list.Length(); }
 
-    private:
+    protected:
         int m_index;
         BlockList m_list;
+    };
 
+    class BlockAndEdgeIterator : public BlockIterator
+    {
+    public:
+        BlockAndEdgeIterator(const BlockList& bl, int start = 0)
+            : BlockIterator(bl, start)
+        { 
+        }
+
+        BlockAndEdgeIterator(const Group& g, int start = 0)
+            : BlockIterator(g, start)
+        {
+            AppendEdges(g);
+        }
+
+    protected:
         void AppendEdges(const Group& g)
         {
             if (g.m_border & ConstBoard::BORDER_WEST)
@@ -179,14 +214,18 @@ public:
     void RestructureAfterMove(cell_t p, SgBlackWhite color, const Board& brd);
 
     void ProcessNewSemis(const Block* block,
-                         std::vector<const SemiConnection*> s);
+                         const std::vector<SemiConnection*>& s);
     
     void HandleBlockMerge(cell_t from, cell_t to);
 
-    const Group* GetGroup(cell_t p) const
-    { return const_cast<Groups*>(this)->GetGroup(p); }
+    Group* GetRootGroup(cell_t p);
 
-    Group* GetGroup(cell_t p);
+    const Group* GetRootGroup(cell_t p) const
+    { return const_cast<Groups*>(this)->GetRootGroup(p); }
+
+    void UpdateBorderFromBlock(const Block* b);
+
+    void RemoveEdgeConnectionFromGroup(Group* g, cell_t edge);
 
     std::string Encode(const Group* g) const;
 
@@ -218,6 +257,7 @@ private:
 
     void Detach(Group* g, Group* p);
 
+    void ComputeCarrier(Group* g, bool root);
     void RecomputeFromChildren(Group* g);
     void RecomputeFromChildrenToTop(Group* g);
 
@@ -239,15 +279,20 @@ private:
     }
 
     bool CanMerge(const Group* ga, const Group* gb, 
-                  SemiConnection const** x, SemiConnection const** y,
-                  const MarkedCells& avoid) const;
+                  SemiConnection** x, SemiConnection** y,
+                  const MarkedCells& avoid);
 
     bool CanMergeOnSemi(const Group* ga, const Group* gb,
                         const SemiConnection& x, 
-                        SemiConnection const** outy) const;
+                        SemiConnection** outy);
 
-    cell_t Merge(Group* g1, Group* g2, 
-                 const SemiConnection& s1, const SemiConnection& s2);
+    bool CanConnectToEdge(const Group* ga, cell_t edge, 
+                          SemiConnection** outx, 
+                          SemiConnection** outy,
+                          const MarkedCells& avoid);
+        
+    Group* Merge(Group* g1, Group* g2, 
+                 SemiConnection* s1, SemiConnection* s2);
 
     bool TryMerge(Group* g, const GroupList& list, const Board& brd);
 
@@ -255,17 +300,28 @@ private:
 
     void ComputeConnectionCarrier(FullConnection& con);
 
+    void ComputeConnectionCarrier(Group* g, cell_t type);
+
     void CheckStructure(Group* p);
 
     cell_t ObtainID();
 
     void UnlinkSemis(const FullConnection& con);
+    void ChangeSemiGID(const FullConnection& con, int new_gid);
     void LinkSemis(const FullConnection& con, cell_t gid);
 
-    void SetSemis(Group* g, const SemiConnection& s1, 
-                  const SemiConnection& s2);
+    void SetSemis(Group* g, cell_t t, SemiConnection* s1, SemiConnection* s2);
+
+    bool CanConnectToEdgeOnSemi(Group* g, cell_t edge, const SemiConnection& x, 
+                                SemiConnection** outy) const;
+        
+    void ConnectGroupToEdge(Group* g, cell_t edge, 
+                            SemiConnection* s1, SemiConnection* s2);
+
 
     bool ConnectsToBothSemis(Group* g, const FullConnection& con);
+
+    Group* ChildContaining(Group* g, cell_t a);
 
     void Free(int id)
     { Free(GetGroupById(id)); }
@@ -273,13 +329,10 @@ private:
     void Free(Group* g);
 
     void FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c);
-    Group* RootGroupContaining(cell_t from);
     Group* CommonAncestor(Group* g, cell_t a, cell_t b);
-    Group* ChildContaining(Group* g, cell_t a);
     void HandleBlockMerge(Group* g, cell_t from, cell_t to);
     void ReplaceLeafWithGroup(Group* g, cell_t a, Group* z);
 
-    Group* RemoveEdgeFromGroup(Group* g, cell_t edge);
     void PrintRootGroups();
 
     friend class SemiTable;

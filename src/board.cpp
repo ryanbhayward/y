@@ -325,8 +325,14 @@ bool Board::IsAdjacent(cell_t p, const Block* b)
 
 void Board::AddStoneToBlock(cell_t p, int border, Block* b)
 {
-    b->m_border |= border;
+    std::cerr << "AddStoneToBlock:\n";
     b->m_stones.PushBack(p);
+    int new_borders = ~b->m_border & border;
+    if (new_borders) {
+        b->m_border |= border;
+        RemoveEdgeConnections(b, new_borders); 
+        GetGroups().UpdateBorderFromBlock(b);
+    }
     SgArrayList<cell_t, 6> newlib;
     for (CellNbrIterator it(Const(), p); it; ++it) {
         if (GetColor(*it) == SG_EMPTY) {
@@ -339,7 +345,6 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
         AddLibertyToBlock(b, newlib[i]);
         AddSharedLibertiesAroundPoint(b, newlib[i], p);
     }
-    RemoveEdgeSharedLiberties(b);
    
     GetSemis().ClearNewSemis();
     for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
@@ -413,6 +418,7 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         }
     }
     m_state.m_blockIndex[p] = largestBlock->m_anchor;
+    int old_border = largestBlock->m_border;
     largestBlock->m_border |= border;
     largestBlock->m_stones.PushBack(p);
 
@@ -449,7 +455,9 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
             AddSharedLibertiesAroundPoint(largestBlock, *it, p);
 	}
     }
-    RemoveEdgeSharedLiberties(largestBlock);
+    int new_borders = ~old_border & largestBlock->m_border;
+    RemoveEdgeConnections(largestBlock, new_borders);
+    GetGroups().UpdateBorderFromBlock(largestBlock);
     
     GetSemis().ClearNewSemis();
     for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
@@ -457,14 +465,21 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
     GetGroups().ProcessNewSemis(largestBlock, GetSemis().GetNewSemis());
 }
 
-void Board::RemoveEdgeSharedLiberties(Block* b)
+void Board::RemoveEdgeConnections(Block* b, int new_borders)
 {
-    if (b->m_border & ConstBoard::BORDER_WEST)
+    Group* g = GetGroups().GetRootGroup(b->m_anchor);
+    if (new_borders & ConstBoard::BORDER_WEST) {
         GetConnection(Const().WEST, b->m_anchor).Clear();
-    if (b->m_border & ConstBoard::BORDER_EAST)
+        GetGroups().RemoveEdgeConnectionFromGroup(g, ConstBoard::WEST);
+    }
+    if (new_borders & ConstBoard::BORDER_EAST) {
         GetConnection(Const().EAST, b->m_anchor).Clear();
-    if (b->m_border & ConstBoard::BORDER_SOUTH)
+        GetGroups().RemoveEdgeConnectionFromGroup(g, ConstBoard::EAST);
+    }
+    if (new_borders & ConstBoard::BORDER_SOUTH) {
         GetConnection(Const().SOUTH, b->m_anchor).Clear();
+        GetGroups().RemoveEdgeConnectionFromGroup(g, ConstBoard::SOUTH);
+    }
 }
 
 void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)

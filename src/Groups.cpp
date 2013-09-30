@@ -18,7 +18,7 @@ std::string Group::BlocksToString() const
     std::ostringstream os;
     os << "[";
     bool first = true;
-    for (Group::BlockIterator i(*this); i; ++i) {
+    for (Group::BlockAndEdgeIterator i(*this); i; ++i) {
         if (!first) os << ", ";
         os << ConstBoard::ToString(*i);
         first = false;
@@ -48,8 +48,13 @@ std::string Group::ToString() const
        << " parent=" << Group::IDToString(m_parent)
        << " left=" << Group::IDToString(m_left)
        << " right=" << Group::IDToString(m_right)
-       << " con=" << m_con.ToString()
-       << " border=" << ConstBoard::BorderToString(m_border)
+       << " con=" << m_con.ToString();
+    for (EdgeIterator e; e; ++e) {
+        if (m_econ[*e].IsDefined())
+            os << " con" << ConstBoard::ToString(*e) 
+               << "=" << m_econ[*e].ToString();
+    }
+    os << " border=" << ConstBoard::BorderToString(m_border)
        << " blocks=" << BlocksToString()
        << " carrier=" << CarrierToString()
        << "]";
@@ -75,7 +80,7 @@ cell_t Groups::ObtainID()
 }
 
 
-Group* Groups::GetGroup(cell_t p)
+Group* Groups::GetRootGroup(cell_t p)
 {
     if (ConstBoard::IsEdge(p))
         return &m_groupData[p];
@@ -103,7 +108,7 @@ std::string Groups::Encode(const Group* g) const
         os << Encode(GetGroupById(g->m_right));
     }
     else {
-        Group::BlockIterator it(*g);
+        Group::BlockAndEdgeIterator it(*g);
         os << ConstBoard::ToString(*it);
     }
     os << ')';
@@ -145,30 +150,46 @@ void Groups::UnlinkSemis(const FullConnection& con)
         m_semis.LookupIndex(con.m_semi2).m_group_id = -1;
 }
 
-void Groups::LinkSemis(const FullConnection& con, cell_t gid)
+void Groups::ChangeSemiGID(const FullConnection& con, int new_gid)
 {
-    m_semis.LookupIndex(con.m_semi1).m_group_id = gid;    
-    m_semis.LookupIndex(con.m_semi2).m_group_id = gid;
+    if (con.m_semi1 != -1)
+        m_semis.LookupIndex(con.m_semi1).m_group_id = new_gid;
+    if (con.m_semi2 != -1)
+        m_semis.LookupIndex(con.m_semi2).m_group_id = new_gid;
 }
 
-void Groups::SetSemis(Group* g, 
-                      const SemiConnection& s1,
-                      const SemiConnection& s2)
+void Groups::SetSemis(Group* g, cell_t t, 
+                      SemiConnection* s1, SemiConnection* s2)
 {
-    // FIXME: we are passed s1 and s2...  Seems dumb to have to lookup
-    // a mutable version. Maybe we need a better interface for
-    // creating groups?
-    assert(s1.m_group_id == -1);
-    assert(s2.m_group_id == -1);
-    g->m_con.m_semi1 = m_semis.HashToIndex(s1.m_hash);
-    g->m_con.m_semi2 = m_semis.HashToIndex(s2.m_hash);
-    LinkSemis(g->m_con, g->m_id);
+    // This semi cannot be used by anybody else
+    // (could already be set to this group if we are reconnecting
+    // the group in RestructureAfterMove().
+    assert(s1->m_group_id == -1 || s1->m_group_id == g->m_id);
+    assert(s2->m_group_id == -1 || s2->m_group_id == g->m_id);
+
+    s1->m_group_id = g->m_id;
+    s1->m_con_type = t;
+
+    s2->m_group_id = g->m_id;
+    s2->m_con_type = t;
+
+    FullConnection& c = ConstBoard::IsEdge(t) ? g->m_econ[t] : g->m_con;
+    c.m_semi1 = m_semis.HashToIndex(s1->m_hash);
+    c.m_semi2 = m_semis.HashToIndex(s2->m_hash);
 }
 
 bool Groups::ConnectsToBothSemis(Group* g, const FullConnection& con)
 {
     return g->ContainsSemiEndpoint(m_semis.LookupIndex(con.m_semi1))
         && g->ContainsSemiEndpoint(m_semis.LookupIndex(con.m_semi2));
+}
+
+void Groups::ComputeConnectionCarrier(Group* g, cell_t type)
+{
+    if (type == -1)
+        ComputeConnectionCarrier(g->m_con);
+    else
+        ComputeConnectionCarrier(g->m_econ[type]);
 }
 
 void Groups::ComputeConnectionCarrier(FullConnection& con)
@@ -182,6 +203,23 @@ void Groups::ComputeConnectionCarrier(FullConnection& con)
         con.m_carrier.Mark(*it);
 }
 
+void Groups::ComputeCarrier(Group* g, bool root)
+{
+    g->m_carrier.Clear();
+    if (g->m_con.IsDefined()) {
+        g->m_carrier = g->m_con.m_carrier;
+        const Group* left  = GetGroupById(g->m_left);
+        const Group* right = GetGroupById(g->m_right);
+        g->m_carrier.Mark(left->m_carrier);
+        g->m_carrier.Mark(right->m_carrier);
+    }
+    if (root) {
+        for (EdgeIterator e; e; ++e)
+            if (g->m_econ[*e].IsDefined())
+                g->m_carrier.Mark(g->m_econ[*e].m_carrier);
+    }
+}
+
 void Groups::RecomputeFromChildren(Group* g)
 {
     assert(!ConstBoard::IsEdge(g->m_id));
@@ -189,11 +227,14 @@ void Groups::RecomputeFromChildren(Group* g)
     const Group* left  = GetGroupById(g->m_left);
     const Group* right = GetGroupById(g->m_right);
     g->m_border = left->m_border | right->m_border;
+    if (IsRootGroup(g->m_id)) {
+        for (EdgeIterator e; e; ++e)
+            if (g->m_econ[*e].IsDefined())
+                g->m_border |= ConstBoard::ToBorderValue(*e);
+    }
     g->m_blocks = left->m_blocks;
     g->m_blocks.PushBackList(right->m_blocks);
-    g->m_carrier = g->m_con.m_carrier;
-    g->m_carrier.Mark(left->m_carrier);
-    g->m_carrier.Mark(right->m_carrier);
+    ComputeCarrier(g, IsRootGroup(g->m_id));
 }
 
 void Groups::RecomputeFromChildrenToTop(Group* g)
@@ -272,11 +313,58 @@ void Groups::CheckStructure(Group* p)
     }
 }
 
+void Groups::ConnectGroupToEdge(Group* g, cell_t edge, 
+                                SemiConnection* s1, SemiConnection* s2)
+{
+    assert(IsRootGroup(g->m_id));
+    assert(ConstBoard::IsEdge(edge));
+    // These asserts make things safer, but cause problems in
+    // RestructureAfterMove() (when we were already connected, etc).
+    // assert((g->m_border & ConstBoard::ToBorderValue(edge)) == 0);
+    // assert(!g->m_econ[edge].IsDefined());
+    g->m_border |= ConstBoard::ToBorderValue(edge);
+    SetSemis(g, edge, s1, s2);
+    ComputeConnectionCarrier(g->m_econ[edge]);
+    ComputeCarrier(g, true);
+}                                 
+
+bool Groups::CanConnectToEdgeOnSemi(Group* ga, cell_t edge,
+                                    const SemiConnection& x, 
+                                    SemiConnection** outy) const
+{
+    std::cerr << "CanConnectToEdgeOnSemi:\n";
+    assert(!ConstBoard::IsEdge(ga->m_id));
+    assert(ConstBoard::IsEdge(edge));
+
+    if (x.Intersects(ga->m_carrier))
+        return false;
+
+    for (Group::BlockIterator ja(*ga); ja; ++ja) {
+        cell_t ya = *ja;
+        if (ConstBoard::IsEdge(ya))
+            continue;
+
+        for (SemiTable::IteratorPair yit(ya,edge,&m_semis); yit; ++yit) 
+        {
+            const SemiConnection& y = *yit;
+            if (x == y)
+                continue;
+            if (    !y.Intersects(ga->m_carrier)
+                 && !y.Intersects(x))
+            {
+                *outy = &const_cast<SemiConnection&>(y);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // NOTE: g1 must be a valid root group
 // NOTE: g2 needs to be a free group or an edge group.
 // NOTE: merges g1 and g2 at the root of both trees
-cell_t Groups::Merge(Group* g1, Group* g2,
-                     const SemiConnection& s1, const SemiConnection& s2)
+Group* Groups::Merge(Group* g1, Group* g2,
+                     SemiConnection* s1, SemiConnection* s2)
 {
     assert(!ConstBoard::IsEdge(g1->m_id));
     assert(g1->m_parent == SG_NULLMOVE);
@@ -285,21 +373,6 @@ cell_t Groups::Merge(Group* g1, Group* g2,
     assert(IsRootGroup(g1->m_id));
 
     m_rootGroups.Exclude(g1->m_id);
-
-#if 0    
-    for (EdgeIterator e; e; ++e) {
-        int eb = ConstBoard::ToBorderValue(*e);
-        if (eb & g1->m_border & g2->m_border) {
-            Group *p, *c;
-            FindParentOfBlock(g2, *e, &p, &c);
-            if (c->m_id == *e) {
-                // c has a full connection to e
-            } else {
-                // c block touches e
-            }
-        }
-    }
-#endif
     
     cell_t id = ObtainID();
     Group* g = GetGroupById(id);
@@ -309,44 +382,63 @@ cell_t Groups::Merge(Group* g1, Group* g2,
     g->m_parent = SG_NULLMOVE;
     g->m_left = g1->m_id;
     g->m_right = g2->m_id;
-    SetSemis(g, s1, s2);
+    g->m_border = g1->m_border | g2->m_border;
+    SetSemis(g, -1, s1, s2);
+    ComputeConnectionCarrier(g->m_con);
+    std::cerr << "m.s1: " << s1->ToString() << ' ' 
+              << YUtil::HashString(s1->m_hash)<< '\n';
+    std::cerr << "m.s2: " << s2->ToString() << ' ' 
+              << YUtil::HashString(s2->m_hash)<< '\n';
 
     g1->m_parent = id;
-    if (!ConstBoard::IsEdge(g2->m_id))
-        g2->m_parent = id;
+    g2->m_parent = id;
+    
+    // promote edge connections in g1 and g2 to g
+    for (EdgeIterator e; e; ++e) {
+        if ((g->m_border & ConstBoard::ToBorderValue(*e)) == 0)
+            continue;
 
-    std::cerr << "m.s1: " << s1.ToString() << ' ' 
-              << YUtil::HashString(s1.m_hash)<< '\n';
-    std::cerr << "m.s2: " << s2.ToString() << ' ' 
-              << YUtil::HashString(s2.m_hash)<< '\n';
-   
-    ComputeConnectionCarrier(g->m_con);
+        if (g1->m_econ[*e].IsDefined()) {
+
+            g->m_econ[*e] = g1->m_econ[*e];
+            ChangeSemiGID(g->m_econ[*e], g->m_id);
+            g1->m_econ[*e].Clear();
+
+            if (g2->m_econ[*e].IsDefined()) {
+                UnlinkSemis(g2->m_econ[*e]);
+                g2->m_econ[*e].Clear();
+            }
+
+        } else if (g2->m_econ[*e].IsDefined()) {
+
+            g->m_econ[*e] = g2->m_econ[*e];
+            ChangeSemiGID(g->m_econ[*e], g->m_id);
+            g2->m_econ[*e].Clear();
+
+        } else {
+            // g1 or g2 (or both) must touch e
+        }
+    }
+    ComputeCarrier(g1, false);
+    ComputeCarrier(g2, false);
     RecomputeFromChildren(g);
-    return id;
+    return g;
 }
 
 bool Groups::CanMergeOnSemi(const Group* ga, const Group* gb,
                             const SemiConnection& x, 
-                            const SemiConnection** outy) const
+                            SemiConnection** outy)
 {
+    assert(!ConstBoard::IsEdge(ga->m_id));
+    assert(!ConstBoard::IsEdge(gb->m_id));
+
     if (x.Intersects(ga->m_carrier) || x.Intersects(gb->m_carrier))
         return false;
-    
-    assert(!ConstBoard::IsEdge(ga->m_id));
-    bool bIsEdge = ConstBoard::IsEdge(gb->m_id);
 
     for (Group::BlockIterator ja(*ga); ja; ++ja) {
         cell_t ya = *ja;
-        // since ga is not the edge group, we can never connect to some
-        // other group over an edge block.
-        if (ConstBoard::IsEdge(ya))
-            continue;
-
         for (Group::BlockIterator jb(*gb); jb; ++jb) {
             cell_t yb = *jb;
-            if (ConstBoard::IsEdge(yb) && (!bIsEdge || ga->ContainsEdge(yb)))
-                continue;
-
             for (SemiTable::IteratorPair yit(ya,yb,&m_semis); yit; ++yit) 
             {
                 const SemiConnection& y = *yit;
@@ -356,7 +448,7 @@ bool Groups::CanMergeOnSemi(const Group* ga, const Group* gb,
                        && !y.Intersects(gb->m_carrier)
                        && !y.Intersects(x))
                 {
-                    *outy = &y;
+                    *outy = &const_cast<SemiConnection&>(y);
                     return true;
                 }
             }
@@ -366,70 +458,58 @@ bool Groups::CanMergeOnSemi(const Group* ga, const Group* gb,
 }
 
 void Groups::ProcessNewSemis(const Block* block,
-                             std::vector<const SemiConnection*> s)
+                             const std::vector<SemiConnection*>& s)
 {
+    std::cerr << "ProcessNewSemis:\n";
     cell_t bx = block->m_anchor;
-    Group* ga = GetGroup(bx);
+    Group* ga = GetRootGroup(bx);
     for (size_t i = 0; i < s.size(); ++i) {
-        const SemiConnection* y;
-        const SemiConnection* x = s[i];
+        SemiConnection* y;
+        SemiConnection* x = s[i];
         std::cerr << x->ToString() << '\n';
         assert(x->m_p1 == bx || x->m_p2 == bx);
         const cell_t ox = (x->m_p1 == bx ? x->m_p2 : x->m_p1);
         if (ga->ContainsBlock(ox))
             continue;
-        Group* gb = GetGroup(ox);
-        if (CanMergeOnSemi(ga, gb, *x, &y)) {
-            m_rootGroups.Exclude(gb->m_id);
-            std::cerr << "MERGE: " << y->ToString() << '\n';
-            Merge(ga, gb, *x, *y);
-            ga = GetGroup(bx);  // Get the new group for block!!
+        if (ConstBoard::IsEdge(ox)) {
+            if (CanConnectToEdgeOnSemi(ga, ox, *x, &y)) {
+                ConnectGroupToEdge(ga, ox, x, y);
+            }
+        } else {
+            Group* gb = GetRootGroup(ox);
+            if (CanMergeOnSemi(ga, gb, *x, &y)) {
+                m_rootGroups.Exclude(gb->m_id);
+                std::cerr << "MERGE: " << y->ToString() << '\n';
+                Merge(ga, gb, x, y);
+                ga = GetRootGroup(bx);  // Get the new group for block!!
+            }
         }
     }
 }
 
 bool Groups::CanMerge(const Group* ga, const Group* gb, 
-                      const SemiConnection** outx, 
-                      const SemiConnection** outy,
-                      const MarkedCells& avoid) const
+                      SemiConnection** outx, 
+                      SemiConnection** outy,
+                      const MarkedCells& avoid) 
 {
-    bool aIsEdge = ConstBoard::IsEdge(ga->m_id);
-    bool bIsEdge = ConstBoard::IsEdge(gb->m_id);
-    assert(!aIsEdge || !bIsEdge);
-
+    assert(!ConstBoard::IsEdge(ga->m_id));
+    assert(!ConstBoard::IsEdge(gb->m_id));
     std::cerr << "CanMerge::\n";
     for (Group::BlockIterator ia(*ga); ia; ++ia) {
         cell_t xa = *ia;
-        // Must use non-edge blocks to connect to other groups.  
-        // If xa is an edge block then fall through here only if ga is
-        // the actual edge and gb does not already contain it.
-        if (ConstBoard::IsEdge(xa) && (!aIsEdge || gb->ContainsEdge(xa)))
-            continue;
-            
         for (Group::BlockIterator ib(*gb); ib; ++ib) {
             cell_t xb = *ib;
-            if (ConstBoard::IsEdge(xb) && (!bIsEdge || ga->ContainsEdge(xb)))
-                continue;
-
             for (SemiTable::IteratorPair xit(xa,xb,&m_semis); xit; ++xit) {
                 const SemiConnection& x = *xit;
                 if (   x.Intersects(avoid)
                     || x.Intersects(ga->m_carrier) 
                     || x.Intersects(gb->m_carrier))
                     continue;
- 
+                
                 for (Group::BlockIterator ja(*ga, ia.Index()); ja; ++ja) {
                     cell_t ya = *ja;
-                    if (   ConstBoard::IsEdge(ya) 
-                        && (!aIsEdge || gb->ContainsEdge(ya)))
-                        continue;
-                    
                     for (Group::BlockIterator jb(*gb, ib.Index()); jb; ++jb) {
                         cell_t yb = *jb;
-                        if (   ConstBoard::IsEdge(yb)
-                            && (!bIsEdge || ga->ContainsEdge(yb)))
-                            continue;
-
                         for (SemiTable::IteratorPair yit(ya,yb,&m_semis); 
                              yit; ++yit) 
                         {
@@ -441,11 +521,47 @@ bool Groups::CanMerge(const Group* ga, const Group* gb,
                                 && !y.Intersects(gb->m_carrier)
                                 && !y.Intersects(x))
                             {
-                                *outx = &x;
-                                *outy = &y;
+                                *outx = &const_cast<SemiConnection&>(x);
+                                *outy = &const_cast<SemiConnection&>(y);
                                 return true;
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool Groups::CanConnectToEdge(const Group* ga, cell_t edge, 
+                              SemiConnection** outx, 
+                              SemiConnection** outy,
+                              const MarkedCells& avoid)
+{
+    assert(!ConstBoard::IsEdge(ga->m_id));
+    assert(ConstBoard::IsEdge(edge));
+    std::cerr << "CanConnectToEdge::\n";
+    for (Group::BlockIterator ia(*ga); ia; ++ia) {
+        cell_t xa = *ia;
+        for (SemiTable::IteratorPair xit(xa,edge,&m_semis); xit; ++xit) {
+            const SemiConnection& x = *xit;
+            if (x.Intersects(avoid))
+                continue;
+            
+            for (Group::BlockIterator ja(*ga, ia.Index()); ja; ++ja) {
+                cell_t ya = *ja;
+                for (SemiTable::IteratorPair yit(ya,edge,&m_semis); 
+                     yit; ++yit) 
+                {
+                    const SemiConnection& y = *yit;
+                    if (x == y)
+                        continue;
+                    if (!y.Intersects(avoid) && !y.Intersects(x))
+                    {
+                        *outx = &const_cast<SemiConnection&>(x);
+                        *outy = &const_cast<SemiConnection&>(y);
+                        return true;
                     }
                 }
             }
@@ -458,14 +574,14 @@ bool Groups::CanMerge(const Group* ga, const Group* gb,
 bool Groups::TryMerge(Group* g, const GroupList& list, const Board& brd)
 {
     assert(!ConstBoard::IsEdge(g->m_id));
-    const SemiConnection *x, *y;
+    SemiConnection *x, *y;
     const SgBlackWhite color = brd.GetColor(g->m_id);
     for (int i = 0; i < list.Length(); ++i) {
         Group* other = GetGroupById(m_rootGroups[i]);
         if (brd.GetColor(other->m_id) == color 
             && CanMerge(other, g, &x, &y, other->m_carrier)) 
         {
-            Merge(other, g, *x, *y);
+            Merge(other, g, x, y);
             return true;
         }
     }
@@ -475,6 +591,42 @@ bool Groups::TryMerge(Group* g, const GroupList& list, const Board& brd)
 void Groups::RestructureAfterMove(Group* g, cell_t p)
 {
     Group* root = g;
+    MarkedCells avoid = root->m_carrier;
+    if (IsRootGroup(g->m_id)) {
+        for (EdgeIterator e; e; ++e) {
+            std::cerr << ConstBoard::ToString(*e) << '\n';
+            if (   g->m_econ[*e].IsDefined()) {
+                std::cerr << "DEFINED!!\n";
+                for (MarkedCells::Iterator i(g->m_econ[*e].m_carrier); i; ++i)
+                    std::cerr << ConstBoard::ToString(*i) << ' ';
+                std::cerr << "\n";
+            }
+            
+            if (   g->m_econ[*e].IsDefined() 
+                && g->m_econ[*e].m_carrier.Marked(p)) 
+            {
+                assert(g->m_econ[*e].IsBroken());
+                std::cerr << "Broke connection with " 
+                          << ConstBoard::ToString(*e) << '\n';
+
+                avoid.Unmark(g->m_econ[*e].m_carrier);
+                SemiConnection *x, *y;
+                if (CanConnectToEdge(g, *e, &x, &y, avoid)) {
+                    std::cerr << "Reconnected to edge!\n";
+                    ConnectGroupToEdge(g, *e, x, y);
+                    std::cerr << g->ToString() << '\n';
+                    std::cerr << "x:" << x->ToString() << '\n';
+                    std::cerr << "y:" << y->ToString() << '\n';
+                } else {
+                    std::cerr << "Removing connection to edge!\n";
+                    RemoveEdgeConnectionFromGroup(g, *e);
+                    std::cerr << g->ToString() << '\n';
+                }
+                return;
+            }
+        }
+    }
+    assert(!g->IsLeaf());
     Group* left;
     Group* right;
     while (true) {
@@ -488,18 +640,17 @@ void Groups::RestructureAfterMove(Group* g, cell_t p)
         else
             break;
     }
+    assert(g->m_con.IsBroken());        
     assert(g->m_con.m_carrier.Marked(p));
-    assert(g->m_con.IsBroken());
-    MarkedCells avoid = root->m_carrier;
     avoid.Unmark(g->m_con.m_carrier);
 
     // Try to immediately reform the group
     // FIXME: we know which semi was killed, we could try 
     // CanMergeOnSemi() with the remaining one first.
-    const SemiConnection *x, *y;
+    SemiConnection *x, *y;
     if (CanMerge(left, right, &x, &y, avoid)) {
         UnlinkSemis(g->m_con);
-        SetSemis(g, *x, *y);
+        SetSemis(g, -1, x, y);
         ComputeConnectionCarrier(g->m_con);
         RecomputeFromChildrenToTop(g);
         std::cerr << "RE-MERGED!!\n";
@@ -529,14 +680,16 @@ void Groups::RestructureAfterMove(Group* g, cell_t p)
 void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color, 
                                   const Board& brd)
 {
+    // FIXME: THIS IS PROBABLY VERY WRONG>....
+
     for (int i = 0; i < m_rootGroups.Length(); ++i) {
         Group* g = GetGroupById(m_rootGroups[i]);
         if (g->m_carrier.Marked(p)) {
             std::cerr << "RestructureAfterMove:\n";
             BeginDetaching();
             RestructureAfterMove(g, p);
-            for (int i = 0; i < m_detached.Length(); ++i) {
-                Group* g2 = GetGroupById(m_detached[i]);
+            for (int j = 0; j < m_detached.Length(); ++j) {
+                Group* g2 = GetGroupById(m_detached[j]);
                 // Try merging detached groups only for the opponent,
                 // we will rebuild the groups for color using new semi
                 // connections later.
@@ -552,21 +705,18 @@ void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color,
     }
 }
 
-//---------------------------------------------------------------------------
-
-Group* Groups::RootGroupContaining(cell_t from)
+void Groups::UpdateBorderFromBlock(const Block* b)
 {
-    assert(!ConstBoard::IsEdge(from));
-    Group* ret = NULL;
-    for (int i = 0; i < m_rootGroups.Length(); ++i) {
-        Group* g = GetGroupById(m_rootGroups[i]);
-        if (g->ContainsBlock(from)) {
-            assert(ret == NULL);
-            ret = g;
-        }
+    Group* g = GetRootGroup(b->m_anchor);
+    while (true) {
+        g->m_border |= b->m_border;
+        if (g->m_left == SG_NULLMOVE)
+            break;
+        g = ChildContaining(g, b->m_anchor);
     }
-    return ret;
 }
+
+//---------------------------------------------------------------------------
 
 // PRE: g contains both a and b
 Group* Groups::CommonAncestor(Group* g, cell_t a, cell_t b)
@@ -598,6 +748,9 @@ void Groups::HandleBlockMerge(Group* g, cell_t from, cell_t to)
 
 void Groups::FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c)
 {
+    std::cerr << "FindParentOfBlock: a=" << ConstBoard::ToString(a)<<'\n';
+    std::cerr << "g: " << g->ToString() << '\n';
+        
     assert(g->ContainsBlock(a));
     assert(!g->IsLeaf());
     while (true) {
@@ -612,18 +765,14 @@ void Groups::FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c)
     }
 }
 
-Group* Groups::RemoveEdgeFromGroup(Group* g, cell_t edge)
+void Groups::RemoveEdgeConnectionFromGroup(Group* g, cell_t edge)
 {
-    Group *p, *c, *s;
-    FindParentOfBlock(g, edge, &p, &c);
-    s = GetSibling(p, c);
-    BeginDetaching();
-    Detach(c, p);
-    assert(m_detached.Length() == 1);
-    FinishedDetaching();
-    if (p == g)
-        return s;
-    return g;
+    assert(ConstBoard::IsEdge(edge));
+    assert(IsRootGroup(g->m_id));
+    g->m_border ^= ConstBoard::ToBorderValue(edge);
+    UnlinkSemis(g->m_econ[edge]);
+    g->m_econ[edge].Clear();
+    ComputeCarrier(g, true);
 }
 
 void Groups::ReplaceLeafWithGroup(Group* g, cell_t a, Group* z)
@@ -646,8 +795,10 @@ void Groups::ReplaceLeafWithGroup(Group* g, cell_t a, Group* z)
 void Groups::HandleBlockMerge(cell_t from, cell_t to)
 {
     assert(from != to);
-    Group* f = RootGroupContaining(from);
-    Group* t = RootGroupContaining(to);
+    assert(!ConstBoard::IsEdge(from));
+    assert(!ConstBoard::IsEdge(to));
+    Group* f = GetRootGroup(from);
+    Group* t = GetRootGroup(to);
     if (f == t) {
         // f cannot be a leaf since it contains two disjoint blocks
         Group* a = CommonAncestor(f, to, from);
