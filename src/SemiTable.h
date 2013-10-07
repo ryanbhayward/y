@@ -157,6 +157,8 @@ public:
 
     void Include(const SemiConnection& s);
 
+    std::string ToString() const;
+
     int32_t HashToIndex(uint32_t hash) const;
 
     const SemiConnection& LookupHash(uint32_t hash) const;

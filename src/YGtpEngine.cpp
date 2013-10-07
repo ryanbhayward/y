@@ -70,7 +70,7 @@ YGtpEngine::YGtpEngine(int boardSize)
 		&YGtpEngine::CmdSemiConnectedWith);
     RegisterCmd("carrier_between", &YGtpEngine::CmdCarrierBetween);
     RegisterCmd("semis_between", &YGtpEngine::CmdSemisBetween);
-
+    RegisterCmd("print_semitable", &YGtpEngine::CmdPrintSemiTable);
     RegisterCmd("full_connects_multiple", 
 		&YGtpEngine::CmdFullConnectsMultipleBlocks);
 
@@ -116,6 +116,7 @@ void YGtpEngine::CmdAnalyzeCommands(GtpCommand& cmd)
 	"plist/Semi Connected With/semi_connected_with %p %c\n"
 	"plist/Carrier Between/carrier_between %P\n"
 	"vc/Semis Between/semis_between %P\n"
+        "string/Print Semitable/print_semitable\n"
 	"plist/Full Connects Multiple Blocks/full_connects_multiple %c\n"
         "plist/Dirty Con Cells/dirty_con_cells\n"
         "plist/Dirty Weight Cells/dirty_weight_cells\n"
@@ -701,6 +702,11 @@ void YGtpEngine::CmdSemisBetween(GtpCommand& cmd)
         cmd << ConstBoard::ColorToString(color) << ' ' 
             << semis[i].ToString() << '\n';
     }
+}
+
+void YGtpEngine::CmdPrintSemiTable(GtpCommand& cmd)
+{
+    cmd << m_brd.GetSemis().ToString();
 }
 
 void YGtpEngine::CmdFullConnectsMultipleBlocks(GtpCommand& cmd)

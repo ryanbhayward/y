@@ -212,6 +212,19 @@ void SemiTable::TransferEndpoints(cell_t from, cell_t to)
     }
 }
 
+std::string SemiTable::ToString() const
+{
+    std::ostringstream os;
+    for (int i = 0; i < m_usedlist.Length(); ++i) {
+        const int index = m_usedlist[i];
+        const SemiConnection& s = m_entries[index];
+        os << std::setw(3) << index 
+           << ' ' << YUtil::HashString(s.m_hash) 
+           << ' ' << s.ToString() << '\n';
+    }
+    return os.str();
+}
+
 #if 0
 void SemiTable::IteratorSingle::operator++()
 {

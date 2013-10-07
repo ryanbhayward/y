@@ -302,8 +302,13 @@ struct Board
     void CheckConsistency();
     void DumpBlocks() ;
 
-private:
+    const SemiTable& GetSemis() const
+    { return *m_state.m_semis.get(); }
 
+    SemiTable& GetSemis()
+    { return *m_state.m_semis.get(); }
+
+private:
     template<typename T, int SIZE>
     class CarrierList : public SgArrayList<T, SIZE>
     {
@@ -547,12 +552,6 @@ private:
     Carrier& GetConnection(cell_t p1, cell_t p2);
 
     const Carrier& GetConnection(cell_t p1, cell_t p2) const;
-
-    const SemiTable& GetSemis() const
-    { return *m_state.m_semis.get(); }
-
-    SemiTable& GetSemis()
-    { return *m_state.m_semis.get(); }
 
     const Groups& GetGroups() const
     { return *m_state.m_groups.get(); }

@@ -63,6 +63,7 @@ public:
     void CmdSemiConnectedWith(GtpCommand& cmd);
     void CmdCarrierBetween(GtpCommand& cmd);
     void CmdSemisBetween(GtpCommand& cmd);
+    void CmdPrintSemiTable(GtpCommand& cmd);
     void CmdFullConnectsMultipleBlocks(GtpCommand& cmd);
     void CmdDirtyConCells(GtpCommand& cmd);
     void CmdDirtyWeightCells(GtpCommand& cmd);
