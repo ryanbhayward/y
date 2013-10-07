@@ -220,6 +220,8 @@ std::string SemiTable::ToString() const
         const SemiConnection& s = m_entries[index];
         os << std::setw(3) << index 
            << ' ' << YUtil::HashString(s.m_hash) 
+           << ' ' << std::setw(3) << (int)s.m_group_id 
+           << ' ' << (int)s.m_con_type
            << ' ' << s.ToString() << '\n';
     }
     return os.str();

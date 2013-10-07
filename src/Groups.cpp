@@ -608,11 +608,14 @@ void Groups::RestructureAfterMove(Group* g, cell_t p)
                 assert(g->m_econ[*e].IsBroken());
                 std::cerr << "Broke connection with " 
                           << ConstBoard::ToString(*e) << '\n';
-
+                
                 avoid.Unmark(g->m_econ[*e].m_carrier);
                 SemiConnection *x, *y;
                 if (CanConnectToEdge(g, *e, &x, &y, avoid)) {
                     std::cerr << "Reconnected to edge!\n";
+                    // unlink the old remaining semi
+                    UnlinkSemis(g->m_econ[*e]);
+                    // make connection with new semis
                     ConnectGroupToEdge(g, *e, x, y);
                     std::cerr << g->ToString() << '\n';
                     std::cerr << "x:" << x->ToString() << '\n';
