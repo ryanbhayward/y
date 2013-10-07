@@ -692,10 +692,14 @@ void YGtpEngine::CmdSemisBetween(GtpCommand& cmd)
     cmd.CheckNuArg(2);
     int p1 = CellArg(cmd, 0);
     int p2 = CellArg(cmd, 1);
+    // handle both p1 and p2 being an edge
+    SgBlackWhite color = SG_BLACK;
+    if (m_brd.GetColor(p1) == SG_WHITE || m_brd.GetColor(p2) == SG_WHITE)
+        color = SG_WHITE;
     std::vector<SemiConnection> semis = m_brd.GetSemisBetween(p1, p2);
     for (size_t i = 0; i < semis.size(); ++i) {
-        cmd << ConstBoard::ColorToString(m_brd.GetColor(p1))
-            << ' ' << semis[i].ToString() << '\n';
+        cmd << ConstBoard::ColorToString(color) << ' ' 
+            << semis[i].ToString() << '\n';
     }
 }
 
