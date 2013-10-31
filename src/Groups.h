@@ -218,6 +218,8 @@ public:
     
     void HandleBlockMerge(cell_t from, cell_t to);
 
+    Group* GetRootGroup(Group* g);
+
     Group* GetRootGroup(cell_t p);
 
     const Group* GetRootGroup(cell_t p) const
@@ -225,7 +227,9 @@ public:
 
     void UpdateBorderFromBlock(const Block* b);
 
-    void RemoveEdgeConnectionFromGroup(Group* g, cell_t edge);
+    void RemoveEdgeConnection(Group* g, cell_t edge);
+
+    void RemoveEdgeConnections(Group* g);
 
     std::string Encode(const Group* g) const;
 
@@ -238,6 +242,7 @@ private:
     GroupList m_rootGroups;
     GroupList m_freelist;
     GroupList m_detached;
+    GroupList m_modified;
     bool m_detaching;
 
     SemiTable& m_semis;
@@ -290,11 +295,15 @@ private:
                           SemiConnection** outx, 
                           SemiConnection** outy,
                           const MarkedCells& avoid);
+
+    void ComputeEdgeConnections(Group* g);
         
     Group* Merge(Group* g1, Group* g2, 
                  SemiConnection* s1, SemiConnection* s2);
 
     bool TryMerge(Group* g, const GroupList& list, const Board& brd);
+
+    void UnlinkEdgeConnections(Group* g);
 
     void RestructureAfterMove(Group* g, cell_t p);
 

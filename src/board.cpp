@@ -470,15 +470,15 @@ void Board::RemoveEdgeConnections(Block* b, int new_borders)
     Group* g = GetGroups().GetRootGroup(b->m_anchor);
     if (new_borders & ConstBoard::BORDER_WEST) {
         GetConnection(Const().WEST, b->m_anchor).Clear();
-        GetGroups().RemoveEdgeConnectionFromGroup(g, ConstBoard::WEST);
+        GetGroups().RemoveEdgeConnection(g, ConstBoard::WEST);
     }
     if (new_borders & ConstBoard::BORDER_EAST) {
         GetConnection(Const().EAST, b->m_anchor).Clear();
-        GetGroups().RemoveEdgeConnectionFromGroup(g, ConstBoard::EAST);
+        GetGroups().RemoveEdgeConnection(g, ConstBoard::EAST);
     }
     if (new_borders & ConstBoard::BORDER_SOUTH) {
         GetConnection(Const().SOUTH, b->m_anchor).Clear();
-        GetGroups().RemoveEdgeConnectionFromGroup(g, ConstBoard::SOUTH);
+        GetGroups().RemoveEdgeConnection(g, ConstBoard::SOUTH);
     }
 }
 
