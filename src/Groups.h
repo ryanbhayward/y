@@ -242,7 +242,7 @@ private:
     GroupList m_rootGroups;
     GroupList m_freelist;
     GroupList m_detached;
-    GroupList m_modified;
+    GroupList m_recomputeEdgeCon;
     bool m_detaching;
 
     SemiTable& m_semis;
@@ -339,7 +339,7 @@ private:
 
     void FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c);
     Group* CommonAncestor(Group* g, cell_t a, cell_t b);
-    void HandleBlockMerge(Group* g, cell_t from, cell_t to);
+    void RecursiveRelabel(Group* g, cell_t from, cell_t to);
     void ReplaceLeafWithGroup(Group* g, cell_t a, Group* z);
 
     void PrintRootGroups();

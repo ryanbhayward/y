@@ -527,10 +527,10 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
 
 void Board::Play(SgBlackWhite color, cell_t p) 
 {
-    // std::cerr << "=============================\n"
-    //           << ToString() << '\n'
-    //           << "p=" << ToString(p) << '\n'
-    //           << "pval=" << (int)p << '\n';
+    std::cerr << "=============================\n"
+              << ToString() << '\n'
+              << "p=" << ToString(p) << '\n'
+              << "pval=" << (int)p << '\n';
     Statistics::Get().m_numMovesPlayed++;
     m_dirtyConCells.Clear();
     m_dirtyWeightCells.Clear();
@@ -616,7 +616,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     if (GroupBorder(p) == ConstBoard::BORDER_ALL)
     {
         m_state.m_vcWinner = color;
-        m_state.m_vcGroupAnchor = GetGroup(p)->m_id;
+        m_state.m_vcGroupAnchor = p;
     }
 
     // Check for a solid win
@@ -624,9 +624,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     {
         m_state.m_winner = color;
     }
-    
-    //std::cerr << m_state.m_group[p]->m_border << '\n';
-    //std::cerr << ToString();
+
     FlipToPlay();
 }
 
