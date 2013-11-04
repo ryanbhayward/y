@@ -304,18 +304,21 @@ void Groups::Detach(Group* g, Group* p)
     assert(!ConstBoard::IsEdge(sid));
     Group* sibling = GetGroupById(sid);
     sibling->m_parent = p->m_parent;
+
+    // p must now die... poor p, so noble, so brave...
+    m_recomputeEdgeCon.Exclude(p->m_id);
     if (IsRootGroup(p->m_id)) {
         m_rootGroups.Exclude(p->m_id);
-        Free(p);
         m_rootGroups.PushBack(sid);
         m_recomputeEdgeCon.Include(sid);
-        return;
-    } else {
-        m_recomputeEdgeCon.Include(GetRootGroup(p)->m_id);
         Free(p);
+        return;
     }
     Group* gp = GetGroupById(p->m_parent);
     gp->ChangeChild(p->m_id, sid);
+    m_recomputeEdgeCon.Include(GetRootGroup(p)->m_id);
+    Free(p);
+
     RecomputeFromChildren(gp);
     // If both semis in gp do not connect to sibling, then sibling
     // cannot really be a child of gp. Fix this by detaching sibling
@@ -751,7 +754,8 @@ void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color,
             std::cerr << "RestructureAfterMove:\n";
             BeginDetaching();
             RestructureAfterMove(g, p);
-            std::cerr << "recomputeEdgeCon list:\n";
+            std::cerr << "recomputeEdgeCon list: " 
+                      << m_recomputeEdgeCon.Length() << " elements\n";
             for (int j = 0; j < m_recomputeEdgeCon.Length(); ++j) {
                 std::cerr << "needs " << (int)m_recomputeEdgeCon[j] << '\n';
                 Group* g2 = GetGroupById(m_recomputeEdgeCon[j]);
