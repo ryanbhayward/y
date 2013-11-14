@@ -258,17 +258,19 @@ void Groups::ComputeCarrier(Group* g, bool root)
 void Groups::RecomputeFromChildren(Group* g)
 {
     assert(!ConstBoard::IsEdge(g->m_id));
-    assert(g->m_left != SG_NULLMOVE);
-    const Group* left  = GetGroupById(g->m_left);
-    const Group* right = GetGroupById(g->m_right);
-    g->m_border = left->m_border | right->m_border;
-    if (IsRootGroup(g->m_id)) {
-        for (EdgeIterator e; e; ++e)
-            if (g->m_econ[*e].IsDefined())
-                g->m_border |= ConstBoard::ToBorderValue(*e);
+    if (!g->IsLeaf()) {
+        // Obtain border and block list from children
+        const Group* left  = GetGroupById(g->m_left);
+        const Group* right = GetGroupById(g->m_right);
+        g->m_border = left->m_border | right->m_border;
+        if (IsRootGroup(g->m_id)) {
+            for (EdgeIterator e; e; ++e)
+                if (g->m_econ[*e].IsDefined())
+                    g->m_border |= ConstBoard::ToBorderValue(*e);
+        }
+        g->m_blocks = left->m_blocks;
+        g->m_blocks.PushBackList(right->m_blocks);
     }
-    g->m_blocks = left->m_blocks;
-    g->m_blocks.PushBackList(right->m_blocks);
     ComputeCarrier(g, IsRootGroup(g->m_id));
 }
 

@@ -671,8 +671,9 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
                 if (!carrier.Contains(p))
                     potential.PushBack(p);
             }
-            if (potential.Length() < 2 && !GetConnection(key, b2).IsEmpty()) 
+            if ((potential.Length() < 2) && !GetConnection(key, b2).IsEmpty()) {
                 continue;
+            }
 
             std::cerr << "    checking if disjoint\n";
 

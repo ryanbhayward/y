@@ -92,8 +92,9 @@ void SemiTable::Include(const SemiConnection& s)
         cell_t type = other.m_con_type;
         
         std::cerr << "Replacing SemiConnection!\n"
-                  << "gid: " << group_id << " type: " << type << "s: "
-                  << s.ToString() << '\n';
+                  << "gid: " << group_id << " type: " << type << '\n' 
+                  << "old: " << other.ToString() << '\n'
+                  << "new: " << s.ToString() << '\n';
         
         m_entries[replace_index] = s;
         m_entries[replace_index].m_group_id = group_id;
