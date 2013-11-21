@@ -185,7 +185,7 @@ struct Board
     SgBoardColor GetVCWinner() const { return m_state.m_vcWinner; }
     bool IsVCWinner(SgBlackWhite player) const
     { return player == m_state.m_vcWinner; }
-    cell_t WinningVCGroup() const { return m_state.m_vcGroupAnchor; }
+    cell_t WinningVCStonePlayed() const { return m_state.m_vcStonePlayed; }
 
     //------------------------------------------------------------
 
@@ -471,7 +471,7 @@ private:
 
         SgBoardColor m_winner;
         SgBoardColor m_vcWinner;
-        cell_t       m_vcGroupAnchor;
+        cell_t       m_vcStonePlayed;
 
         State() { };
         State(int T);

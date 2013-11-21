@@ -502,8 +502,7 @@ bool Groups::CanMergeOnSemi(const Group* ga, const Group* gb,
     return false;
 }
 
-void Groups::ProcessNewSemis(const Block* block,
-                             const std::vector<SemiConnection*>& s)
+void Groups::ProcessNewSemis(const std::vector<SemiConnection*>& s)
 {
     std::cerr << "ProcessNewSemis: (" << s.size() << ")\n";
     for (size_t i = 0; i < s.size(); ++i) {

@@ -200,7 +200,7 @@ void Board::CopyState(Board::State& a, const Board::State& b)
 
     a.m_winner = b.m_winner;
     a.m_vcWinner = b.m_vcWinner;
-    a.m_vcGroupAnchor = b.m_vcGroupAnchor;
+    a.m_vcStonePlayed = b.m_vcStonePlayed;
 }
 
 //---------------------------------------------------------------------------
@@ -312,7 +312,7 @@ void Board::CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border)
     GetSemis().ClearNewSemis();
     for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
         ConstructSemisWithKey(*it, color);
-    GetGroups().ProcessNewSemis(b, GetSemis().GetNewSemis());
+    GetGroups().ProcessNewSemis(GetSemis().GetNewSemis());
 }
 
 bool Board::IsAdjacent(cell_t p, const Block* b)
@@ -349,7 +349,7 @@ void Board::AddStoneToBlock(cell_t p, int border, Block* b)
     GetSemis().ClearNewSemis();
     for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
         ConstructSemisWithKey(*it, b->m_color);
-    GetGroups().ProcessNewSemis(b, GetSemis().GetNewSemis());
+    GetGroups().ProcessNewSemis(GetSemis().GetNewSemis());
 }
 
 void Board::UpdateConnectionsToNewAnchor(const Block* from, const Block* to,
@@ -462,7 +462,7 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
     GetSemis().ClearNewSemis();
     for (MarkedCellsWithList::Iterator it(m_dirtyConCells); it; ++ it)
         ConstructSemisWithKey(*it, largestBlock->m_color);
-    GetGroups().ProcessNewSemis(largestBlock, GetSemis().GetNewSemis());
+    GetGroups().ProcessNewSemis(GetSemis().GetNewSemis());
 }
 
 void Board::RemoveEdgeConnections(Block* b, int new_borders)
@@ -606,17 +606,18 @@ void Board::Play(SgBlackWhite color, cell_t p)
     }
     
     // Break old win if necessary
-    if (HasWinningVC() && GroupBorder(m_state.m_vcGroupAnchor) 
-        != ConstBoard::BORDER_ALL)
+    if (HasWinningVC() 
+        && GroupBorder(m_state.m_vcStonePlayed) != ConstBoard::BORDER_ALL)
     {
         m_state.m_vcWinner = SG_EMPTY;
     }
 
     // Check for a new vc win
-    if (GroupBorder(p) == ConstBoard::BORDER_ALL)
+    if (!HasWinningVC() 
+        && GroupBorder(p) == ConstBoard::BORDER_ALL)
     {
         m_state.m_vcWinner = color;
-        m_state.m_vcGroupAnchor = p;
+        m_state.m_vcStonePlayed = p;
     }
 
     // Check for a solid win

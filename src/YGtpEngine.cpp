@@ -216,7 +216,8 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
     {
         if (m_brd.HasWinningVC()) {
             std::cerr << "VC Win Detected! Playing into carrier...\n";
-            MarkedCells carrier = m_brd.GroupCarrier(m_brd.WinningVCGroup());
+            MarkedCells carrier 
+                = m_brd.GroupCarrier(m_brd.WinningVCStonePlayed());
             std::vector<cell_t> car;
             Include(car, carrier);
             return car[SgRandom::Global().Int(car.size())];
