@@ -505,15 +505,17 @@ bool Groups::CanMergeOnSemi(const Group* ga, const Group* gb,
 void Groups::ProcessNewSemis(const Block* block,
                              const std::vector<SemiConnection*>& s)
 {
-    std::cerr << "ProcessNewSemis:\n";
-    cell_t bx = block->m_anchor;
-    Group* ga = GetRootGroup(bx);
+    std::cerr << "ProcessNewSemis: (" << s.size() << ")\n";
     for (size_t i = 0; i < s.size(); ++i) {
         SemiConnection* y;
         SemiConnection* x = s[i];
         std::cerr << x->ToString() << '\n';
-        assert(x->m_p1 == bx || x->m_p2 == bx);
-        const cell_t ox = (x->m_p1 == bx ? x->m_p2 : x->m_p1);
+        cell_t bx = x->m_p1;
+        cell_t ox = x->m_p2;
+        if (ConstBoard::IsEdge(bx))
+            std::swap(bx, ox);
+        assert(!ConstBoard::IsEdge(bx));
+        Group* ga = GetRootGroup(bx);
         if (ga->ContainsBlock(ox))
             continue;
         if (ConstBoard::IsEdge(ox)) {
