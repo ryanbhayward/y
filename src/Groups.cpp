@@ -777,6 +777,7 @@ void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color,
                 if (brd.GetColor(g->m_blocks[0]) == color 
                     || !TryMerge(g2, m_rootGroups, brd)) 
                 {
+                    std::cerr << "Adding as new root group.\n";
                     m_rootGroups.PushBack(g2->m_id);
                     ComputeEdgeConnections(g2);
                 }
@@ -878,7 +879,7 @@ void Groups::ReplaceLeafWithGroup(Group* g, cell_t a, Group* z)
               << "c: " << c->ToString() << '\n'
               << "z: " << z->ToString() << '\n';
     Free(c);
-    RecomputeFromChildren(p);
+    RecomputeFromChildrenToTop(p);
 }
 
 void Groups::HandleBlockMerge(cell_t from, cell_t to)
@@ -886,13 +887,16 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
     assert(from != to);
     assert(!ConstBoard::IsEdge(from));
     assert(!ConstBoard::IsEdge(to));
-    std::cerr << "HandleBlockMerge:\n";
+    std::cerr << "HandleBlockMerge: "
+              << "f=" << ConstBoard::ToString(from) << ' '
+              << "t=" << ConstBoard::ToString(to) << '\n';
     Group* f = GetRootGroup(from);
     Group* t = GetRootGroup(to);
     if (f == t) {
         // Merging two blocks from the same group.  
         // Note: f cannot be a leaf since f contains at least two 
         // disjoint blocks.
+        std::cerr << "Merging groups of same root group.\n";
         Group* a = CommonAncestor(f, to, from);
         Group* z = ChildContaining(a, from);
         Group* x = ChildContaining(a, to);
@@ -905,6 +909,7 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             // Try to detach a leaf so the non-leaf child becomes
             // the root group. If both are leafs, then it doesn't
             // matter which we detach. 
+            std::cerr << "f == a!!!\n";
             if (x->IsLeaf())
                 std::swap(x, z);
 
@@ -933,6 +938,7 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             // This detach should not chain up the tree. Since we are
             // only reorganizing the tree edge connections do not
             // neet to be performed.
+            std::cerr << "f != a!!!\n";
             Detach(z, a);
             ReplaceLeafWithGroup(f, to, z);
             // Detaching z should not cause a chain of detaches
@@ -946,6 +952,9 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
         // The survivor needs to check for new edge connections.
         // TODO: we could save some work and merge f's edge connections
         // that t does not know about.
+        std::cerr << "Merging different root groups.\n";
+        std::cerr << "f->id=" << (int)f->m_id << '\n';
+        std::cerr << "t->id=" << (int)t->m_id << '\n';
         RecursiveRelabel(f, from, to);
         if (f->IsLeaf())
             std::swap(f, t);
@@ -958,6 +967,9 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             ReplaceLeafWithGroup(f, to, t);
         }
         ComputeEdgeConnections(f);
+        std::cerr << "HandleBlockMerge: complete. Resulting group:\n"
+                  << Encode(f) << '\n'
+                  << f->ToString() << '\n';
     }
 }
 

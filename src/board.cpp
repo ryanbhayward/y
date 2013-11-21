@@ -431,6 +431,9 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         const Block* adjBlock = GetBlock(*it);
         if (adjBlock == largestBlock)
             continue;
+        std::cerr << "*** MergingBlocks: " 
+                  << ToString(adjBlock->m_anchor) << " into " 
+                  << ToString(largestBlock->m_anchor) << '\n';
         largestBlock->m_border |= adjBlock->m_border;
         for (Block::StoneIterator stn(adjBlock->m_stones); stn; ++stn)
         {
@@ -529,8 +532,11 @@ void Board::Play(SgBlackWhite color, cell_t p)
 {
     std::cerr << "=============================\n"
               << ToString() << '\n'
-              << "p=" << ToString(p) << '\n'
-              << "pval=" << (int)p << '\n';
+              << ConstBoard::ColorToString(color) 
+              << " p=" << ToString(p) << '(' << (int)p << ")\n"
+              << "vcwin=" << HasWinningVC() << ' '
+              << (HasWinningVC() ? ToString(m_state.m_vcStonePlayed) : "") 
+              << '\n';
     Statistics::Get().m_numMovesPlayed++;
     m_dirtyConCells.Clear();
     m_dirtyWeightCells.Clear();
@@ -604,7 +610,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
             }
         }
     }
-    
+
     // Break old win if necessary
     if (HasWinningVC() 
         && GroupBorder(m_state.m_vcStonePlayed) != ConstBoard::BORDER_ALL)
