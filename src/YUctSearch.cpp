@@ -4,6 +4,7 @@
 //----------------------------------------------------------------------------
 
 #include "SgSystem.h"
+#include "YSystem.h"
 #include "YUctSearch.h"
 #include "YUctSearchUtil.h"
 
@@ -106,7 +107,7 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
 
 void YUctThreadState::Execute(SgMove move)
 {
-    // std::cerr << m_brd.ToString() << '\n'
+    // YTrace() << m_brd.ToString() << '\n'
     //           << "move=" << m_brd.ToString(move) << '\n';
     m_brd.Play(m_brd.ToPlay(), move);
     //m_brd.GroupExpand(move);
@@ -148,12 +149,12 @@ SgMove YUctThreadState::GenerateGlobalMove()
     // m_weights[toPlay].Build();
     // move = m_weights[toPlay].Choose(m_random);
     move = m_weights[m_brd.ToPlay()].ChooseLinear(m_random);
-    //std::cerr << "global move = " << m_brd.ToString(move) << '\n';
+    //YTrace() << "global move = " << m_brd.ToString(move) << '\n';
     YUctSearch::PlayoutStatistics::Get().m_globalMoves++;
 
     if (!m_brd.IsEmpty(move)) {
         //throw BenzeneException() << "Weighted move not empty!\n";
-        std::cerr << "Weighted move not empty!\n";
+        YTrace() << "Weighted move not empty!\n";
         abort();
     }
     return move;
@@ -176,7 +177,7 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
     {
         move = GenerateGlobalMove();
     }
-    // std::cerr << m_brd.ToString() << '\n'
+    // YTrace() << m_brd.ToString() << '\n'
     //           << "Move: " << m_brd.ToString(move) 
     //           << " Weight: " << m_weights[m_brd.ToPlay()][move] << '\n';
     return move;
@@ -184,7 +185,7 @@ SgMove YUctThreadState::GeneratePlayoutMove(bool& skipRaveUpdate)
 
 void YUctThreadState::ExecutePlayout(SgMove move)
 {
-    // std::cerr << m_brd.ToString() << '\n'
+    // YTrace() << m_brd.ToString() << '\n'
     //           << "move=" << m_brd.ToString(move) << '\n';
     m_brd.Play(m_brd.ToPlay(), move);
     m_weights[SG_BLACK].SetWeight(move, 0.0f);
@@ -235,7 +236,7 @@ void YUctThreadState::StartPlayouts()
     if (m_search.NumberPlayouts() > 1) {
         m_brd.SetSavePoint2();
         // TODO: copy the weights somewhere
-        std::cerr << "NumberPlayouts() > 1 NOT SUPPORTED!\n";
+        YTrace() << "NumberPlayouts() > 1 NOT SUPPORTED!\n";
         abort();
     }
 }

@@ -5,6 +5,7 @@
 #include <fstream>
 
 #include "SgSystem.h"
+#include "SgDebug.h"
 #include "SgRandom.h"
 #include "SgSearchControl.h"
 #include "SgSearch.h"
@@ -217,7 +218,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
     if (m_playerName == "uct")
     {
         if (m_brd.HasWinningVC()) {
-            std::cerr << "VC Win Detected! Playing into carrier...\n";
+            SgDebug() << "VC Win Detected! Playing into carrier...\n";
             MarkedCells carrier 
                 = m_brd.GroupCarrier(m_brd.WinningVCStonePlayed());
             std::vector<cell_t> car;
@@ -233,7 +234,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
         if (useGameClock)
         {
             double timeLeft = m_timeLeft[toPlay];
-            std::cerr << "timeLeft=" << timeLeft << ' ';
+            SgDebug() << "timeLeft=" << timeLeft << ' ';
             if (timeLeft > 0)
             {
                 maxTime = timeLeft / 10.0;
@@ -244,7 +245,7 @@ int YGtpEngine::GenMove(bool useGameClock, SgBlackWhite toPlay)
         }
         if (maxTime < 0.5)
             maxTime = 0.5;
-        std::cerr << "maxTime=" << maxTime << " maxGames=" << maxGames << '\n';
+        SgDebug() << "maxTime=" << maxTime << " maxGames=" << maxGames << '\n';
         float score = m_uctSearch.Search(maxGames, maxTime, sequence);
         m_uctSearch.WriteStatistics(std::cerr);
         std::cerr << "Score          " << std::setprecision(2) << score << '\n';
@@ -476,7 +477,7 @@ void YGtpEngine::CmdSolve(GtpCommand& cmd)
     {
         cmd << (toPlay == SG_BLACK ? "black" : "white") << ' ' 
             << (pv.IsEmpty() ? "none" : m_brd.ToString(pv[0]));
-        std::cerr << "PV: " << PrintPV(pv, m_brd) << '\n';
+        SgDebug() << "PV: " << PrintPV(pv, m_brd) << '\n';
     }
     else if (value == -10)
         cmd << (toPlay == SG_BLACK ? "white" : "black") << ' '
@@ -927,7 +928,7 @@ void YGtpEngine::CmdLoadSgf(GtpCommand& cmd)
     NewGame(size);
     if (YSgUtil::NodeHasSetupInfo(root))
     {
-        std::cerr << "Root has setup info!\n";
+        SgDebug() << "Root has setup info!\n";
         SetPosition(root);
     }
     // Play moveNumber moves; stop if we hit the end of the game                

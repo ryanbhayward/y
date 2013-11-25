@@ -230,14 +230,14 @@ void Board::DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color)
     if (size >= 2) {
         if (!cell->IsFullConnected(b, color))
         {
-            std::cerr << "MORE THAN 2 LIBERTIES BUT NOT FULL CONNECTED!!\n";
-            std::cerr << ToString() << '\n'
-                      << " p = " << ToString(p)
-                      << " b = " << ToString(b->m_anchor) 
-                      << '\n';
+            YTrace() << "MORE THAN 2 LIBERTIES BUT NOT FULL CONNECTED!!\n";
+            YTrace() << ToString() << '\n'
+                     << " p = " << ToString(p)
+                     << " b = " << ToString(b->m_anchor) 
+                     << '\n';
             for (int i =0; i < GetConnection(p, b->m_anchor).Size(); ++i) {
-                std::cerr << ' ' << ToString(GetConnection(p, b->m_anchor)[i]);
-                std::cerr << '\n';
+                YTrace() << ' ' << ToString(GetConnection(p, b->m_anchor)[i]);
+                YTrace() << '\n';
             }
             abort();
         }
@@ -269,7 +269,7 @@ void Board::AddSharedLibertiesAroundPoint(Block* b1, cell_t p, cell_t skip)
             continue;
 	}
         Block* b2 = GetBlock(*it);
-        // std::cerr << "p=" << ToString(p) 
+        // YTrace() << "p=" << ToString(p) 
         //           << " b1->anchor=" << ToString(b1->m_anchor) 
         //           << " b2->anchor=" << ToString(b2->m_anchor)
         //           << " it=" << ToString(*it) << '\n';
@@ -325,7 +325,7 @@ bool Board::IsAdjacent(cell_t p, const Block* b)
 
 void Board::AddStoneToBlock(cell_t p, int border, Block* b)
 {
-    std::cerr << "AddStoneToBlock:\n";
+    YTrace() << "AddStoneToBlock:\n";
     b->m_stones.PushBack(p);
     int new_borders = ~b->m_border & border;
     if (new_borders) {
@@ -431,7 +431,7 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         const Block* adjBlock = GetBlock(*it);
         if (adjBlock == largestBlock)
             continue;
-        std::cerr << "*** MergingBlocks: " 
+        YTrace() << "*** MergingBlocks: " 
                   << ToString(adjBlock->m_anchor) << " into " 
                   << ToString(largestBlock->m_anchor) << '\n';
         largestBlock->m_border |= adjBlock->m_border;
@@ -530,16 +530,13 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
 
 void Board::Play(SgBlackWhite color, cell_t p) 
 {
-    std::cerr << "=============================\n"
-              << ToString() << '\n'
-              << ConstBoard::ColorToString(color) 
-              << " p=" << ToString(p) << '(' << (int)p << ")\n"
-              << "vcwin=" << HasWinningVC() << ' '
-              << (HasWinningVC() ? ToString(m_state.m_vcStonePlayed) : "") 
-              << '\n';
-    YTrace() << "THIS SHOULD NOT APPEAR!!!! " << (int)p << "b=" 
-             << ToString(p) << '\n';
-
+    YTrace() << "=============================\n"
+             << ToString() << '\n'
+             << ConstBoard::ColorToString(color) 
+             << " p=" << ToString(p) << '(' << (int)p << ")\n"
+             << "vcwin=" << HasWinningVC() << ' '
+             << (HasWinningVC() ? ToString(m_state.m_vcStonePlayed) : "") 
+             << '\n';
     Statistics::Get().m_numMovesPlayed++;
     m_dirtyConCells.Clear();
     m_dirtyWeightCells.Clear();
@@ -645,12 +642,12 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
     const Cell* cell = GetCell(key);
     if (cell->m_FullConnects[color].Length() < 2)
         return;
-    std::cerr << "Working on " << ToString(key) << ":\n";
+    YTrace() << "Working on " << ToString(key) << ":\n";
     for (int i = 0; i < cell->m_FullConnects[color].Length(); ++i) {
         cell_t b1 = cell->m_FullConnects[color][i];
         SemiConnection::Carrier carrier;
 
-        std::cerr << "  " << ToString(b1) << '\n';
+        YTrace() << "  " << ToString(b1) << '\n';
 
         // TODO: handle more than 2 cells in carrier
         for(int j = 0; j < 2 && j < GetConnection(key, b1).Length() ; ++j)
@@ -674,7 +671,7 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
                     continue;
             }
 
-            std::cerr << "    " << ToString(b2) << '\n';
+            YTrace() << "    " << ToString(b2) << '\n';
             SgArrayList<cell_t, 10> potential;
             for (int k = 0; k < GetConnection(key, b2).Length(); ++k) {
                 cell_t p = GetConnection(key, b2)[k];
@@ -685,7 +682,7 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
                 continue;
             }
 
-            std::cerr << "    checking if disjoint\n";
+            YTrace() << "    checking if disjoint\n";
 
             // TODO: use the same function as above to select two 
             // cells from 'potential'.
@@ -716,9 +713,9 @@ void Board::CheckConsistency()
         int color = GetColor(*it);
         if (color != SG_BLACK && color != SG_WHITE && color != SG_EMPTY)
         {
-            std::cerr << ToString();
-            std::cerr << ToString(*it) << " color = " 
-                      << GetColor(*it) << '\n';
+            YTrace() << ToString();
+            YTrace() << ToString(*it) << " color = " 
+                     << GetColor(*it) << '\n';
             abort();
         }
     }
@@ -729,8 +726,8 @@ void Board::DumpBlocks()
     for(CellAndEdgeIterator i(Const()); i; ++i) {
         if (GetColor(*i) != SG_EMPTY) {
             const Block * b = GetBlock(*i);
-            std::cerr << "id=" << ToString(*i)  << ' ' 
-                      << b->ToString(Const()) << '\n';
+            YTrace() << "id=" << ToString(*i)  << ' ' 
+                     << b->ToString(Const()) << '\n';
         }
     }
 }

@@ -4,6 +4,7 @@
 #include "SgArrayList.h"
 #include "SgHash.h"
 #include "SgBoardColor.h"
+#include "YSystem.h"
 #include "YException.h"
 #include "ConstBoard.h"
 
@@ -53,8 +54,8 @@ struct FullConnection
 
     void Break(int32_t semi)
     {
-        std::cerr << "Break: semi = " << semi << '\n';
-        std::cerr << ToString() << '\n';
+        YTrace() << "Break: semi = " << semi << '\n';
+        YTrace() << ToString() << '\n';
         if (m_semi1 == semi)
             m_semi1 = -1;
         else {
@@ -111,13 +112,13 @@ public:
 
     void BreakConnection(int32_t semi, cell_t type)
     {
-        std::cerr << "BreakConnection: breaking " << semi << '\n';
+        YTrace() << "BreakConnection: breaking " << semi << '\n';
         if (type == -1)
             m_con.Break(semi);
         else {
             m_econ[type].Break(semi);
         }
-        std::cerr << "Break successful!\n";
+        YTrace() << "Break successful!\n";
     }
 
     std::string BlocksToString() const;

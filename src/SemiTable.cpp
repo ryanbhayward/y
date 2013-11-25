@@ -42,9 +42,9 @@ void SemiTable::Include(const SemiConnection& s)
         const SemiConnection& other = m_entries[ index ];
         if (other.SameEndpoints(s)) {
             if (other.IsCarrierSubsetOf(s)) {
-                // std::cerr << "############### SKIPPING SUPERSET ####\n";
-                // std::cerr << "s: " << s.ToString() << '\n';
-                // std::cerr << "o: " << other.ToString() << '\n';
+                // YTrace() << "############### SKIPPING SUPERSET ####\n";
+                // YTrace() << "s: " << s.ToString() << '\n';
+                // YTrace() << "o: " << other.ToString() << '\n';
                 FINISH_USING_WORKLIST;
                 return;
             }
@@ -91,7 +91,7 @@ void SemiTable::Include(const SemiConnection& s)
         int group_id = other.m_group_id;
         cell_t type = other.m_con_type;
         
-        std::cerr << "Replacing SemiConnection!\n"
+        YTrace() << "Replacing SemiConnection!\n"
                   << "gid: " << group_id << " type: " << type << '\n' 
                   << "old: " << other.ToString() << '\n'
                   << "new: " << s.ToString() << '\n';
@@ -109,8 +109,8 @@ void SemiTable::Include(const SemiConnection& s)
         m_groups->ComputeConnectionCarrier(g, type);
         m_groups->RecomputeFromChildrenToTop(g);
 
-        std::cerr << "index=" << replace_index << '\n';
-        std::cerr << "REPLACED: " << s.ToString() << ' ' 
+        YTrace() << "index=" << replace_index << '\n';
+        YTrace() << "REPLACED: " << s.ToString() << ' ' 
                   << YUtil::HashString(s.m_hash) << '\n';
 
     }
@@ -131,10 +131,10 @@ void SemiTable::Include(const SemiConnection& s)
         m_end_table[eslot].PushBack(index);
         m_hash_table[hslot].PushBack(index);
 
-        std::cerr << "index=" << index << '\n';
+        YTrace() << "index=" << index << '\n';
         m_entries[index] = s;
         m_newlist.push_back(&m_entries[index]);
-        std::cerr << "ADDED: " << s.ToString() << ' ' 
+        YTrace() << "ADDED: " << s.ToString() << ' ' 
                   << YUtil::HashString(s.m_hash) << '\n';
     }
 }
@@ -165,8 +165,8 @@ void SemiTable::Remove(int index)
 {
     const SemiConnection& s = m_entries[index];
     if (s.m_group_id != -1) {
-        std::cerr << "Removing " << index << '\n';
-        std::cerr << "GroupId = " << (int)s.m_group_id << '\n';
+        YTrace() << "Removing " << index << '\n';
+        YTrace() << "GroupId = " << (int)s.m_group_id << '\n';
         m_groups->GetGroupById(s.m_group_id)
             ->BreakConnection(index, s.m_con_type);
     }
