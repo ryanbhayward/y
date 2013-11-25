@@ -868,8 +868,6 @@ void Groups::RemoveEdgeConnections(Group* g)
 void Groups::ReplaceLeafWithGroup(Group* g, cell_t a, Group* z)
 {
     assert(!g->IsLeaf());
-    if (z->IsLeaf())
-        return;
     Group *p, *c;
     FindParentOfBlock(g, a, &p, &c);
     p->ChangeChild(c->m_id, z->m_id);
@@ -897,13 +895,15 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
         // Note: f cannot be a leaf since f contains at least two 
         // disjoint blocks.
         YTrace() << "Merging groups of same root group.\n";
+        YTrace() << "Original group:\n" << Encode(f) << '\n';
+
         Group* a = CommonAncestor(f, to, from);
         Group* z = ChildContaining(a, from);
         Group* x = ChildContaining(a, to);
         RecursiveRelabel(z, from, to);
         YTrace() << "HandleBlockMerge\n";
-        BeginDetaching();
         if (f == a) {
+
             // Common ancestor is root-level group.
             // Detaching will result in a new root group.
             // Try to detach a leaf so the non-leaf child becomes
@@ -913,6 +913,7 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             if (x->IsLeaf())
                 std::swap(x, z);
 
+            BeginDetaching();
             Detach(z, a);
 
             // Only z should be in detached list
@@ -934,18 +935,33 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             ComputeEdgeConnections(GetGroupById(m_recomputeEdgeCon[0]));
 
         } else { // (f != a)
-            // Common ancestor is below root level.
-            // This detach should not chain up the tree. Since we are
-            // only reorganizing the tree edge connections do not
-            // neet to be performed.
+            // Common ancestor is below root level.  
+            // Since we are only reorganizing the tree edge
+            // connections do not neet to be performed.
             YTrace() << "f != a!!!\n";
-            Detach(z, a);
-            ReplaceLeafWithGroup(f, to, z);
-            // Detaching z should not cause a chain of detaches
-            FinishedDetaching();
-            assert(m_detached.Length() == 1);
-        }
 
+            if (x->IsLeaf())
+                std::swap(x, z);
+            
+            // Move x into a's position and kill a
+            assert(a->m_parent != -1);
+            Group* p = GetGroupById(a->m_parent);
+            p->ChangeChild(a->m_id, x->m_id);
+            x->m_parent = p->m_id;
+            Free(a);
+
+            // z is now floating free. 
+            if (x->IsLeaf()) {
+                // Both are leafs, just get rid of z and we're done
+                // (since they are leafs of the same block).
+                assert(z->IsLeaf());
+                Free(z);
+                RecomputeFromChildrenToTop(p);
+            } else {
+                ReplaceLeafWithGroup(x, to, z);
+                // ^^ Calls RecomputeToTop() to fix up carriers, etc.
+            }
+        }
     } else { // (f != t)
         // Block merge merging two different groups.
         // One group must die (f): try to make it a leaf if possible.
@@ -967,10 +983,10 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             ReplaceLeafWithGroup(f, to, t);
         }
         ComputeEdgeConnections(f);
-        YTrace() << "HandleBlockMerge: complete. Resulting group:\n"
-                 << Encode(f) << '\n'
-                 << f->ToString() << '\n';
     }
+    YTrace() << "HandleBlockMerge: complete. Resulting group:\n"
+             << Encode(f) << '\n'
+             << f->ToString() << '\n';
 }
 
 //---------------------------------------------------------------------------
