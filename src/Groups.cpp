@@ -619,16 +619,16 @@ bool Groups::CanConnectToEdge(const Group* ga, cell_t edge,
 void Groups::ComputeEdgeConnections(Group* g)
 {
     assert(IsRootGroup(g->m_id));
+    MarkedCells avoid(g->m_carrier);
     for (EdgeIterator e; e; ++e) {
         if (!g->m_econ[*e].IsDefined()) {
-            MarkedCells empty;
             SemiConnection *x, *y;
-            if (CanConnectToEdge(g, *e, &x, &y, empty)) {
+            if (CanConnectToEdge(g, *e, &x, &y, avoid)) {
                 ConnectGroupToEdge(g, *e, x, y);
+                avoid = g->m_carrier;
             } 
         }
     }
-    ComputeCarrier(g, true);
 }
 
 // NOTE: g must be a detached group
@@ -966,6 +966,8 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             m_rootGroups.Exclude(t->m_id);
             ReplaceLeafWithGroup(f, to, t);
         }
+        std::cerr << "HandleBlockMerge: before edge comps:\n"
+                  << f->ToString() << '\n';
         ComputeEdgeConnections(f);
         std::cerr << "HandleBlockMerge: complete. Resulting group:\n"
                   << Encode(f) << '\n'
