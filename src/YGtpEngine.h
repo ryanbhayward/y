@@ -56,6 +56,9 @@ public:
     void CmdFinalScore(GtpCommand& cmd);
     void CmdVersion(GtpCommand& cmd);
 
+    void CmdTracingOn(GtpCommand& cmd);
+    void CmdTracingOff(GtpCommand& cmd);
+
     void CmdBoardStatistics(GtpCommand& cmd);
 
     void CmdCellInfo(GtpCommand& cmd);

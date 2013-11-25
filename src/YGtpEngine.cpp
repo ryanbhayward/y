@@ -53,6 +53,8 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("y_solve", &YGtpEngine::CmdSolve);
     RegisterCmd("y_param", &YGtpEngine::CmdParam);
     RegisterCmd("version", &YGtpEngine::CmdVersion);
+    RegisterCmd("tracing_on", &YGtpEngine::CmdTracingOn);
+    RegisterCmd("tracing_off", &YGtpEngine::CmdTracingOff);
 
     RegisterCmd("uct_proven_nodes", &YGtpEngine::CmdUctProvenNodes);
     RegisterCmd("uct_scores", &YGtpEngine::CmdUctScores);
@@ -576,6 +578,18 @@ void YGtpEngine::CmdTimeSettings(GtpCommand& cmd)
     m_mainTime = newTime;
     m_timeSettingsSpecified = m_mainTime > 0.;
     ApplyTimeSettings();
+}
+
+void YGtpEngine::CmdTracingOn(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(0);
+    YSystem::TracingOn();
+}
+
+void YGtpEngine::CmdTracingOff(GtpCommand& cmd)
+{
+    cmd.CheckNuArg(0);
+    YSystem::TracingOff();
 }
 
 //----------------------------------------------------------------------------

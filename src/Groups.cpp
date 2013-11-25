@@ -966,8 +966,6 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             m_rootGroups.Exclude(t->m_id);
             ReplaceLeafWithGroup(f, to, t);
         }
-        std::cerr << "HandleBlockMerge: before edge comps:\n"
-                  << f->ToString() << '\n';
         ComputeEdgeConnections(f);
         std::cerr << "HandleBlockMerge: complete. Resulting group:\n"
                   << Encode(f) << '\n'

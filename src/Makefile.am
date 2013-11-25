@@ -10,6 +10,7 @@ YMain.cpp \
 YGtpEngine.cpp \
 YSearch.cpp \
 YSgUtil.cpp \
+YSystem.cpp \
 YUctSearch.cpp \
 YUctSearchUtil.cpp \
 YUtil.cpp
@@ -24,6 +25,7 @@ WeightedRandom.h \
 YGtpEngine.h \
 YSearch.h \
 YSgUtil.h \
+YSystem.h \
 YUctSearch.h \
 YUctSearchUtil.h \
 YUtil.h

@@ -8,6 +8,8 @@
 #include "SgHash.h"
 #include "SgBoardColor.h"
 #include "SgMove.h"
+
+#include "YSystem.h"
 #include "VectorIterator.h"
 #include "WeightedRandom.h"
 #include "YUtil.h"

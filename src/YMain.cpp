@@ -9,6 +9,7 @@
 #include "SgSystem.h"
 #include "SgRandom.h"
 #include "SgInit.h"
+#include "YSystem.h"
 #include "YGtpEngine.h"
 #include "YSgUtil.h"
 #include "board.h"
@@ -31,7 +32,7 @@ std::string g_config_file;
 
 int g_seed = 0;
 
-bool g_useGridCoords = false;
+int g_tracing_level = 0;
 
 int g_boardSize = 13;
 
@@ -59,6 +60,7 @@ void AddCommandLineArguments()
         ("seed", 
          po::value<int>(&g_seed)->default_value(0), 
          "RNG seed (0=use system time).")
+        ("verbose", "Turn tracing on")
         ("boardsize", 
          po::value<int>(&g_boardSize)->default_value(13),
          "Boardsize to use at startup.")
@@ -88,11 +90,11 @@ void ProcessCommandLineArguments(int argc, char** argv)
     }
     if (vm.count("version"))
     {
-        std::cout << "Havannah " << VERSION " " << g_build_date << ".\n";
+        std::cout << "Y " << VERSION " " << g_build_date << ".\n";
         exit(0);
     }
-    if (vm.count("coords"))
-        g_useGridCoords = true;
+    if (vm.count("verbose"))
+        g_tracing_level = 1;
 }
 
 }
@@ -103,6 +105,7 @@ int main(int argc, char** argv)
     ProcessCommandLineArguments(argc, argv);
 
     SgInit();
+    YSystem::Init(g_tracing_level);
     YSgUtil::Init();
     SemiTable::Init();
     SgRandom::SetSeed(g_seed);

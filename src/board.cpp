@@ -537,6 +537,9 @@ void Board::Play(SgBlackWhite color, cell_t p)
               << "vcwin=" << HasWinningVC() << ' '
               << (HasWinningVC() ? ToString(m_state.m_vcStonePlayed) : "") 
               << '\n';
+    YTrace() << "THIS SHOULD NOT APPEAR!!!! " << (int)p << "b=" 
+             << ToString(p) << '\n';
+
     Statistics::Get().m_numMovesPlayed++;
     m_dirtyConCells.Clear();
     m_dirtyWeightCells.Clear();
