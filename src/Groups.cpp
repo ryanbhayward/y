@@ -502,10 +502,10 @@ bool Groups::CanMergeOnSemi(const Group* ga, const Group* gb,
     return false;
 }
 
-void Groups::ProcessNewSemis(const std::vector<SemiConnection*>& s)
+void Groups::ProcessNewSemis(const SgArrayList<SemiConnection*, 128>& s)
 {
-    YTrace() << "ProcessNewSemis: (" << s.size() << ")\n";
-    for (size_t i = 0; i < s.size(); ++i) {
+    YTrace() << "ProcessNewSemis: (" << s.Length() << ")\n";
+    for (int i = 0; i < s.Length(); ++i) {
         SemiConnection* y;
         SemiConnection* x = s[i];
         YTrace() << x->ToString() << '\n';

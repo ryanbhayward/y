@@ -214,7 +214,7 @@ public:
    
     void RestructureAfterMove(cell_t p, SgBlackWhite color, const Board& brd);
 
-    void ProcessNewSemis(const std::vector<SemiConnection*>& s);
+    void ProcessNewSemis(const SgArrayList<SemiConnection*, 128>& s);
     
     void HandleBlockMerge(cell_t from, cell_t to);
 

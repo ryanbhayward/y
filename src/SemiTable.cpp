@@ -71,7 +71,7 @@ void SemiTable::Include(const SemiConnection& s)
             replace_index = index;
         } else {
             Remove(index);
-            Exclude(m_newlist, &other);
+            m_newlist.Exclude(&other);
         }
     }
     FINISH_USING_WORKLIST;
@@ -133,7 +133,9 @@ void SemiTable::Include(const SemiConnection& s)
 
         YTrace() << "index=" << index << '\n';
         m_entries[index] = s;
-        m_newlist.push_back(&m_entries[index]);
+        if (m_newlist.Length() >= 128)
+            throw YException("New list is full (>=128)!!");
+        m_newlist.PushBack(&m_entries[index]);
         YTrace() << "ADDED: " << s.ToString() << ' ' 
                   << YUtil::HashString(s.m_hash) << '\n';
     }

@@ -8,7 +8,6 @@
 #include "board.h"
 
 #include <string>
-#include <vector>
 
 //---------------------------------------------------------------------------
 
@@ -177,10 +176,10 @@ public:
 
     void ClearNewSemis()
     {
-        m_newlist.clear();
+        m_newlist.Clear();
     }
 
-    const std::vector<SemiConnection*>& GetNewSemis()
+    const SgArrayList<SemiConnection*, 128>& GetNewSemis()
     { 
         return m_newlist;
     }
@@ -275,8 +274,7 @@ private:
     TableSizeList m_usedlist;
     TableSizeList m_worklist;
     SemiConnection m_entries[MAX_ENTRIES_IN_TABLE];
-
-    std::vector<SemiConnection*> m_newlist;
+    SgArrayList<SemiConnection*, 128> m_newlist;
 
     bool m_using_worklist;
 
