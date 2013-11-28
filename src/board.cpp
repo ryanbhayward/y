@@ -325,7 +325,6 @@ bool Board::IsAdjacent(cell_t p, const Block* b)
 
 void Board::AddStoneToBlock(cell_t p, int border, Block* b)
 {
-    YTrace() << "AddStoneToBlock:\n";
     b->m_stones.PushBack(p);
     int new_borders = ~b->m_border & border;
     if (new_borders) {
@@ -431,9 +430,9 @@ void Board::MergeBlocks(cell_t p, int border, SgArrayList<cell_t, 3>& adjBlocks)
         const Block* adjBlock = GetBlock(*it);
         if (adjBlock == largestBlock)
             continue;
-        YTrace() << "*** MergingBlocks: " 
-                  << ToString(adjBlock->m_anchor) << " into " 
-                  << ToString(largestBlock->m_anchor) << '\n';
+        // YTrace() << "*** MergingBlocks: " 
+        //           << ToString(adjBlock->m_anchor) << " into " 
+        //           << ToString(largestBlock->m_anchor) << '\n';
         largestBlock->m_border |= adjBlock->m_border;
         for (Block::StoneIterator stn(adjBlock->m_stones); stn; ++stn)
         {
@@ -530,13 +529,13 @@ void Board::RemoveSharedLiberty(cell_t p, SgArrayList<cell_t, 3>& adjBlocks)
 
 void Board::Play(SgBlackWhite color, cell_t p) 
 {
-    YTrace() << "=============================\n"
-             << ToString() << '\n'
-             << ConstBoard::ColorToString(color) 
-             << " p=" << ToString(p) << '(' << (int)p << ")\n"
-             << "vcwin=" << HasWinningVC() << ' '
-             << (HasWinningVC() ? ToString(m_state.m_vcStonePlayed) : "") 
-             << '\n';
+    // YTrace() << "=============================\n"
+    //          << ToString() << '\n'
+    //          << ConstBoard::ColorToString(color) 
+    //          << " p=" << ToString(p) << '(' << (int)p << ")\n"
+    //          << "vcwin=" << HasWinningVC() << ' '
+    //          << (HasWinningVC() ? ToString(m_state.m_vcStonePlayed) : "") 
+    //          << '\n';
     Statistics::Get().m_numMovesPlayed++;
     m_dirtyConCells.Clear();
     m_dirtyWeightCells.Clear();
@@ -642,12 +641,9 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
     const Cell* cell = GetCell(key);
     if (cell->m_FullConnects[color].Length() < 2)
         return;
-    YTrace() << "Working on " << ToString(key) << ":\n";
     for (int i = 0; i < cell->m_FullConnects[color].Length(); ++i) {
         cell_t b1 = cell->m_FullConnects[color][i];
         SemiConnection::Carrier carrier;
-
-        YTrace() << "  " << ToString(b1) << '\n';
 
         // TODO: handle more than 2 cells in carrier
         for(int j = 0; j < 2 && j < GetConnection(key, b1).Length() ; ++j)
@@ -671,7 +667,6 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
                     continue;
             }
 
-            YTrace() << "    " << ToString(b2) << '\n';
             SgArrayList<cell_t, 10> potential;
             for (int k = 0; k < GetConnection(key, b2).Length(); ++k) {
                 cell_t p = GetConnection(key, b2)[k];
@@ -681,8 +676,6 @@ void Board::ConstructSemisWithKey(cell_t key, SgBlackWhite color)
             if ((potential.Length() < 2) && !GetConnection(key, b2).IsEmpty()) {
                 continue;
             }
-
-            YTrace() << "    checking if disjoint\n";
 
             // TODO: use the same function as above to select two 
             // cells from 'potential'.

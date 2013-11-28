@@ -91,10 +91,10 @@ void SemiTable::Include(const SemiConnection& s)
         int group_id = other.m_group_id;
         cell_t type = other.m_con_type;
         
-        YTrace() << "Replacing SemiConnection!\n"
-                  << "gid: " << group_id << " type: " << type << '\n' 
-                  << "old: " << other.ToString() << '\n'
-                  << "new: " << s.ToString() << '\n';
+        // YTrace() << "Replacing SemiConnection!\n"
+        //           << "gid: " << group_id << " type: " << type << '\n' 
+        //           << "old: " << other.ToString() << '\n'
+        //           << "new: " << s.ToString() << '\n';
         
         m_entries[replace_index] = s;
         m_entries[replace_index].m_group_id = group_id;
@@ -109,9 +109,9 @@ void SemiTable::Include(const SemiConnection& s)
         m_groups->ComputeConnectionCarrier(g, type);
         m_groups->RecomputeFromChildrenToTop(g);
 
-        YTrace() << "index=" << replace_index << '\n';
-        YTrace() << "REPLACED: " << s.ToString() << ' ' 
-                  << YUtil::HashString(s.m_hash) << '\n';
+        // YTrace() << "index=" << replace_index << '\n';
+        // YTrace() << "REPLACED: " << s.ToString() << ' ' 
+        //           << YUtil::HashString(s.m_hash) << '\n';
 
     }
     // Find room for s
@@ -131,13 +131,10 @@ void SemiTable::Include(const SemiConnection& s)
         m_end_table[eslot].PushBack(index);
         m_hash_table[hslot].PushBack(index);
 
-        YTrace() << "index=" << index << '\n';
         m_entries[index] = s;
         if (m_newlist.Length() >= 128)
             throw YException("New list is full (>=128)!!");
         m_newlist.PushBack(&m_entries[index]);
-        YTrace() << "ADDED: " << s.ToString() << ' ' 
-                  << YUtil::HashString(s.m_hash) << '\n';
     }
 }
 
@@ -167,8 +164,6 @@ void SemiTable::Remove(int index)
 {
     const SemiConnection& s = m_entries[index];
     if (s.m_group_id != -1) {
-        YTrace() << "Removing " << index << '\n';
-        YTrace() << "GroupId = " << (int)s.m_group_id << '\n';
         m_groups->GetGroupById(s.m_group_id)
             ->BreakConnection(index, s.m_con_type);
     }

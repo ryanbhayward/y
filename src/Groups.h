@@ -54,8 +54,6 @@ struct FullConnection
 
     void Break(int32_t semi)
     {
-        YTrace() << "Break: semi = " << semi << '\n';
-        YTrace() << ToString() << '\n';
         if (m_semi1 == semi)
             m_semi1 = -1;
         else {
@@ -112,13 +110,11 @@ public:
 
     void BreakConnection(int32_t semi, cell_t type)
     {
-        YTrace() << "BreakConnection: breaking " << semi << '\n';
         if (type == -1)
             m_con.Break(semi);
         else {
             m_econ[type].Break(semi);
         }
-        YTrace() << "Break successful!\n";
     }
 
     std::string BlocksToString() const;
