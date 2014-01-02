@@ -406,7 +406,6 @@ Group* Groups::Merge(Group* g1, Group* g2,
     g->m_border = g1->m_border | g2->m_border;
     SetSemis(g, -1, s1, s2);
     ComputeConnectionCarrier(g->m_con);
-
     g1->m_parent = id;
     g2->m_parent = id;
     
@@ -420,10 +419,12 @@ Group* Groups::Merge(Group* g1, Group* g2,
             g->m_econ[*e] = g1->m_econ[*e];
             ChangeSemiGID(g->m_econ[*e], g->m_id);
             g1->m_econ[*e].Clear();
+            g1->m_border &= ~ConstBoard::ToBorderValue(*e);
 
             if (g2->m_econ[*e].IsDefined()) {
                 UnlinkSemis(g2->m_econ[*e]);
                 g2->m_econ[*e].Clear();
+                g2->m_border &= ~ConstBoard::ToBorderValue(*e);
             }
 
         } else if (g2->m_econ[*e].IsDefined()) {
@@ -431,6 +432,7 @@ Group* Groups::Merge(Group* g1, Group* g2,
             g->m_econ[*e] = g2->m_econ[*e];
             ChangeSemiGID(g->m_econ[*e], g->m_id);
             g2->m_econ[*e].Clear();
+            g2->m_border &= ~ConstBoard::ToBorderValue(*e);
 
         } else {
             // g1 or g2 (or both) must touch e
@@ -591,6 +593,7 @@ void Groups::ComputeEdgeConnections(Group* g)
         if (!g->m_econ[*e].IsDefined()) {
             SemiConnection *x, *y;
             if (CanConnectToEdge(g, *e, &x, &y, avoid)) {
+                YTrace() << "COnnecting to " << ConstBoard::ToString(*e) << '\n';
                 ConnectGroupToEdge(g, *e, x, y);
                 avoid = g->m_carrier;
             } 
@@ -783,7 +786,7 @@ void Groups::RemoveEdgeConnection(Group* g, cell_t edge)
 {
     assert(ConstBoard::IsEdge(edge));
     assert(IsRootGroup(g->m_id));
-    g->m_border ^= ConstBoard::ToBorderValue(edge);
+    g->m_border &= ~ConstBoard::ToBorderValue(edge);
     UnlinkSemis(g->m_econ[edge]);
     g->m_econ[edge].Clear();
     ComputeCarrier(g, true);
@@ -814,6 +817,7 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
     assert(!ConstBoard::IsEdge(to));
     Group* f = GetRootGroup(from);
     Group* t = GetRootGroup(to);
+
     if (f == t) {
         // Merging two blocks from the same group.  
         // Note: f cannot be a leaf since f contains at least two 
@@ -852,6 +856,7 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
                 ReplaceLeafWithGroup(x, to, z);
             }
             FinishedDetaching();
+            
             ComputeEdgeConnections(GetGroupById(m_recomputeEdgeCon[0]));
 
         } else { // (f != a)
