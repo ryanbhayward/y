@@ -711,7 +711,7 @@ void YGtpEngine::CmdSemisBetween(GtpCommand& cmd)
     cmd.CheckNuArg(2);
     int p1 = CellArg(cmd, 0);
     int p2 = CellArg(cmd, 1);
-    // handle both p1 and p2 being an edge
+    // enforce color for connection (because gui needs one)
     SgBlackWhite color = SG_BLACK;
     if (m_brd.GetColor(p1) == SG_WHITE || m_brd.GetColor(p2) == SG_WHITE)
         color = SG_WHITE;
@@ -725,11 +725,17 @@ void YGtpEngine::CmdSemisBetween(GtpCommand& cmd)
 void YGtpEngine::CmdNewSemis(GtpCommand& cmd)
 {
     cmd.CheckNuArg(0);
-    const SgArrayList<SemiConnection*, 128>& s 
+    const SgArrayList<SemiConnection*, 128>& ss
         = m_brd.GetSemis().GetNewSemis();
-    for (int i = 0; i < s.Length(); ++i) {
-        cmd << ConstBoard::ColorToString(m_brd.GetColor(s[i]->m_p1)) << ' '
-            << s[i]->ToString() << '\n';
+    for (int i = 0; i < ss.Length(); ++i) {
+        const SemiConnection* s = ss[i];
+        // enforce color for connection (because gui needs one)
+        SgBlackWhite color = SG_BLACK;
+        if (   m_brd.GetColor(s->m_p1) == SG_WHITE 
+            || m_brd.GetColor(s->m_p2) == SG_WHITE)
+            color = SG_WHITE;
+        cmd << ConstBoard::ColorToString(color) << ' '
+            << s->ToString() << '\n';
     }
 }
 
