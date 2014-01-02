@@ -593,7 +593,6 @@ void Groups::ComputeEdgeConnections(Group* g)
         if (!g->m_econ[*e].IsDefined()) {
             SemiConnection *x, *y;
             if (CanConnectToEdge(g, *e, &x, &y, avoid)) {
-                YTrace() << "COnnecting to " << ConstBoard::ToString(*e) << '\n';
                 ConnectGroupToEdge(g, *e, x, y);
                 avoid = g->m_carrier;
             } 
