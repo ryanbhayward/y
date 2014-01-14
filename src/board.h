@@ -171,7 +171,7 @@ struct Board
 
     cell_t PointInDir(cell_t cell, int dir) const 
     { return Const().PointInDir(cell, dir); }
-    std::string ToString();
+    std::string ToString() const;
     static std::string ToString(cell_t p) { return ConstBoard::ToString(p); }
 
     SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };

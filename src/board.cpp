@@ -727,7 +727,7 @@ void Board::DumpBlocks()
 
 //----------------------------------------------------------------------
 
-std::string Board::ToString()
+std::string Board::ToString() const
 {
     ostringstream os;
     const int N = Size();
