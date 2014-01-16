@@ -41,6 +41,10 @@ YGtpEngine::YGtpEngine(int boardSize)
     RegisterCmd("clear_board", &YGtpEngine::CmdClearBoard);
     RegisterCmd("genmove", &YGtpEngine::CmdGenMove);
     RegisterCmd("loadsgf", &YGtpEngine::CmdLoadSgf);
+
+    RegisterCmd("encode-history", &YGtpEngine::CmdEncodeHistory);
+    RegisterCmd("decode-history", &YGtpEngine::CmdDecodeHistory);
+
 #if GTPENGINE_INTERRUPT
     RegisterCmd("gogui-interrupt", &YGtpEngine::CmdInterrupt);
 #endif
@@ -969,4 +973,30 @@ void YGtpEngine::CmdLoadSgf(GtpCommand& cmd)
         Play(color, point);
         ++mn;
     }
+}
+
+void YGtpEngine::CmdEncodeHistory(GtpCommand& cmd)
+{
+    cmd << m_brd.EncodeHistory();
+}
+
+void YGtpEngine::CmdDecodeHistory(GtpCommand& cmd)
+{
+    cmd.CheckNuArgLessEqual(2);
+    Board::History history;
+    int size = m_brd.DecodeHistory(cmd.Arg(0), history);
+    int numMoves = history.m_color.Length();
+    if (cmd.NuArg() == 2) {
+        int goTo = cmd.IntArg(1);
+        if (goTo < 0)
+            numMoves += goTo;
+        else
+            numMoves = std::min(numMoves, goTo);
+    }
+    NewGame(size);
+    for (int i = 0; i < numMoves; ++i) {
+        std::cerr << history.m_color[i] << ' ' 
+                  << ConstBoard::ToString(history.m_move[i]) << '\n';
+        Play(history.m_color[i], history.m_move[i]);
+    }   
 }

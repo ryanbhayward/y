@@ -37,6 +37,9 @@ public:
     void CmdGenMove(GtpCommand& cmd);
     void CmdLoadSgf(GtpCommand& cmd);
 
+    void CmdEncodeHistory(GtpCommand& cmd);
+    void CmdDecodeHistory(GtpCommand& cmd);
+
 #if GTPENGINE_INTERRUPT
     void CmdInterrupt(GtpCommand& cmd);
 #endif

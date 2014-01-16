@@ -205,6 +205,74 @@ void Board::CopyState(Board::State& a, const Board::State& b)
 
 //---------------------------------------------------------------------------
 
+std::string Board::EncodeHistory() const
+{
+    std::ostringstream os;
+    os << std::hex << std::setw(2) << std::setfill('0') << Size();
+    SgBoardColor lastColor = SG_EMPTY;
+    for (int i = 0; i < m_state.m_history.m_color.Length(); ++i) {
+        SgBoardColor curColor = m_state.m_history.m_color[i];
+        // for some reason swap is stored in history with color 'empty'.
+        // fix the color here so we do not encode the color unnecessarily.
+        if (m_state.m_history.m_move[i] == Y_SWAP)
+            curColor = SgOpp(lastColor);
+        if (SgOpp(lastColor) != curColor)
+        {
+            // unexpected color; encode it 
+            os << "00"; // 00 is not a valid move, use it as a marker
+            os << std::hex << std::setw(2) << std::setfill('0') 
+               << m_state.m_history.m_color[i];
+        }
+        os << std::hex << std::setw(2) << m_state.m_history.m_move[i];
+        lastColor = curColor;
+    }
+    return os.str();
+}
+
+namespace {
+    int NextTwoHexChars(const std::string& s, int index) 
+    {
+        char str[4];
+        str[0] = s[index+0];
+        str[1] = s[index+1];
+        str[2] = 0;
+        int ret;
+        sscanf(str, "%x", &ret);
+        return ret;
+    }
+}
+
+int Board::DecodeHistory(const std::string& history, Board::History& out) const
+{
+    out.Clear();
+    SgBoardColor lastColor = SG_EMPTY;
+    int size = NextTwoHexChars(history, 0);
+    for (std::size_t i = 2; i < history.size(); ) {
+        SgMove move;
+        SgBoardColor curColor = SgOpp(lastColor);
+
+        if (history[i] == '0' && history[i+1] == '0') {
+            i += 2;
+            curColor = (SgBoardColor)NextTwoHexChars(history, i);
+            i += 2;
+        }
+        move = (SgMove)NextTwoHexChars(history, i);
+        i += 2;
+
+        if (move == Y_SWAP) {
+            out.m_move.PushBack(Y_SWAP);
+            out.m_color.PushBack(SG_EMPTY);
+        } else {
+            out.m_move.PushBack(move);
+            out.m_color.PushBack(curColor);
+        }
+        lastColor = curColor;
+    }
+    return size;
+}
+
+//---------------------------------------------------------------------------
+
 void Board::PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color)
 {
     Cell* cell = GetCell(p);

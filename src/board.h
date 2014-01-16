@@ -161,6 +161,38 @@ struct Board
         { };
     };
 
+    struct History
+    {
+        SgArrayList<SgMove, Y_MAX_CELL> m_move;
+        SgArrayList<SgBoardColor, Y_MAX_CELL> m_color;
+
+        int NumMoves() const 
+        { 
+            return m_move.Length();
+        }
+
+        void Clear()
+        {
+            m_move.Clear();
+            m_color.Clear();
+        }
+
+        void PushBack(SgBoardColor color, SgMove move)
+        {
+            m_color.PushBack(color);
+            m_move.PushBack(move);
+        }
+
+        SgMove LastMove() const
+        {
+            if (m_move.IsEmpty())
+                return SG_NULLMOVE;
+            if (m_move.Length() == 1 && m_move.Last() == Y_SWAP)
+                return m_move[0];
+            return m_move.Last();
+        }
+    };
+
     explicit Board(int size);
 
     const ConstBoard& Const() const { return m_constBrd; }
@@ -304,6 +336,9 @@ struct Board
     void CheckConsistency();
     void DumpBlocks() ;
 
+    std::string EncodeHistory() const;
+    int DecodeHistory(const std::string& history, Board::History& out) const;
+
     const SemiTable& GetSemis() const
     { return *m_state.m_semis.get(); }
 
@@ -420,38 +455,6 @@ private:
     };
 
     ConstBoard m_constBrd;
-
-    struct History
-    {
-        SgArrayList<SgMove, Y_MAX_CELL> m_move;
-        SgArrayList<SgBoardColor, Y_MAX_CELL> m_color;
-
-        int NumMoves() const 
-        { 
-            return m_move.Length();
-        }
-
-        void Clear()
-        {
-            m_move.Clear();
-            m_color.Clear();
-        }
-
-        void PushBack(SgBoardColor color, SgMove move)
-        {
-            m_color.PushBack(color);
-            m_move.PushBack(move);
-        }
-
-        SgMove LastMove() const
-        {
-            if (m_move.IsEmpty())
-                return SG_NULLMOVE;
-            if (m_move.Length() == 1 && m_move.Last() == Y_SWAP)
-                return m_move[0];
-            return m_move.Last();
-        }
-    };
 
     struct State 
     {
