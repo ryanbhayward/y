@@ -995,8 +995,8 @@ void YGtpEngine::CmdDecodeHistory(GtpCommand& cmd)
     }
     NewGame(size);
     for (int i = 0; i < numMoves; ++i) {
-        std::cerr << history.m_color[i] << ' ' 
-                  << ConstBoard::ToString(history.m_move[i]) << '\n';
+        std::cerr << "play " << ConstBoard::ColorToChar(history.m_color[i]) 
+                  << ' ' << ConstBoard::ToString(history.m_move[i]) << '\n';
         Play(history.m_color[i], history.m_move[i]);
     }   
 }

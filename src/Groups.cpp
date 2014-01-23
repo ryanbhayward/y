@@ -382,7 +382,7 @@ bool Groups::CanConnectToEdgeOnSemi(Group* ga, cell_t edge,
 }
 
 // NOTE: g1 must be a valid root group
-// NOTE: g2 needs to be a free group or an edge group.
+// NOTE: g2 needs to be a free group
 // NOTE: merges g1 and g2 at the root of both trees
 Group* Groups::Merge(Group* g1, Group* g2,
                      SemiConnection* s1, SemiConnection* s2)
@@ -393,6 +393,8 @@ Group* Groups::Merge(Group* g1, Group* g2,
     assert(!IsRootGroup(g2->m_id));
     assert(IsRootGroup(g1->m_id));
 
+    RemoveEdgeConnections(g1);
+    RemoveEdgeConnections(g2);
     m_rootGroups.Exclude(g1->m_id);
     
     cell_t id = ObtainID();
@@ -403,44 +405,13 @@ Group* Groups::Merge(Group* g1, Group* g2,
     g->m_parent = SG_NULLMOVE;
     g->m_left = g1->m_id;
     g->m_right = g2->m_id;
-    g->m_border = g1->m_border | g2->m_border;
     SetSemis(g, -1, s1, s2);
     ComputeConnectionCarrier(g->m_con);
     g1->m_parent = id;
     g2->m_parent = id;
     
-    // promote edge connections in g1 and g2 to g
-    for (EdgeIterator e; e; ++e) {
-        if ((g->m_border & ConstBoard::ToBorderValue(*e)) == 0)
-            continue;
-
-        if (g1->m_econ[*e].IsDefined()) {
-
-            g->m_econ[*e] = g1->m_econ[*e];
-            ChangeSemiGID(g->m_econ[*e], g->m_id);
-            g1->m_econ[*e].Clear();
-            g1->m_border &= ~ConstBoard::ToBorderValue(*e);
-
-            if (g2->m_econ[*e].IsDefined()) {
-                UnlinkSemis(g2->m_econ[*e]);
-                g2->m_econ[*e].Clear();
-                g2->m_border &= ~ConstBoard::ToBorderValue(*e);
-            }
-
-        } else if (g2->m_econ[*e].IsDefined()) {
-
-            g->m_econ[*e] = g2->m_econ[*e];
-            ChangeSemiGID(g->m_econ[*e], g->m_id);
-            g2->m_econ[*e].Clear();
-            g2->m_border &= ~ConstBoard::ToBorderValue(*e);
-
-        } else {
-            // g1 or g2 (or both) must touch e
-        }
-    }
-    ComputeCarrier(g1, false);
-    ComputeCarrier(g2, false);
     RecomputeFromChildren(g);
+    ComputeEdgeConnections(g);
     return g;
 }
 
@@ -590,7 +561,7 @@ void Groups::ComputeEdgeConnections(Group* g)
     assert(IsRootGroup(g->m_id));
     MarkedCells avoid(g->m_carrier);
     for (EdgeIterator e; e; ++e) {
-        if (!g->m_econ[*e].IsDefined()) {
+        if (!g->TouchesEdge(*e) && !g->m_econ[*e].IsDefined()) {
             SemiConnection *x, *y;
             if (CanConnectToEdge(g, *e, &x, &y, avoid)) {
                 ConnectGroupToEdge(g, *e, x, y);
@@ -611,17 +582,14 @@ bool Groups::TryMerge(Group* g, const GroupList& list, const Board& brd)
         if (brd.GetColor(other->m_id) == color 
             && CanMerge(other, g, &x, &y, other->m_carrier)) 
         {
-            Group* ng = Merge(other, g, x, y);
-            // Merge will promote the edge connections of other,
-            // but we need to compute the ones from g.
-            ComputeEdgeConnections(ng);
+            Merge(other, g, x, y);
             return true;
         }
     }
     return false;
 }
 
-void Groups::RestructureAfterMove(Group* g, cell_t p)
+void Groups::RestructureAfterMove(Group* g, cell_t p, const Board& brd)
 {
     Group* root = g;
     MarkedCells avoid = root->m_carrier;
@@ -658,7 +626,13 @@ void Groups::RestructureAfterMove(Group* g, cell_t p)
         else
             break;
     }
-    assert(g->m_con.IsBroken());        
+    if (!g->m_con.IsBroken()) {
+        std::cerr << brd.ToString() << '\n' << "p=" 
+                  << ConstBoard::ToString(p) << '\n'
+                  << brd.EncodeHistory() << '\n';
+
+    }
+    assert(g->m_con.IsBroken());
     assert(g->m_con.m_carrier.Marked(p));
     avoid.Unmark(g->m_con.m_carrier);
 
@@ -696,9 +670,13 @@ void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color,
     GroupList rootGroups(m_rootGroups);
     for (int i = 0; i < rootGroups.Length(); ++i) {
         Group* g = GetGroupById(rootGroups[i]);
+        // g may have been merged with a group appearing earlier in the list,
+        // if so, skip it.
+        if (!IsRootGroup(g->m_id))
+            continue;
         if (g->m_carrier.Marked(p)) {
             BeginDetaching();
-            RestructureAfterMove(g, p);
+            RestructureAfterMove(g, p, brd);
             for (int j = 0; j < m_recomputeEdgeCon.Length(); ++j) {
                 Group* g2 = GetGroupById(m_recomputeEdgeCon[j]);
                 // TODO: check edge connections for ones that no longer
@@ -784,11 +762,12 @@ void Groups::FindParentOfBlock(Group* g, cell_t a, Group** p, Group** c)
 void Groups::RemoveEdgeConnection(Group* g, cell_t edge)
 {
     assert(ConstBoard::IsEdge(edge));
-    assert(IsRootGroup(g->m_id));
-    g->m_border &= ~ConstBoard::ToBorderValue(edge);
-    UnlinkSemis(g->m_econ[edge]);
-    g->m_econ[edge].Clear();
-    ComputeCarrier(g, true);
+    if (g->m_econ[edge].IsDefined()) {
+        g->m_border &= ~ConstBoard::ToBorderValue(edge);
+        UnlinkSemis(g->m_econ[edge]);
+        g->m_econ[edge].Clear();
+        ComputeCarrier(g, IsRootGroup(g->m_id));
+    }
 }
 
 void Groups::RemoveEdgeConnections(Group* g)

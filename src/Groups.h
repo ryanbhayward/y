@@ -123,7 +123,7 @@ public:
 
     std::string ToString() const;
 
-    bool ContainsEdge(cell_t edge) const
+    bool TouchesEdge(cell_t edge) const
     {
         return m_border & ConstBoard::ToBorderValue(edge);
     }
@@ -131,7 +131,7 @@ public:
     bool ContainsBlock(cell_t b) const
     {
         if (ConstBoard::IsEdge(b))
-            return ContainsEdge(b);
+            return TouchesEdge(b);
         return m_blocks.Contains(b);
     }
 
@@ -301,7 +301,7 @@ private:
 
     void UnlinkEdgeConnections(Group* g);
 
-    void RestructureAfterMove(Group* g, cell_t p);
+    void RestructureAfterMove(Group* g, cell_t p, const Board& brd);
 
     void ComputeConnectionCarrier(FullConnection& con);
 
