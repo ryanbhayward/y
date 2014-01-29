@@ -65,6 +65,11 @@ struct MarkedCells
         m_marked |= other.m_marked;
     }
 
+    bool Intersects(const MarkedCells& other)
+    {
+        return (m_marked & other.m_marked).any();
+    }
+
     void Unmark(cell_t p) 
     {
         m_marked.reset(p);

@@ -865,11 +865,9 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             }
         }
     } else { // (f != t)
-        // Block merge merging two different groups.
-        // One group must die (f): try to make it a leaf if possible.
-        // The survivor needs to check for new edge connections.
-        // TODO: we could save some work and merge f's edge connections
-        // that t does not know about.
+        // Merging blocks from two different groups.
+        // If group carriers do not intersect, add one group under the other.
+        // If they do intersect, remove the merged block from one group.
         RecursiveRelabel(f, from, to);
         if (f->IsLeaf())
             std::swap(f, t);
@@ -878,8 +876,34 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             Free(t);            
         } else {
             RemoveEdgeConnections(t);
-            m_rootGroups.Exclude(t->m_id);
-            ReplaceLeafWithGroup(f, to, t);
+            RemoveEdgeConnections(f);
+            if (f->m_carrier.Intersects(t->m_carrier)) {
+                // Detach 'to' from t, add all detached groups as new
+                // root groups.
+                // std::cerr << "#######HERE########\n";
+                // std::cerr << " f=" << (int)f->m_id 
+                //           << " t=" << (int)t->m_id <<'\n';
+                Group* p, *c;
+                FindParentOfBlock(t, to, &p, &c);
+                BeginDetaching();
+                Detach(c, p);
+                FinishedDetaching();
+                for (int j = 0; j < m_recomputeEdgeCon.Length(); ++j) {
+                    Group* g2 = GetGroupById(m_recomputeEdgeCon[j]);
+                    RemoveEdgeConnections(g2);
+                    ComputeEdgeConnections(g2);
+                }
+                for (int j = 0; j < m_detached.Length(); ++j) {
+                    Group* g2 = GetGroupById(m_detached[j]);
+                    m_rootGroups.PushBack(g2->m_id);
+                    ComputeEdgeConnections(g2);
+                }
+            } else {
+                // Groups are completely disjoint.
+                // Replace the leaf 'to' in f with t.
+                m_rootGroups.Exclude(t->m_id);
+                ReplaceLeafWithGroup(f, to, t);
+            }
         }
         ComputeEdgeConnections(f);
     }
