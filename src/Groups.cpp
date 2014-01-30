@@ -878,11 +878,9 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             RemoveEdgeConnections(t);
             RemoveEdgeConnections(f);
             if (f->m_carrier.Intersects(t->m_carrier)) {
-                // Detach 'to' from t, add all detached groups as new
-                // root groups.
-                // std::cerr << "#######HERE########\n";
-                // std::cerr << " f=" << (int)f->m_id 
-                //           << " t=" << (int)t->m_id <<'\n';
+                // Detach 'to' from t, add all detached groups (except
+                // the singleton group containing 'to') as new root
+                // groups.  
                 Group* p, *c;
                 FindParentOfBlock(t, to, &p, &c);
                 BeginDetaching();
@@ -895,8 +893,18 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
                 }
                 for (int j = 0; j < m_detached.Length(); ++j) {
                     Group* g2 = GetGroupById(m_detached[j]);
-                    m_rootGroups.PushBack(g2->m_id);
-                    ComputeEdgeConnections(g2);
+                    if (g2->ContainsBlock(to)) {
+                        // This is the group containing 'to' from t
+                        // that we just detached. It must die because
+                        // 'to' is actually inside f now, so it cannot
+                        // exist on its own as well.
+                        Free(g2);
+                    } else {
+                        // A remnant of t after 'to' was removed.
+                        // Make it a root group.
+                        m_rootGroups.PushBack(g2->m_id);
+                        ComputeEdgeConnections(g2);
+                    }
                 }
             } else {
                 // Groups are completely disjoint.
