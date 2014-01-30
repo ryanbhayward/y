@@ -197,6 +197,7 @@ void Board::CopyState(Board::State& a, const Board::State& b)
 
     a.m_oppBlocks = b.m_oppBlocks;
 
+    a.m_hash = b.m_hash;
     a.m_toPlay = b.m_toPlay;
     a.m_history = b.m_history;
 
