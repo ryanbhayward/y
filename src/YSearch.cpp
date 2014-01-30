@@ -87,7 +87,11 @@ void YSearch::Generate(SgVector<SgMove>* moves, int depth)
 int YSearch::Evaluate(bool* isExact, int depth)
 {
     SG_UNUSED(depth);
-    SgBoardColor type = m_brd.GetWinner();
+    SgBoardColor type = SG_EMPTY;
+    if (m_brd.HasWinningVC())
+        type = m_brd.GetVCWinner();
+    else if (m_brd.IsGameOver())
+        type = m_brd.GetWinner();
     switch(type)
     {
     case SG_EMPTY:
