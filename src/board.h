@@ -206,7 +206,7 @@ struct Board
     std::string ToString() const;
     static std::string ToString(cell_t p) { return ConstBoard::ToString(p); }
 
-    SgHashCode Hash() const { return 1; /* FIXME: IMPLEMENT HASH! */ };
+    SgHashCode Hash() const { return m_state.m_hash; };
 
     //------------------------------------------------------------
 
@@ -469,6 +469,7 @@ private:
 
         SgArrayList<cell_t, 3> m_oppBlocks;
 
+        SgHashCode m_hash;
         SgBlackWhite m_toPlay;
         History m_history;
 
@@ -574,6 +575,22 @@ private:
                                       const bool* toLiberties);
     void PromoteConnectionType(cell_t p, const Block* b, SgBlackWhite color);
     void DemoteConnectionType(cell_t p, Block* b, SgBlackWhite color);
+
+    //------------------------------------------------------------
+    
+    SgHashCode HashForBoardsize(int size) const
+    {
+        return SgHashZobrist<64>::GetTable().
+            Get(SgHashZobrist<64>::MAX_HASH_INDEX - 1 - size);
+    }
+
+    SgHashCode HashForCell(cell_t cell, SgBlackWhite color) const
+    {
+        return SgHashZobrist<64>::GetTable().
+            Get((color == SG_WHITE ? 0 : 500) + static_cast<int>(cell));
+    }
+
+    //------------------------------------------------------------
 
     Board(const Board& other);          // not implemented
     void operator=(const Board& other); // not implemented

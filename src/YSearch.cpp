@@ -115,17 +115,13 @@ bool YSearch::Execute(SgMove move, int* delta, int depth)
     *delta = DEPTH_UNIT;
     int cell = static_cast<int>(move);
     m_brd.Play(m_toPlay, cell);
-    m_history.push_back(cell);
     m_toPlay = SgOppBW(m_toPlay);
     return true;
 }
 
 void YSearch::TakeBack()
 {
-    SG_ASSERT(!m_history.empty());
-    // FIXME: implement undo
-    //m_brd.RemoveStone(m_history.back());
-    m_history.pop_back();
+    m_brd.Undo();
     m_toPlay = SgOppBW(m_toPlay);
 }
 

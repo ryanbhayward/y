@@ -129,6 +129,7 @@ void Board::SetSize(int size)
 		GetCell(*i)->m_NumAdj[SG_EMPTY]++;
     }
 
+    m_state.m_hash = HashForBoardsize(size);
     m_state.m_history.Clear();
     m_state.m_winner   = SG_EMPTY;
     m_state.m_vcWinner = SG_EMPTY;
@@ -162,12 +163,15 @@ void Board::Undo()
 
 void Board::Swap()
 {
+    m_state.m_hash = HashForBoardsize(Size());
     for (CellIterator it(Const()); it; ++it) {
 	if (GetColor(*it) != SG_EMPTY) {
-            m_state.m_color[*it] = SgOppBW(GetColor(*it));
+            SgBlackWhite flipColor = SgOppBW(GetColor(*it));
+            m_state.m_color[*it] = flipColor;
+            m_state.m_hash.Xor(HashForCell(*it, flipColor));
             if (*it == BlockAnchor(*it)) {
                 Block* b = GetBlock(*it);
-                b->m_color = SgOppBW(b->m_color);
+                b->m_color = flipColor;
             }
         } else if (GetColor(*it) == SG_EMPTY) {
             Cell* cell = GetCell(*it);
@@ -608,6 +612,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     m_dirtyConCells.Clear();
     m_dirtyWeightCells.Clear();
     m_dirtyBlocks.Clear();
+    m_state.m_hash.Xor(HashForCell(p, color));
     m_state.m_history.PushBack(color, p);
     m_state.m_toPlay = color;
     m_state.m_color[p] = color;
@@ -811,6 +816,8 @@ std::string Board::ToString() const
     os << "   ";
     for (char ch='a'; ch < 'a'+N; ch++) 
         os << ' ' << ch << ' '; 
+    os << "\n    ";
+    os << m_state.m_hash.ToString();
 
     return os.str();
 }
