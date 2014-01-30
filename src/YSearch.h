@@ -98,7 +98,7 @@ inline SgHashCode YSearch::GetHashCode() const
 
 inline bool YSearch::EndOfGame() const
 {
-    return m_brd.IsGameOver();
+    return m_brd.HasWinningVC() || m_brd.IsGameOver();
 }
 
 //----------------------------------------------------------------------------
