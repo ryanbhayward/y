@@ -113,7 +113,7 @@ class SemiTable
 public:
     static const int NUM_SLOTS = 32;  // needs to be power of 2
     static const int SLOT_MASK = 31;  // needs to be 1 minus above
-    static const int MAX_ENTRIES_PER_SLOT = 32;
+    static const int MAX_ENTRIES_PER_SLOT = 64;
     static const int MAX_ENTRIES_IN_TABLE = 1024;
     static uint32_t s_cell_hash[Y_MAX_CELL];
 
@@ -263,8 +263,8 @@ public:
 
 private:
 
-    typedef SgArrayList<int, MAX_ENTRIES_PER_SLOT> SlotSizeList;
-    typedef SgArrayList<int, MAX_ENTRIES_IN_TABLE> TableSizeList;
+    typedef SgArrayList<int16_t, MAX_ENTRIES_PER_SLOT> SlotSizeList;
+    typedef SgArrayList<int16_t, MAX_ENTRIES_IN_TABLE> TableSizeList;
 
     Groups* m_groups;
 
