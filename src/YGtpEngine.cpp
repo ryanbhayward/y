@@ -850,9 +850,13 @@ void YGtpEngine::CmdGroupCarrier(GtpCommand& cmd)
     int p = CellArg(cmd, 0);
     if (m_brd.GetColor(p) == SG_EMPTY)
 	return;
+    p = m_brd.BlockAnchor(p);
+    const Board& cbrd = m_brd;
     MarkedCells carrier = m_brd.GroupCarrier(p);
     for(MarkedCells::Iterator i(carrier); i; ++i)
 	cmd << ' ' << m_brd.ToString(*i);
+    for (Group::BlockAndEdgeIterator it(*cbrd.GetGroup(p)); it; ++it)
+        cmd << ' ' << m_brd.ToString(*it);
 }
 
 //----------------------------------------------------------------------

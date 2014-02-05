@@ -283,9 +283,9 @@ struct Board
     std::vector<cell_t> FullConnectedTo(cell_t p, SgBlackWhite c) const;
     std::vector<cell_t> SemiConnectedTo(cell_t p, SgBlackWhite c) const;
     std::vector<cell_t> GetCarrierBetween(cell_t p1, cell_t p2) const;
-    std::vector<cell_t> GetBlocksInGroup(cell_t p) const;
     std::vector<cell_t> FullConnectsMultipleBlocks(SgBlackWhite c) const;
     const MarkedCells&  GroupCarrier(cell_t p) const;
+    const Group::BlockList& GroupBlocks(cell_t p) const;
     std::vector<SemiConnection> GetSemisBetween(cell_t p1, cell_t p2) const;
 
     // ------------------------------------------------------------
@@ -344,6 +344,9 @@ struct Board
 
     SemiTable& GetSemis()
     { return *m_state.m_semis.get(); }
+
+    const Group* GetGroup(cell_t p) const
+    { return m_state.m_groups->GetRootGroup(p); }
 
 private:
     template<typename T, int SIZE>
@@ -541,9 +544,6 @@ private:
     { return &m_state.m_blockList[BlockIndex(p)]; }
 
     Group* GetGroup(cell_t p)
-    { return m_state.m_groups->GetRootGroup(p); }
-
-    const Group* GetGroup(cell_t p) const
     { return m_state.m_groups->GetRootGroup(p); }
 
     Cell* GetCell(cell_t p)
