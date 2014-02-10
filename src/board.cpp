@@ -910,7 +910,7 @@ bool Board::IsCellDead(cell_t p) const
     int s = 0;
     for (int j = 0; j < 12; ++j)
     {
-	const int i = (j > 6) ? j - 6 : j;
+	const int i = (j >= 6) ? j - 6 : j;
 	const SgBlackWhite color = GetColor(Const().m_cell_nbr[p][i]);
 	if (s == 0)
 	{
@@ -1003,8 +1003,8 @@ float Board::WeightCell(cell_t p) const
     float ret = 1.0;
     const Cell* cell = GetCell(p);
     SgArrayList<cell_t, 12> seenGroups;
-    int border = 0;
     for (SgBWIterator it; it; ++it) {
+        int border = 0;
 	for (int i = 0; i < cell->m_FullConnects[*it].Length(); ++i) {
 	    ret += GetBlock(cell->m_FullConnects[*it][i])->m_stones.Length();
             cell_t block = BlockAnchor(cell->m_FullConnects[*it][i]);
@@ -1019,8 +1019,8 @@ float Board::WeightCell(cell_t p) const
 	    border |= g->m_border;
 	    seenGroups.PushBack(g->m_id);
 	}
+        ret += s_borderWeights[border];
     }
-    ret += s_borderWeights[border];
     return ret;
 }
 
