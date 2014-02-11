@@ -990,14 +990,14 @@ void Board::MarkAllThreats(const MarkedCellsWithList& cells,
 float Board::WeightCell(cell_t p) const
 {
     static float s_borderWeights[8]= 
-        { 0.0,   // no borders
+        { 0.0,   // 000
           1e1,   // 001
           1e1,   // 010
           1e2,   // 011
           1e1,   // 100
           1e2,   // 101
           1e2,   // 110
-          1e6    // 111
+          LocalMoves::WEIGHT_WIN_THREAT   // 111
         };
             
     float ret = 1.0;

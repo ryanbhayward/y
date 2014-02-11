@@ -28,9 +28,9 @@ class SemiTable;
 
 struct LocalMoves
 {
-    static const float WEIGHT_SAVE_BRIDGE = 1000000.0;
+    static const float WEIGHT_SAVE_BRIDGE = 1e+5;
     static const float WEIGHT_DEAD_CELL   = 1e-6;
-    static const float WEIGHT_WIN_THREAT  = 10000000.0;
+    static const float WEIGHT_WIN_THREAT  = 1e+6;
 
     std::vector<int> move;
     std::vector<float> gamma;
