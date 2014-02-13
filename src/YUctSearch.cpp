@@ -97,9 +97,10 @@ bool YUctThreadState::GenerateAllMoves(SgUctValue count,
         return false;
     }
     SG_UNUSED(count);
-    for (Board::EmptyIterator it(m_brd); it; ++it)
-    {
-	moves.push_back(*it);
+    for (Board::EmptyIterator it(m_brd); it; ++it) {
+        // TODO: Include only mustplay!
+        if (!m_brd.IsCellMarkedDead(*it))
+            moves.push_back(*it);
     }
     provenType = SG_NOT_PROVEN;
     return false;

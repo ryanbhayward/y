@@ -651,9 +651,7 @@ void Groups::RestructureAfterMove(cell_t p, const Board& brd)
     GroupList rootGroups(m_rootGroups);
     for (int i = 0; i < rootGroups.Length(); ++i) {
         Group* g = GetGroupById(rootGroups[i]);
-        std::cerr << "group: " << (int)g->m_id << '\n';
         if (g->m_carrier.Marked(p)) {
-            std::cerr << "in carrier!\n";
             BeginDetaching();
             RestructureAfterMove(g, p, brd);
             FinishedDetaching();
@@ -666,7 +664,6 @@ void Groups::RestructureAfterMove(cell_t p, const Board& brd)
             }
             for (int j = 0; j < m_detached.Length(); ++j) {
                 Group* g2 = GetGroupById(m_detached[j]);
-                std::cerr << "detached: " << (int)g2->m_id << '\n';
                 m_rootGroups.PushBack(g2->m_id);
                 ComputeEdgeConnections(g2);
             }
