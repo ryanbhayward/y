@@ -571,24 +571,6 @@ void Groups::ComputeEdgeConnections(Group* g)
     }
 }
 
-// NOTE: g must be a detached group
-bool Groups::TryMerge(Group* g, const GroupList& list, const Board& brd)
-{
-    assert(!ConstBoard::IsEdge(g->m_id));
-    SemiConnection *x, *y;
-    const SgBlackWhite color = brd.GetColor(g->m_id);
-    for (int i = 0; i < list.Length(); ++i) {
-        Group* other = GetGroupById(m_rootGroups[i]);
-        if (brd.GetColor(other->m_id) == color 
-            && CanMerge(other, g, &x, &y, other->m_carrier)) 
-        {
-            Merge(other, g, x, y);
-            return true;
-        }
-    }
-    return false;
-}
-
 void Groups::RestructureAfterMove(Group* g, cell_t p, const Board& brd)
 {
     Group* root = g;
@@ -664,19 +646,17 @@ void Groups::RestructureAfterMove(Group* g, cell_t p, const Board& brd)
     }
 }
 
-void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color, 
-                                  const Board& brd)
+void Groups::RestructureAfterMove(cell_t p, const Board& brd)
 {
     GroupList rootGroups(m_rootGroups);
     for (int i = 0; i < rootGroups.Length(); ++i) {
         Group* g = GetGroupById(rootGroups[i]);
-        // g may have been merged with a group appearing earlier in the list,
-        // if so, skip it.
-        if (!IsRootGroup(g->m_id))
-            continue;
+        std::cerr << "group: " << (int)g->m_id << '\n';
         if (g->m_carrier.Marked(p)) {
+            std::cerr << "in carrier!\n";
             BeginDetaching();
             RestructureAfterMove(g, p, brd);
+            FinishedDetaching();
             for (int j = 0; j < m_recomputeEdgeCon.Length(); ++j) {
                 Group* g2 = GetGroupById(m_recomputeEdgeCon[j]);
                 // TODO: check edge connections for ones that no longer
@@ -686,17 +666,10 @@ void Groups::RestructureAfterMove(cell_t p, SgBlackWhite color,
             }
             for (int j = 0; j < m_detached.Length(); ++j) {
                 Group* g2 = GetGroupById(m_detached[j]);
-                // Try merging detached groups only for the opponent,
-                // we will rebuild the groups for color using new semi
-                // connections later.
-                if (brd.GetColor(g->m_blocks[0]) == color 
-                    || !TryMerge(g2, m_rootGroups, brd)) 
-                {
-                    m_rootGroups.PushBack(g2->m_id);
-                    ComputeEdgeConnections(g2);
-                }
+                std::cerr << "detached: " << (int)g2->m_id << '\n';
+                m_rootGroups.PushBack(g2->m_id);
+                ComputeEdgeConnections(g2);
             }
-            FinishedDetaching();
         }
     }
 }
@@ -817,6 +790,7 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
 
             BeginDetaching();
             Detach(z, a);
+            FinishedDetaching();
 
             // Only z should be in detached list
             assert(m_detached.Length() == 1);
@@ -833,7 +807,6 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             else {
                 ReplaceLeafWithGroup(x, to, z);
             }
-            FinishedDetaching();
             
             ComputeEdgeConnections(GetGroupById(m_recomputeEdgeCon[0]));
 
@@ -914,6 +887,22 @@ void Groups::HandleBlockMerge(cell_t from, cell_t to)
             }
         }
         ComputeEdgeConnections(f);
+    }
+}
+
+//---------------------------------------------------------------------------
+
+void Groups::ComputeBlockToGroupIndex(cell_t* bg, const Board& brd) const
+{
+    SG_UNUSED(brd);
+    // for (CellIterator it(brd); it; ++it)
+    //     bg[*it] = -1;
+    for (int i = 0; i < m_rootGroups.Length(); ++i) {
+        const Group* g = GetGroupById(m_rootGroups[i]);
+        for (Group::BlockList::Iterator it(g->m_blocks); it; ++it) {
+            assert(!ConstBoard::IsEdge(*it));
+            bg[*it] = g->m_id;
+        }
     }
 }
 

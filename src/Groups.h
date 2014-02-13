@@ -208,7 +208,7 @@ public:
 
     cell_t SetGroupDataFromBlock(const Block* block, int id);
    
-    void RestructureAfterMove(cell_t p, SgBlackWhite color, const Board& brd);
+    void RestructureAfterMove(cell_t p, const Board& brd);
 
     void ProcessNewSemis(const SgArrayList<SemiConnection*, 128>& s);
     
@@ -229,6 +229,14 @@ public:
 
     std::string Encode(const Group* g) const;
 
+    void ComputeBlockToGroupIndex(cell_t* bg, const Board& brd) const;
+
+    Group* GetGroupById(int gid) 
+    {  return &m_groupData[gid];  }
+
+    const Group* GetGroupById(int gid) const
+    {  return &m_groupData[gid];  }
+
 private:
     // Need space for MAX_GROUPS * 2, and MAX_GROUPS < T/2, so this works.
     static const int MAX_GROUPS = Y_MAX_CELL;
@@ -246,16 +254,6 @@ private:
     void BeginDetaching();
     void FinishedDetaching();
    
-    Group* GetGroupById(int gid)
-    {
-        return &m_groupData[gid];
-    }
-
-    const Group* GetGroupById(int gid) const
-    {
-        return &m_groupData[gid];
-    }
-
     void Detach(Group* g, Group* p);
 
     void ComputeCarrier(Group* g, bool root);
@@ -296,8 +294,6 @@ private:
         
     Group* Merge(Group* g1, Group* g2, 
                  SemiConnection* s1, SemiConnection* s2);
-
-    bool TryMerge(Group* g, const GroupList& list, const Board& brd);
 
     void UnlinkEdgeConnections(Group* g);
 

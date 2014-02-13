@@ -26,10 +26,12 @@ void Board::State::Init(int T)
     m_semis.reset(new SemiTable());
     m_groups.reset(new Groups(*m_semis));
     m_semis->SetGroups(m_groups.get());
+    m_blockToGroup.reset(new cell_t[T]);
 
     for (int i = 0; i < T; ++i)
         m_color[i] = SG_EMPTY;
     memset(m_blockIndex.get(), -1, sizeof(cell_t)*T);
+    memset(m_blockToGroup.get(), -1, sizeof(cell_t)*T);
 
     m_con.reset(new Carrier*[T]);
     for(int i = 0, j = 0; i < T; ++i) {
@@ -64,6 +66,7 @@ void Board::SetSize(int size)
         b.m_border = ConstBoard::BORDER_WEST;
         b.m_stones.Clear();
         m_state.m_groups->SetGroupDataFromBlock(&b, Const().WEST);
+        m_state.m_blockToGroup[Const().WEST] = Const().WEST;
         for (int i = 0; i < N; ++i) {
             cell_t p = Const().fatten(i,0);
             b.m_liberties.PushBack(p);
@@ -86,6 +89,7 @@ void Board::SetSize(int size)
         b.m_border = Const().BORDER_EAST;
         b.m_stones.Clear();
         m_state.m_groups->SetGroupDataFromBlock(&b, Const().EAST);
+        m_state.m_blockToGroup[Const().EAST] = Const().EAST;
         for (int i = 0; i < N; ++i) {
             cell_t p = Const().fatten(i,i);
             b.m_liberties.PushBack(p);
@@ -108,6 +112,7 @@ void Board::SetSize(int size)
         b.m_border = Const().BORDER_SOUTH;
         b.m_stones.Clear();
         m_state.m_groups->SetGroupDataFromBlock(&b, Const().SOUTH);
+        m_state.m_blockToGroup[Const().SOUTH] = Const().SOUTH;
         for (int i = 0; i < N; ++i) {
             cell_t p = Const().fatten(N-1,i);
             b.m_liberties.PushBack(p);
@@ -194,6 +199,7 @@ void Board::CopyState(Board::State& a, const Board::State& b)
            sizeof(Carrier)*T*(T+1)/2);
     memcpy(a.m_semis.get(), b.m_semis.get(), sizeof(SemiTable));
     memcpy(a.m_groups.get(), b.m_groups.get(), sizeof(Groups));
+    memcpy(a.m_blockToGroup.get(), b.m_blockToGroup.get(), sizeof(cell_t)*T);
 
     a.m_oppBlocks = b.m_oppBlocks;
 
@@ -650,7 +656,7 @@ void Board::Play(SgBlackWhite color, cell_t p)
     RemoveSharedLiberty(p, adjBlocks);
     RemoveSharedLiberty(p, oppBlocks);
     GetSemis().RemoveContaining(p);
-    GetGroups().RestructureAfterMove(p, color, *this);
+    GetGroups().RestructureAfterMove(p, *this);
        
     // Create/update block containing p (ignores edge blocks).
     // Compute group for this block as well.
@@ -667,6 +673,8 @@ void Board::Play(SgBlackWhite color, cell_t p)
         else
             MergeBlocks(p, border, realAdjBlocks);
     }
+
+    GetGroups().ComputeBlockToGroupIndex(m_state.m_blockToGroup.get(), *this);
 
     // Mark every cell requiring a weight update as dirty.
     m_dirtyWeightCells = m_dirtyConCells;
@@ -895,10 +903,15 @@ int Board::SaveBridge(cell_t lastMove, const SgBlackWhite toPlay,
     return SG_NULLMOVE;
 }
 
-bool Board::IsCellDead(cell_t p) const
+bool Board::IsCellMarkedDead(cell_t p) const
 {
-    if (GetCell(p)->IsDead())
-        return true;
+    return GetCell(p)->IsDead();
+}
+
+bool Board::DoDeadCellCheck(cell_t p) const
+{
+    // if (IsCellMarkedDead())
+    //     return true;
     if (NumNeighbours(p, SG_EMPTY) > 2)
         return false;
     if (NumNeighbours(p, SG_BLACK) >= 5)
@@ -1008,7 +1021,8 @@ float Board::WeightCell(cell_t p) const
 	for (int i = 0; i < cell->m_FullConnects[*it].Length(); ++i) {
 	    ret += GetBlock(cell->m_FullConnects[*it][i])->m_stones.Length();
             cell_t block = BlockAnchor(cell->m_FullConnects[*it][i]);
-	    const Group* g = GetGroup(block);
+	    const Group* g 
+                = GetGroups().GetGroupById(m_state.m_blockToGroup[block]);
 	    if (GetColor(block) == SG_BORDER)
 		continue;
 	    if (seenGroups.Contains(g->m_id))

@@ -293,7 +293,8 @@ struct Board
     std::string CellInfo(cell_t p) const
     { return GetCell(p)->ToString(Const()); }
 
-    bool IsCellDead(cell_t p) const;
+    bool IsCellMarkedDead(cell_t p) const;
+    bool DoDeadCellCheck(cell_t p) const;
     void MarkCellAsDead(cell_t p);
 
     bool IsCellThreat(cell_t p) const;
@@ -469,6 +470,7 @@ private:
         boost::scoped_array<Carrier*> m_con;
         boost::scoped_ptr<SemiTable> m_semis;
         boost::scoped_ptr<Groups> m_groups;
+        boost::scoped_array<cell_t> m_blockToGroup;
 
         SgArrayList<cell_t, 3> m_oppBlocks;
 
@@ -495,7 +497,6 @@ private:
     MarkedCellsWithList m_dirtyConCells;
     MarkedCellsWithList m_dirtyWeightCells;
     MarkedCellsWithList m_dirtyBlocks;
-    std::vector<CellPair> m_groupSearchPotStack;
 
     void CreateSingleStoneBlock(cell_t p, SgBlackWhite color, int border);
 
