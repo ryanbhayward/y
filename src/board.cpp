@@ -649,8 +649,11 @@ void Board::Play(SgBlackWhite color, cell_t p)
                 oppBlocks.PushBack(b->m_anchor);
         }
 	else {
-	    GetCell(*it)->m_NumAdj[SG_EMPTY]--;
-	    GetCell(*it)->m_NumAdj[color]++;
+            Cell* empty = GetCell(*it);
+	    empty->m_NumAdj[SG_EMPTY]--;
+	    empty->m_NumAdj[color]++;
+            if (!empty->IsDead() && DoDeadCellCheck(*it))
+                MarkCellAsDead(*it);
 	}
     }
     RemoveSharedLiberty(p, adjBlocks);
