@@ -1,7 +1,7 @@
 bin_PROGRAMS = y
 
 y_SOURCES = \
-board.cpp \
+Board.cpp \
 ConstBoard.cpp \
 Groups.cpp \
 SemiTable.cpp \
@@ -16,7 +16,7 @@ YUctSearchUtil.cpp \
 YUtil.cpp
 
 noinst_HEADERS = \
-board.h \
+Board.h \
 ConstBoard.h \
 Groups.h \
 SemiTable.h \

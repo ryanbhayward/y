@@ -10,7 +10,7 @@
 #include "SgProp.h"
 #include "SgNode.h"
 
-#include "board.h"
+#include "Board.h"
 
 //----------------------------------------------------------------------------
 

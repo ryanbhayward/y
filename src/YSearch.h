@@ -9,7 +9,7 @@
 #include "SgSystem.h"
 #include "SgSearch.h"
 #include "SgHashTable.h"
-#include "board.h"
+#include "Board.h"
 
 //----------------------------------------------------------------------------
 

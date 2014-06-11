@@ -8,7 +8,7 @@
 #include "SgBlackWhite.h"
 #include "SgPoint.h"
 #include "SgUctSearch.h"
-#include "board.h"
+#include "Board.h"
 //----------------------------------------------------------------------------
 
 /** General utility functions used in GoUct.

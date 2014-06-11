@@ -5,7 +5,7 @@
 #include <sstream>
 #include <string>
 
-#include "board.h"
+#include "Board.h"
 
 using namespace std;
 

@@ -9,7 +9,7 @@
 #include "SgSystem.h"
 #include "SgRandom.h"
 #include "WeightedRandom.h"
-#include "board.h"
+#include "Board.h"
 #include <math.h>
 
 //----------------------------------------------------------------------------

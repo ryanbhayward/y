@@ -1,5 +1,5 @@
 #include "Groups.h"
-#include "board.h"
+#include "Board.h"
 
 Group::Group()
 { 

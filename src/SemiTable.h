@@ -5,7 +5,7 @@
 #include "SgHash.h"
 #include "SgBoardColor.h"
 #include "YException.h"
-#include "board.h"
+#include "Board.h"
 
 #include <string>
 

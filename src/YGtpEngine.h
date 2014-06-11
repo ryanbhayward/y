@@ -10,7 +10,7 @@
 
 #include "GtpEngine.h"
 #include "SgBWArray.h"
-#include "board.h"
+#include "Board.h"
 #include "YSearch.h"
 #include "YUctSearch.h"
 

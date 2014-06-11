@@ -9,7 +9,7 @@
 #include "SgUctSearch.h"
 #include "SgUctTree.h"
 #include "SgRandom.h"
-#include "board.h"
+#include "Board.h"
 #include "WeightedRandom.h"
 
 //----------------------------------------------------------------------------

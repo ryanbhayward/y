@@ -12,7 +12,7 @@
 #include "YSystem.h"
 #include "YGtpEngine.h"
 #include "YSgUtil.h"
-#include "board.h"
+#include "Board.h"
 
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/cmdline.hpp>
