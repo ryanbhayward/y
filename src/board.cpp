@@ -1015,26 +1015,62 @@ float Board::WeightCell(cell_t p) const
           1e2,   // 110
           LocalMoves::WEIGHT_WIN_THREAT   // 111
         };
-            
+
+    // The weights computed here are really bad.
+    // Some things we need to consider:
+    //  * Play should be restricted to the mustplay where possible.
+    //    To compute the mustplay: for every cell: check if it
+    //    connects two opponent groups whose borders union to a win
+    //    threat. Note that if the cell is in a group's carrier, we
+    //    need to use subgroups of that group. This is a problem
+    //    because we don't store subgroup-to-edge connections.  We
+    //    probably also need to store all possible strategy trees for
+    //    each group as well, along with all possible subgroups. If we
+    //    don't do this, the mustplay will be pretty incomplete.
+    //  * Black probably doesn't want to play into the carrier of an
+    //    existing black group, unless by doing so he can create an
+    //    even larger black group. The latter is hard to check for,
+    //    since it is essentially a search (block and group merges,
+    //    etc).  Black playing into white groups only makes sense if
+    //    the move can be used later by black (ie, probing for
+    //    influence), since white can easily compute a response to
+    //    reconnect the group.  Checking for future influence is
+    //    difficult to define, nevermind compute. 
+    //  * Moves in the acute corners look good to naive scoring schemes.
+
     float ret = 1.0;
     const Cell* cell = GetCell(p);
     SgArrayList<cell_t, 12> seenGroups;
     for (SgBWIterator it; it; ++it) {
         int border = 0;
 	for (int i = 0; i < cell->m_FullConnects[*it].Length(); ++i) {
-	    ret += GetBlock(cell->m_FullConnects[*it][i])->m_stones.Length();
-            cell_t block = BlockAnchor(cell->m_FullConnects[*it][i]);
-	    const Group* g 
-                = GetGroups().GetGroupById(m_state.m_blockToGroup[block]);
-	    if (GetColor(block) == SG_BORDER)
-		continue;
-	    if (seenGroups.Contains(g->m_id))
-		continue;
-	    if (g->m_carrier.Marked(p))
-		continue;
-	    ret += 2 * g->m_blocks.Length();
-	    border |= g->m_border;
-	    seenGroups.PushBack(g->m_id);
+            const cell_t block = BlockAnchor(cell->m_FullConnects[*it][i]);
+	    if (ConstBoard::IsEdge(block)) 
+            {
+                border |= ConstBoard::ToBorderValue(block);
+            }
+            else 
+            {
+                const Group* g = BlockToGroup(block);
+                if (seenGroups.Contains(g->m_id))
+                    continue;
+                if (g->m_carrier.Marked(p)) {
+                    // TODO: find subgroups of g that we can connect to
+                    // since we cannot connect to entire group.
+                    continue;
+                }
+                border |= g->m_border;
+                seenGroups.PushBack(g->m_id);
+
+                // compute group 'size', maybe 'influence' is a better name.
+                int size = 0;
+                for (Group::BlockList::Iterator ib(g->m_blocks); ib; ++ib)
+                    size += GetBlock(*ib)->m_stones.Length();
+                size += g->m_carrier.Count();
+                
+                //ret += size * 1.0;
+                ret += size * 0.0;
+            }
 	}
         ret += s_borderWeights[border];
     }

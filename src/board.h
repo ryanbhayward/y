@@ -277,6 +277,9 @@ struct Board
     std::string GroupInfo(cell_t p) const
     { return GetGroup(BlockAnchor(p))->ToString(); }
 
+    const Group* BlockToGroup(cell_t block) const
+    { return GetGroups().GetGroupById(m_state.m_blockToGroup[block]); }
+
     //------------------------------------------------------------
     // Gui access functions
 

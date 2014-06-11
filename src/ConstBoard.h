@@ -80,6 +80,11 @@ struct MarkedCells
         m_marked &= ~other.m_marked;
     }
 
+    size_t Count() const
+    {
+        return m_marked.count(); 
+    }
+
     class Iterator
     {
     public:
