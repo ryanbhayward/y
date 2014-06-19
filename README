@@ -1,0 +1,51 @@
+Program to play Y. Based on Fuego library. 
+
+----------
+ Building
+----------
+Get the latest Fuego trunk version from sourceforge and build it
+in a parallel directory to your y directory.
+
+% svn checkout svn://svn.code.sf.net/p/fuego/code/trunk fuego
+% cd fuego
+% autoreconf -i
+% ./configure
+% cd ..
+
+Now build Y. 
+
+% cd y
+% autoreconf -i
+% ./configure --with-fuego-root=[abs path to fuego build]
+
+Executable is src/y.
+
+---------
+ Playing
+---------
+You can play from the command-line, but it's better to get HexGui and play
+against it that way. You can get HexGui from github at:
+
+  https://github.com/ryanbhayward/hexgui.git
+
+Under the 'View' menu select the 'Y' mode.
+
+------------
+ Parameters
+------------
+The default parameters will not result in play that is very strong. The 
+following three parameters can drastically increase performance, depending
+upon your machine:
+
+  max_time [10]     -- seconds per search, 30 or 60 is much stronger than 10. 
+  num_threads [1]   -- eg, try 4 on a 4 core machine.
+  max_memory [2gb]  -- try to use as much as your machine allows
+
+The more threads and the longer the search, the more memory that is required.
+
+Run the 'Search Parameters' option of Analyze Dialog to change these parameters
+(if running from the command-line you can use the 'y_param' command to do so).
+
+  use_livegfx [0]   -- set to non-zero if using gui to see what Y is thinking.
+                       does not affect performance.
+
