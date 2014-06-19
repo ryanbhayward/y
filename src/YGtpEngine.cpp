@@ -325,7 +325,7 @@ void YGtpEngine::CmdVersion(GtpCommand& cmd)
 void YGtpEngine::CmdBoardSize(GtpCommand& cmd)
 {
     cmd.CheckNuArgLessEqual(2); // ignore second argument (so we work in hexgui)
-    int size = cmd.IntArg(0, 1, Y_MAX_SIZE);
+    int size = cmd.ArgMinMax<int>(0, 1, Y_MAX_SIZE);
     m_brd.SetSize(size);
     NewGame();
 }
@@ -426,16 +426,16 @@ void YGtpEngine::CmdSolve(GtpCommand& cmd)
     boost::scoped_ptr<SgTimeSearchControl> timeControl;
     if (cmd.NuArg() >= 2)
     {
-        double timelimit = cmd.FloatArg(0);
+        double timelimit = cmd.Arg<float>(0);
         if (timelimit > 0.0)
             timeControl.reset(new SgTimeSearchControl(timelimit));
     }
     int maxDepth = m_brd.Const().TotalCells; //m_brd.Const().NumCells();
     if (cmd.NuArg() >= 3)
-        maxDepth = cmd.IntArg(1, 0);
+        maxDepth = cmd.ArgMin<int>(1, 0);
     bool doTrace = false;
     if (cmd.NuArg() == 4)
-        doTrace = cmd.BoolArg(2);
+        doTrace = cmd.Arg<bool>(2);
     SgVector<SgMove> pv;
     m_search.SetPosition(m_brd);
     m_search.SetToPlay(toPlay);
@@ -519,32 +519,32 @@ void YGtpEngine::CmdParam(GtpCommand& cmd)
     {
         std::string name = cmd.Arg(0);
         if (name == "use_rave")
-            m_uctSearch.SetRave(cmd.BoolArg(1));
+            m_uctSearch.SetRave(cmd.Arg<bool>(1));
         else if (name == "use_livegfx")
-            m_uctSearch.SetLiveGfx(cmd.BoolArg(1));
+            m_uctSearch.SetLiveGfx(cmd.Arg<bool>(1));
         else if (name == "use_savebridge")
-            m_uctSearch.SetUseSaveBridge(cmd.BoolArg(1));
+            m_uctSearch.SetUseSaveBridge(cmd.Arg<bool>(1));
         else if (name == "allow_swap")
-            m_allowSwap = cmd.BoolArg(1);
+            m_allowSwap = cmd.Arg<bool>(1);
         else if (name == "ignore_clock")
-            m_ignoreClock = cmd.BoolArg(1);
+            m_ignoreClock = cmd.Arg<bool>(1);
         else if (name == "bias_term_constant")
-            m_uctSearch.SetBiasTermConstant(cmd.FloatArg(1));
+            m_uctSearch.SetBiasTermConstant(cmd.Arg<float>(1));
         else if (name == "expand_threshold")
-            m_uctSearch.SetExpandThreshold(cmd.IntArg(1, 1));
+            m_uctSearch.SetExpandThreshold(cmd.ArgMin<int>(1, 1));
         else if (name == "number_playouts")
-            m_uctSearch.SetNumberPlayouts(cmd.IntArg(1,1));
+            m_uctSearch.SetNumberPlayouts(cmd.ArgMin<int>(1, 1));
         else if (name == "num_threads")
-            m_uctSearch.SetNumberThreads(cmd.IntArg(1, 1));
+            m_uctSearch.SetNumberThreads(cmd.ArgMin<int>(1, 1));
         else if (name == "max_games")
-            m_uctMaxGames = cmd.SizeTypeArg(1, 1);
+            m_uctMaxGames = cmd.ArgMin<size_t>(1, 1);
         else if (name == "max_memory")
             m_uctSearch.SetMaxNodes(cmd.ArgMin<std::size_t>(1, 1) 
                                  / sizeof(SgUctNode) / 2);
         else if (name == "max_nodes")
             m_uctSearch.SetMaxNodes(cmd.ArgMin<std::size_t>(1, 1));
         else if (name == "max_time")
-            m_uctMaxTime = cmd.FloatArg(1);
+            m_uctMaxTime = cmd.Arg<float>(1);
         else
             throw GtpFailure("Unknown parameter name!");
     }
@@ -579,7 +579,7 @@ void YGtpEngine::CmdTimeSettings(GtpCommand& cmd)
     if (m_brd.NumMoves() > 0)
         throw GtpFailure("Cannot change time during game!");
     cmd.CheckNuArg(3);
-    double newTime = cmd.FloatArg(0);
+    double newTime = cmd.Arg<float>(0);
     if (newTime < 0.0)
         throw GtpFailure("Main time must be >= 0!");
     m_mainTime = newTime;
@@ -991,7 +991,7 @@ void YGtpEngine::CmdDecodeHistory(GtpCommand& cmd)
     int size = m_brd.DecodeHistory(cmd.Arg(0), history);
     int numMoves = history.m_color.Length();
     if (cmd.NuArg() == 2) {
-        int goTo = cmd.IntArg(1);
+        int goTo = cmd.Arg<int>(1);
         if (goTo < 0)
             numMoves += goTo;
         else
