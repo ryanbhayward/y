@@ -1,0 +1,13 @@
+It's been a while since I built this, so it looks like it might need a little tweaking to get it build code-wise. As far as kicking off a build goes, the project uses GNU automake, so you'll have to run something like the following series of commands:
+
+autoreconf --install
+./configure --with-fuego-root=/absolute/path/to/fuego
+make
+
+autoreconf runs the proper sequence of 'autoconf', 'automake', etc. to generate a usable configure script and Makefile.in.
+
+Note that Y requires a copy of Fuego to have been built as well.
+
+Hope that helps!
+
+Jesse Huard
